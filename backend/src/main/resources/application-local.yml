@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  jpa:
+    show-sql: true
+
+app:
+  mail:
+    mock-enabled: true

@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: hrm-backend
+  datasource:
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=DigitalHRM;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: filesystem:database/schema,filesystem:database/seed
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  auth:
+    jwt-secret: ${APP_JWT_SECRET:hrm-backend-local-secret-key-change-me-2026-please-now}
+    access-token-minutes: ${APP_ACCESS_TOKEN_MINUTES:30}
+    refresh-token-days: ${APP_REFRESH_TOKEN_DAYS:7}
+    password-reset-minutes: ${APP_PASSWORD_RESET_MINUTES:15}
+    max-failed-login-attempts: ${APP_MAX_FAILED_LOGIN_ATTEMPTS:5}
+    auto-lock-minutes: ${APP_AUTO_LOCK_MINUTES:30}
+    default-new-user-status: ${APP_DEFAULT_NEW_USER_STATUS:ACTIVE}
+  bootstrap:
+    seed-default-admin: ${APP_BOOTSTRAP_SEED_DEFAULT_ADMIN:true}
+    admin-username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
+    admin-email: ${APP_BOOTSTRAP_ADMIN_EMAIL:admin@digitalhrm.local}
+    admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:Admin@123456}
+    admin-phone-number: ${APP_BOOTSTRAP_ADMIN_PHONE_NUMBER:0900000000}
+  mail:
+    mock-enabled: ${APP_MAIL_MOCK_ENABLED:true}
+    from-address: ${APP_MAIL_FROM_ADDRESS:no-reply@digitalhrm.local}
+    reset-url-base: ${APP_MAIL_RESET_URL_BASE:http://localhost:5173/auth/reset-password}
+  role-management:
+    allow-custom-role: ${APP_ROLE_MANAGEMENT_ALLOW_CUSTOM_ROLE:false}
