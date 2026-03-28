@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -29,7 +31,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final SecAuthSessionRepository authSessionRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, SecAuthSessionRepository authSessionRepository) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
+            @Lazy SecAuthSessionRepository authSessionRepository) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authSessionRepository = authSessionRepository;
     }
@@ -49,8 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                                 principal,
                                 null,
-                                principal.getAuthorities()
-                        );
+                                principal.getAuthorities());
                         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                     });
         }
@@ -88,8 +90,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 claims.get("email", String.class),
                 roleCode,
                 permissions == null ? List.of() : permissions,
-                authorities
-        );
+                authorities);
     }
 
     private String resolveBearerToken(HttpServletRequest request) {

@@ -102,7 +102,7 @@ FROM dbo.sec_role_permission rp
 INNER JOIN dbo.sec_role r ON rp.role_id = r.role_id
 INNER JOIN dbo.sec_permission p ON rp.permission_id = p.permission_id
 INNER JOIN @rolePermissionSeed s ON s.role_code = r.role_code AND s.permission_code = p.permission_code;
-GO
+ -- removed GO to keep @rolePermissionSeed in scope
 
 DECLARE @rolePermissionSeedInsert TABLE (
     role_code VARCHAR(30),

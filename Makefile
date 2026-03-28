@@ -1,70 +1,51 @@
-DOCKER_COMPOSE = docker compose
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+COMPOSE_PROJECT_NAME ?= khanhhoa
+BACKEND_DIR ?= backend
+FRONTEND_DIR ?= frontend
+FLASK_APP ?= manage:app
+PYTHON ?= $(shell if [ -x "$(ROOT_DIR)/.venv/bin/python" ]; then printf %s "$(ROOT_DIR)/.venv/bin/python"; elif command -v python3 >/dev/null 2>&1; then command -v python3; else printf %s python; fi)
+
+.PHONY: help db-upgrade seed-baseline sync-admin bootstrap run-backend docker-up docker-backend docker-logs-backend docker-down
 
 help:
-	@echo "Cách dùng: make [lệnh]"
-	@echo ""
-	@echo "Hệ thống:"
-	@echo "  up         - Khởi chạy toàn bộ services (chạy ngầm)"
-	@echo "  down       - Dừng và xóa các container"
-	@echo "  restart    - Khởi động lại toàn bộ services"
-	@echo "  build      - Build lại các image (frontend, backend)"
-	@echo "  ps         - Danh sách các container đang chạy"
-	@echo "  logs       - Xem log của tất cả services"
-	@echo ""
-	@echo "Từng Service:"
-	@echo "  db         - Chạy Database (MS SQL Server)"
-	@echo "  be         - Chạy Backend (Spring Boot)"
-	@echo "  fe         - Chạy Frontend (Vue/Nginx)"
-	@echo ""
-	@echo "Log lẻ:"
-	@echo "  logs-db    - Xem log Database"
-	@echo "  logs-be    - Xem log Backend"
-	@echo "  logs-fe    - Xem log Frontend"
-	@echo ""
-	@echo "Tiện ích:"
-	@echo "  clean      - Dọn dẹp container/network rác"
-	@echo "  db-shell   - Truy cập sqlcmd của database"
+	@printf "Available commands:\n"
+	@printf "  make db-upgrade          Apply Alembic migrations locally\n"
+	@printf "  make seed-baseline       Seed baseline categories + admin locally\n"
+	@printf "  make sync-admin          Force sync admin password from .env\n"
+	@printf "  make bootstrap           Wait DB, migrate, then seed locally\n"
+	@printf "  make run-backend         Run Flask backend locally\n"
+	@printf "  make run-frontend        Run React frontend locally\n"
+	@printf "  make docker-up           Build and start full Docker stack\n"
+	@printf "  make docker-backend      Build and start DB, Redis, backend only\n"
+	@printf "  make docker-logs-backend Tail backend container logs\n"
+	@printf "  make docker-down         Stop Docker stack\n"
 
-up:
-	$(DOCKER_COMPOSE) up -d
+db-upgrade:
+	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py db-upgrade
 
-down:
-	$(DOCKER_COMPOSE) down
+seed-baseline:
+	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py seed-baseline
 
-restart:
-	$(DOCKER_COMPOSE) down
-	$(DOCKER_COMPOSE) up -d
+sync-admin:
+	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py sync-admin
 
-build:
-	$(DOCKER_COMPOSE) build
+bootstrap:
+	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py bootstrap-production
 
-ps:
-	$(DOCKER_COMPOSE) ps
+run-backend:
+	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py runserver
 
-logs:
-	$(DOCKER_COMPOSE) logs -f
+run-frontend:
+	cd $(FRONTEND_DIR) && npm run dev
 
-db:
-	$(DOCKER_COMPOSE) up -d db
+docker-up:
+	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose up -d --build
 
-be:
-	$(DOCKER_COMPOSE) up -d backend
+docker-backend:
+	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose up -d --build db redis backend
 
-fe:
-	$(DOCKER_COMPOSE) up -d frontend
+docker-logs-backend:
+	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose logs -f backend
 
-logs-db:
-	$(DOCKER_COMPOSE) logs -f db
-
-logs-be:
-	$(DOCKER_COMPOSE) logs -f backend
-
-logs-fe:
-	$(DOCKER_COMPOSE) logs -f frontend
-
-clean:
-	docker system prune -f
-
-db-shell:
-	@echo "Đang kết nối vào database..."
-	$(DOCKER_COMPOSE) exec db /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $$(grep DATABASE_PASSWORD .env | cut -d '=' -f2)
+docker-down:
+	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose down

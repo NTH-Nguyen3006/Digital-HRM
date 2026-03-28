@@ -1,24 +1,9 @@
 package com.company.hrm.module.employee.service;
 
-import com.company.hrm.common.constant.DocumentStatus;
-import com.company.hrm.common.constant.EmploymentStatus;
-import com.company.hrm.common.constant.RecordStatus;
-import com.company.hrm.common.exception.BusinessException;
-import com.company.hrm.common.exception.NotFoundException;
-import com.company.hrm.common.response.PageResponse;
-import com.company.hrm.module.audit.service.AuditLogService;
-import com.company.hrm.module.employee.dto.*;
-import com.company.hrm.module.employee.entity.*;
-import com.company.hrm.module.employee.repository.*;
-import com.company.hrm.module.jobtitle.entity.HrJobTitle;
-import com.company.hrm.module.jobtitle.repository.HrJobTitleRepository;
-import com.company.hrm.module.orgunit.entity.HrOrgUnit;
-import com.company.hrm.module.orgunit.repository.HrOrgUnitRepository;
-import com.company.hrm.security.SecurityUserContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -26,6 +11,50 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.company.hrm.common.constant.DocumentStatus;
+import com.company.hrm.common.constant.EmploymentStatus;
+import com.company.hrm.common.exception.BusinessException;
+import com.company.hrm.common.exception.NotFoundException;
+import com.company.hrm.common.response.PageResponse;
+import com.company.hrm.module.audit.service.AuditLogService;
+import com.company.hrm.module.employee.dto.CreateEmployeeRequest;
+import com.company.hrm.module.employee.dto.EmergencyContactRequest;
+import com.company.hrm.module.employee.dto.EmergencyContactResponse;
+import com.company.hrm.module.employee.dto.EmployeeAddressRequest;
+import com.company.hrm.module.employee.dto.EmployeeAddressResponse;
+import com.company.hrm.module.employee.dto.EmployeeBankAccountRequest;
+import com.company.hrm.module.employee.dto.EmployeeBankAccountResponse;
+import com.company.hrm.module.employee.dto.EmployeeDetailResponse;
+import com.company.hrm.module.employee.dto.EmployeeDocumentRequest;
+import com.company.hrm.module.employee.dto.EmployeeDocumentResponse;
+import com.company.hrm.module.employee.dto.EmployeeIdentificationRequest;
+import com.company.hrm.module.employee.dto.EmployeeIdentificationResponse;
+import com.company.hrm.module.employee.dto.EmployeeListItemResponse;
+import com.company.hrm.module.employee.dto.EmployeeProfileRequest;
+import com.company.hrm.module.employee.dto.EmployeeProfileResponse;
+import com.company.hrm.module.employee.dto.TransferEmployeeRequest;
+import com.company.hrm.module.employee.dto.UpdateEmployeeRequest;
+import com.company.hrm.module.employee.dto.UpdateEmploymentStatusRequest;
+import com.company.hrm.module.employee.entity.HrEmployee;
+import com.company.hrm.module.employee.entity.HrEmployeeAddress;
+import com.company.hrm.module.employee.entity.HrEmployeeBankAccount;
+import com.company.hrm.module.employee.entity.HrEmployeeDocument;
+import com.company.hrm.module.employee.entity.HrEmployeeEmergencyContact;
+import com.company.hrm.module.employee.entity.HrEmployeeIdentification;
+import com.company.hrm.module.employee.entity.HrEmployeeProfile;
+import com.company.hrm.module.employee.repository.HrEmployeeAddressRepository;
+import com.company.hrm.module.employee.repository.HrEmployeeBankAccountRepository;
+import com.company.hrm.module.employee.repository.HrEmployeeDocumentRepository;
+import com.company.hrm.module.employee.repository.HrEmployeeEmergencyContactRepository;
+import com.company.hrm.module.employee.repository.HrEmployeeIdentificationRepository;
+import com.company.hrm.module.employee.repository.HrEmployeeProfileRepository;
+import com.company.hrm.module.employee.repository.HrEmployeeRepository;
+import com.company.hrm.module.jobtitle.entity.HrJobTitle;
+import com.company.hrm.module.jobtitle.repository.HrJobTitleRepository;
+import com.company.hrm.module.orgunit.entity.HrOrgUnit;
+import com.company.hrm.module.orgunit.repository.HrOrgUnitRepository;
+import com.company.hrm.security.SecurityUserContext;
 
 @Service
 public class EmployeeService {
@@ -53,8 +82,7 @@ public class EmployeeService {
             HrOrgUnitRepository orgUnitRepository,
             HrJobTitleRepository jobTitleRepository,
             EmployeeAccessScopeService accessScopeService,
-            AuditLogService auditLogService
-    ) {
+            AuditLogService auditLogService) {
         this.employeeRepository = employeeRepository;
         this.profileRepository = profileRepository;
         this.addressRepository = addressRepository;
@@ -69,7 +97,8 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<EmployeeListItemResponse> list(String keyword, EmploymentStatus employmentStatus, Long orgUnitId, Long jobTitleId, int page, int size) {
+    public PageResponse<EmployeeListItemResponse> list(String keyword, EmploymentStatus employmentStatus,
+            Long orgUnitId, Long jobTitleId, int page, int size) {
         Specification<HrEmployee> specification = (root, query, builder) -> builder.isFalse(root.get("deleted"));
         specification = accessScopeService.applyEmployeeReadScope(specification);
         if (keyword != null && !keyword.isBlank()) {
@@ -78,21 +107,25 @@ public class EmployeeService {
                     builder.like(builder.lower(root.get("employeeCode")), likeValue),
                     builder.like(builder.lower(root.get("fullName")), likeValue),
                     builder.like(builder.lower(root.get("workEmail")), likeValue),
-                    builder.like(builder.lower(root.get("mobilePhone")), likeValue)
-            ));
+                    builder.like(builder.lower(root.get("mobilePhone")), likeValue)));
         }
         if (employmentStatus != null) {
-            specification = specification.and((root, query, builder) -> builder.equal(root.get("employmentStatus"), employmentStatus));
+            specification = specification
+                    .and((root, query, builder) -> builder.equal(root.get("employmentStatus"), employmentStatus));
         }
         if (orgUnitId != null) {
-            specification = specification.and((root, query, builder) -> builder.equal(root.get("orgUnit").get("orgUnitId"), orgUnitId));
+            specification = specification
+                    .and((root, query, builder) -> builder.equal(root.get("orgUnit").get("orgUnitId"), orgUnitId));
         }
         if (jobTitleId != null) {
-            specification = specification.and((root, query, builder) -> builder.equal(root.get("jobTitle").get("jobTitleId"), jobTitleId));
+            specification = specification
+                    .and((root, query, builder) -> builder.equal(root.get("jobTitle").get("jobTitleId"), jobTitleId));
         }
-        Page<HrEmployee> result = employeeRepository.findAll(specification, PageRequest.of(page, size, Sort.by("employeeCode")));
+        Page<HrEmployee> result = employeeRepository.findAll(specification,
+                PageRequest.of(page, size, Sort.by("employeeCode")));
         List<EmployeeListItemResponse> items = result.getContent().stream().map(this::toListItem).toList();
-        return new PageResponse<>(items, page, size, result.getTotalElements(), result.getTotalPages(), result.hasNext(), result.hasPrevious());
+        return new PageResponse<>(items, page, size, result.getTotalElements(), result.getTotalPages(),
+                result.hasNext(), result.hasPrevious());
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +137,8 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeDetailResponse create(CreateEmployeeRequest request) {
-        validateCreateOrUpdate(null, request.employeeCode(), request.workEmail(), request.dateOfBirth(), request.hireDate(), request.managerEmployeeId());
+        validateCreateOrUpdate(null, request.employeeCode(), request.workEmail(), request.dateOfBirth(),
+                request.hireDate(), request.managerEmployeeId());
         HrOrgUnit orgUnit = getOrgUnit(request.orgUnitId());
         HrJobTitle jobTitle = getJobTitle(request.jobTitleId());
         HrEmployee manager = request.managerEmployeeId() == null ? null : getEmployee(request.managerEmployeeId());
@@ -129,7 +163,8 @@ public class EmployeeService {
         employee.setNote(blankToNull(request.note()));
         employee = employeeRepository.save(employee);
         EmployeeDetailResponse response = toDetail(employee);
-        auditLogService.logSuccess("CREATE", "EMPLOYEE", "hr_employee", employee.getEmployeeId().toString(), null, response, "Tạo mới hồ sơ nhân sự.");
+        auditLogService.logSuccess("CREATE", "EMPLOYEE", "hr_employee", employee.getEmployeeId().toString(), null,
+                response, "Tạo mới hồ sơ nhân sự.");
         return response;
     }
 
@@ -137,11 +172,13 @@ public class EmployeeService {
     public EmployeeDetailResponse update(Long employeeId, UpdateEmployeeRequest request) {
         HrEmployee employee = getEmployee(employeeId);
         EmployeeDetailResponse oldSnapshot = toDetail(employee);
-        validateCreateOrUpdate(employeeId, request.employeeCode(), request.workEmail(), request.dateOfBirth(), request.hireDate(), request.managerEmployeeId());
+        validateCreateOrUpdate(employeeId, request.employeeCode(), request.workEmail(), request.dateOfBirth(),
+                request.hireDate(), request.managerEmployeeId());
         employee.setEmployeeCode(normalizeCode(request.employeeCode()));
         employee.setOrgUnit(getOrgUnit(request.orgUnitId()));
         employee.setJobTitle(getJobTitle(request.jobTitleId()));
-        employee.setManagerEmployee(request.managerEmployeeId() == null ? null : getEmployee(request.managerEmployeeId()));
+        employee.setManagerEmployee(
+                request.managerEmployeeId() == null ? null : getEmployee(request.managerEmployeeId()));
         employee.setFullName(request.fullName().trim());
         employee.setWorkEmail(blankToNull(request.workEmail()));
         employee.setWorkPhone(blankToNull(request.workPhone()));
@@ -156,7 +193,8 @@ public class EmployeeService {
         employee.setNote(blankToNull(request.note()));
         employee = employeeRepository.save(employee);
         EmployeeDetailResponse response = toDetail(employee);
-        auditLogService.logSuccess("UPDATE", "EMPLOYEE", "hr_employee", employeeId.toString(), oldSnapshot, response, "Cập nhật hồ sơ nhân sự.");
+        auditLogService.logSuccess("UPDATE", "EMPLOYEE", "hr_employee", employeeId.toString(), oldSnapshot, response,
+                "Cập nhật hồ sơ nhân sự.");
         return response;
     }
 
@@ -167,7 +205,8 @@ public class EmployeeService {
         employee.setEmploymentStatus(request.employmentStatus());
         employee = employeeRepository.save(employee);
         EmployeeDetailResponse response = toDetail(employee);
-        auditLogService.logSuccess("CHANGE_STATUS", "EMPLOYEE", "hr_employee", employeeId.toString(), oldSnapshot, response, request.note());
+        auditLogService.logSuccess("CHANGE_STATUS", "EMPLOYEE", "hr_employee", employeeId.toString(), oldSnapshot,
+                response, request.note());
         return response;
     }
 
@@ -176,10 +215,12 @@ public class EmployeeService {
         HrEmployee employee = getEmployee(employeeId);
         EmployeeDetailResponse oldSnapshot = toDetail(employee);
         employee.setOrgUnit(getOrgUnit(request.targetOrgUnitId()));
-        employee.setManagerEmployee(request.targetManagerEmployeeId() == null ? null : getEmployee(request.targetManagerEmployeeId()));
+        employee.setManagerEmployee(
+                request.targetManagerEmployeeId() == null ? null : getEmployee(request.targetManagerEmployeeId()));
         employee = employeeRepository.save(employee);
         EmployeeDetailResponse response = toDetail(employee);
-        auditLogService.logSuccess("TRANSFER", "EMPLOYEE", "hr_employee", employeeId.toString(), oldSnapshot, response, request.note());
+        auditLogService.logSuccess("TRANSFER", "EMPLOYEE", "hr_employee", employeeId.toString(), oldSnapshot, response,
+                request.note());
         return response;
     }
 
@@ -187,29 +228,35 @@ public class EmployeeService {
     public EmployeeProfileResponse getProfile(Long employeeId) {
         HrEmployee employee = getEmployee(employeeId);
         accessScopeService.assertCanReadEmployee(employee);
-        return profileRepository.findByEmployeeEmployeeIdAndDeletedFalse(employeeId).map(this::toProfileResponse).orElse(null);
+        return profileRepository.findByEmployeeEmployeeIdAndDeletedFalse(employeeId).map(this::toProfileResponse)
+                .orElse(null);
     }
 
     @Transactional
     public EmployeeProfileResponse upsertProfile(Long employeeId, EmployeeProfileRequest request) {
         HrEmployee employee = getEmployee(employeeId);
-        HrEmployeeProfile profile = profileRepository.findByEmployeeEmployeeIdAndDeletedFalse(employeeId).orElseGet(() -> {
-            HrEmployeeProfile created = new HrEmployeeProfile();
-            created.setEmployee(employee);
-            return created;
-        });
-        EmployeeProfileResponse oldSnapshot = profile.getEmployeeProfileId() == null ? null : toProfileResponse(profile);
+        HrEmployeeProfile profile = profileRepository.findByEmployeeEmployeeIdAndDeletedFalse(employeeId)
+                .orElseGet(() -> {
+                    HrEmployeeProfile created = new HrEmployeeProfile();
+                    created.setEmployee(employee);
+                    return created;
+                });
+        EmployeeProfileResponse oldSnapshot = profile.getEmployeeProfileId() == null ? null
+                : toProfileResponse(profile);
         applyProfile(profile, request);
         profile = profileRepository.save(profile);
         EmployeeProfileResponse response = toProfileResponse(profile);
-        auditLogService.logSuccess("UPSERT_PROFILE", "EMPLOYEE_PROFILE", "hr_employee_profile", employeeId.toString(), oldSnapshot, response, "Cập nhật hồ sơ mở rộng.");
+        auditLogService.logSuccess("UPSERT_PROFILE", "EMPLOYEE_PROFILE", "hr_employee_profile", employeeId.toString(),
+                oldSnapshot, response, "Cập nhật hồ sơ mở rộng.");
         return response;
     }
 
     @Transactional(readOnly = true)
     public List<EmployeeAddressResponse> listAddresses(Long employeeId) {
         accessScopeService.assertCanReadEmployee(getEmployee(employeeId));
-        return addressRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeAddressIdAsc(employeeId).stream().map(this::toAddressResponse).toList();
+        return addressRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeAddressIdAsc(employeeId).stream()
+                .map(this::toAddressResponse).toList();
     }
 
     @Transactional
@@ -223,7 +270,8 @@ public class EmployeeService {
         }
         entity = addressRepository.save(entity);
         EmployeeAddressResponse response = toAddressResponse(entity);
-        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_address", entity.getEmployeeAddressId().toString(), null, response, "Tạo địa chỉ nhân sự.");
+        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_address",
+                entity.getEmployeeAddressId().toString(), null, response, "Tạo địa chỉ nhân sự.");
         return response;
     }
 
@@ -239,7 +287,8 @@ public class EmployeeService {
         applyAddress(entity, request);
         entity = addressRepository.save(entity);
         EmployeeAddressResponse response = toAddressResponse(entity);
-        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_address", addressId.toString(), oldSnapshot, response, "Cập nhật địa chỉ nhân sự.");
+        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_address", addressId.toString(),
+                oldSnapshot, response, "Cập nhật địa chỉ nhân sự.");
         return response;
     }
 
@@ -251,13 +300,16 @@ public class EmployeeService {
         EmployeeAddressResponse oldSnapshot = toAddressResponse(entity);
         entity.setDeleted(true);
         addressRepository.save(entity);
-        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_address", addressId.toString(), oldSnapshot, null, "Xóa mềm địa chỉ nhân sự.");
+        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_address", addressId.toString(),
+                oldSnapshot, null, "Xóa mềm địa chỉ nhân sự.");
     }
 
     @Transactional(readOnly = true)
     public List<EmergencyContactResponse> listEmergencyContacts(Long employeeId) {
         accessScopeService.assertCanReadEmployee(getEmployee(employeeId));
-        return emergencyContactRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmergencyContactIdAsc(employeeId).stream().map(this::toEmergencyContactResponse).toList();
+        return emergencyContactRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmergencyContactIdAsc(employeeId).stream()
+                .map(this::toEmergencyContactResponse).toList();
     }
 
     @Transactional
@@ -271,12 +323,14 @@ public class EmployeeService {
         applyEmergencyContact(entity, request);
         entity = emergencyContactRepository.save(entity);
         EmergencyContactResponse response = toEmergencyContactResponse(entity);
-        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_emergency_contact", entity.getEmergencyContactId().toString(), null, response, "Tạo liên hệ khẩn cấp.");
+        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_emergency_contact",
+                entity.getEmergencyContactId().toString(), null, response, "Tạo liên hệ khẩn cấp.");
         return response;
     }
 
     @Transactional
-    public EmergencyContactResponse updateEmergencyContact(Long employeeId, Long emergencyContactId, EmergencyContactRequest request) {
+    public EmergencyContactResponse updateEmergencyContact(Long employeeId, Long emergencyContactId,
+            EmergencyContactRequest request) {
         getEmployee(employeeId);
         HrEmployeeEmergencyContact entity = getEmergencyContact(emergencyContactId);
         validateOwnership(employeeId, entity.getEmployee().getEmployeeId(), "EMERGENCY_CONTACT_NOT_BELONG_TO_EMPLOYEE");
@@ -287,7 +341,8 @@ public class EmployeeService {
         applyEmergencyContact(entity, request);
         entity = emergencyContactRepository.save(entity);
         EmergencyContactResponse response = toEmergencyContactResponse(entity);
-        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_emergency_contact", emergencyContactId.toString(), oldSnapshot, response, "Cập nhật liên hệ khẩn cấp.");
+        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_emergency_contact",
+                emergencyContactId.toString(), oldSnapshot, response, "Cập nhật liên hệ khẩn cấp.");
         return response;
     }
 
@@ -299,13 +354,16 @@ public class EmployeeService {
         EmergencyContactResponse oldSnapshot = toEmergencyContactResponse(entity);
         entity.setDeleted(true);
         emergencyContactRepository.save(entity);
-        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_emergency_contact", emergencyContactId.toString(), oldSnapshot, null, "Xóa mềm liên hệ khẩn cấp.");
+        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_emergency_contact",
+                emergencyContactId.toString(), oldSnapshot, null, "Xóa mềm liên hệ khẩn cấp.");
     }
 
     @Transactional(readOnly = true)
     public List<EmployeeIdentificationResponse> listIdentifications(Long employeeId) {
         accessScopeService.assertCanReadEmployee(getEmployee(employeeId));
-        return identificationRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeIdentificationIdAsc(employeeId).stream().map(this::toIdentificationResponse).toList();
+        return identificationRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeIdentificationIdAsc(employeeId)
+                .stream().map(this::toIdentificationResponse).toList();
     }
 
     @Transactional
@@ -320,12 +378,14 @@ public class EmployeeService {
         applyIdentification(entity, request);
         entity = identificationRepository.save(entity);
         EmployeeIdentificationResponse response = toIdentificationResponse(entity);
-        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_identification", entity.getEmployeeIdentificationId().toString(), null, response, "Tạo giấy tờ định danh.");
+        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_identification",
+                entity.getEmployeeIdentificationId().toString(), null, response, "Tạo giấy tờ định danh.");
         return response;
     }
 
     @Transactional
-    public EmployeeIdentificationResponse updateIdentification(Long employeeId, Long identificationId, EmployeeIdentificationRequest request) {
+    public EmployeeIdentificationResponse updateIdentification(Long employeeId, Long identificationId,
+            EmployeeIdentificationRequest request) {
         getEmployee(employeeId);
         HrEmployeeIdentification entity = getIdentification(identificationId);
         validateOwnership(employeeId, entity.getEmployee().getEmployeeId(), "IDENTIFICATION_NOT_BELONG_TO_EMPLOYEE");
@@ -337,7 +397,8 @@ public class EmployeeService {
         applyIdentification(entity, request);
         entity = identificationRepository.save(entity);
         EmployeeIdentificationResponse response = toIdentificationResponse(entity);
-        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_identification", identificationId.toString(), oldSnapshot, response, "Cập nhật giấy tờ định danh.");
+        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_identification",
+                identificationId.toString(), oldSnapshot, response, "Cập nhật giấy tờ định danh.");
         return response;
     }
 
@@ -349,13 +410,16 @@ public class EmployeeService {
         EmployeeIdentificationResponse oldSnapshot = toIdentificationResponse(entity);
         entity.setDeleted(true);
         identificationRepository.save(entity);
-        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_identification", identificationId.toString(), oldSnapshot, null, "Xóa mềm giấy tờ định danh.");
+        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_identification",
+                identificationId.toString(), oldSnapshot, null, "Xóa mềm giấy tờ định danh.");
     }
 
     @Transactional(readOnly = true)
     public List<EmployeeBankAccountResponse> listBankAccounts(Long employeeId) {
         accessScopeService.assertCanReadEmployee(getEmployee(employeeId));
-        return bankAccountRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeBankAccountIdAsc(employeeId).stream().map(this::toBankAccountResponse).toList();
+        return bankAccountRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeBankAccountIdAsc(employeeId)
+                .stream().map(this::toBankAccountResponse).toList();
     }
 
     @Transactional
@@ -369,12 +433,14 @@ public class EmployeeService {
         applyBankAccount(entity, request);
         entity = bankAccountRepository.save(entity);
         EmployeeBankAccountResponse response = toBankAccountResponse(entity);
-        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_bank_account", entity.getEmployeeBankAccountId().toString(), null, response, "Tạo tài khoản ngân hàng.");
+        auditLogService.logSuccess("CREATE", "EMPLOYEE_PROFILE", "hr_employee_bank_account",
+                entity.getEmployeeBankAccountId().toString(), null, response, "Tạo tài khoản ngân hàng.");
         return response;
     }
 
     @Transactional
-    public EmployeeBankAccountResponse updateBankAccount(Long employeeId, Long bankAccountId, EmployeeBankAccountRequest request) {
+    public EmployeeBankAccountResponse updateBankAccount(Long employeeId, Long bankAccountId,
+            EmployeeBankAccountRequest request) {
         getEmployee(employeeId);
         HrEmployeeBankAccount entity = getBankAccount(bankAccountId);
         validateOwnership(employeeId, entity.getEmployee().getEmployeeId(), "BANK_ACCOUNT_NOT_BELONG_TO_EMPLOYEE");
@@ -385,7 +451,8 @@ public class EmployeeService {
         applyBankAccount(entity, request);
         entity = bankAccountRepository.save(entity);
         EmployeeBankAccountResponse response = toBankAccountResponse(entity);
-        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_bank_account", bankAccountId.toString(), oldSnapshot, response, "Cập nhật tài khoản ngân hàng.");
+        auditLogService.logSuccess("UPDATE", "EMPLOYEE_PROFILE", "hr_employee_bank_account", bankAccountId.toString(),
+                oldSnapshot, response, "Cập nhật tài khoản ngân hàng.");
         return response;
     }
 
@@ -397,13 +464,16 @@ public class EmployeeService {
         EmployeeBankAccountResponse oldSnapshot = toBankAccountResponse(entity);
         entity.setDeleted(true);
         bankAccountRepository.save(entity);
-        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_bank_account", bankAccountId.toString(), oldSnapshot, null, "Xóa mềm tài khoản ngân hàng.");
+        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_PROFILE", "hr_employee_bank_account",
+                bankAccountId.toString(), oldSnapshot, null, "Xóa mềm tài khoản ngân hàng.");
     }
 
     @Transactional(readOnly = true)
     public List<EmployeeDocumentResponse> listDocuments(Long employeeId) {
         accessScopeService.assertCanReadEmployee(getEmployee(employeeId));
-        return documentRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByUploadedAtDescEmployeeDocumentIdDesc(employeeId).stream().map(this::toDocumentResponse).toList();
+        return documentRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByUploadedAtDescEmployeeDocumentIdDesc(employeeId)
+                .stream().map(this::toDocumentResponse).toList();
     }
 
     @Transactional
@@ -416,7 +486,8 @@ public class EmployeeService {
         applyDocument(entity, request);
         entity = documentRepository.save(entity);
         EmployeeDocumentResponse response = toDocumentResponse(entity);
-        auditLogService.logSuccess("CREATE", "EMPLOYEE_DOCUMENT", "hr_employee_document", entity.getEmployeeDocumentId().toString(), null, response, "Tạo metadata tài liệu nhân sự.");
+        auditLogService.logSuccess("CREATE", "EMPLOYEE_DOCUMENT", "hr_employee_document",
+                entity.getEmployeeDocumentId().toString(), null, response, "Tạo metadata tài liệu nhân sự.");
         return response;
     }
 
@@ -429,7 +500,8 @@ public class EmployeeService {
         applyDocument(entity, request);
         entity = documentRepository.save(entity);
         EmployeeDocumentResponse response = toDocumentResponse(entity);
-        auditLogService.logSuccess("UPDATE", "EMPLOYEE_DOCUMENT", "hr_employee_document", documentId.toString(), oldSnapshot, response, "Cập nhật metadata tài liệu nhân sự.");
+        auditLogService.logSuccess("UPDATE", "EMPLOYEE_DOCUMENT", "hr_employee_document", documentId.toString(),
+                oldSnapshot, response, "Cập nhật metadata tài liệu nhân sự.");
         return response;
     }
 
@@ -442,38 +514,51 @@ public class EmployeeService {
         entity.setDeleted(true);
         entity.setStatus(DocumentStatus.ARCHIVED);
         documentRepository.save(entity);
-        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_DOCUMENT", "hr_employee_document", documentId.toString(), oldSnapshot, null, "Xóa mềm metadata tài liệu nhân sự.");
+        auditLogService.logSuccess("DELETE_SOFT", "EMPLOYEE_DOCUMENT", "hr_employee_document", documentId.toString(),
+                oldSnapshot, null, "Xóa mềm metadata tài liệu nhân sự.");
     }
 
-    private void validateCreateOrUpdate(Long employeeId, String employeeCode, String workEmail, LocalDate dateOfBirth, LocalDate hireDate, Long managerEmployeeId) {
-        if (employeeRepository.existsByEmployeeCodeIgnoreCaseAndDeletedFalseAndEmployeeIdNot(employeeCode, employeeId == null ? -1L : employeeId)) {
+    private void validateCreateOrUpdate(Long employeeId, String employeeCode, String workEmail, LocalDate dateOfBirth,
+            LocalDate hireDate, Long managerEmployeeId) {
+        if (employeeRepository.existsByEmployeeCodeIgnoreCaseAndDeletedFalseAndEmployeeIdNot(employeeCode,
+                employeeId == null ? -1L : employeeId)) {
             throw new BusinessException("EMPLOYEE_CODE_DUPLICATE", "employeeCode đã tồn tại.", HttpStatus.CONFLICT);
         }
         if (workEmail != null && !workEmail.isBlank()) {
             boolean duplicate = employeeId == null
                     ? employeeRepository.existsByWorkEmailIgnoreCaseAndDeletedFalse(workEmail)
-                    : employeeRepository.existsByWorkEmailIgnoreCaseAndDeletedFalseAndEmployeeIdNot(workEmail, employeeId);
+                    : employeeRepository.existsByWorkEmailIgnoreCaseAndDeletedFalseAndEmployeeIdNot(workEmail,
+                            employeeId);
             if (duplicate) {
-                throw new BusinessException("EMPLOYEE_WORK_EMAIL_DUPLICATE", "workEmail đã tồn tại.", HttpStatus.CONFLICT);
+                throw new BusinessException("EMPLOYEE_WORK_EMAIL_DUPLICATE", "workEmail đã tồn tại.",
+                        HttpStatus.CONFLICT);
             }
         }
         if (hireDate.isBefore(dateOfBirth)) {
-            throw new BusinessException("EMPLOYEE_HIRE_DATE_INVALID", "hireDate không được nhỏ hơn dateOfBirth.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("EMPLOYEE_HIRE_DATE_INVALID", "hireDate không được nhỏ hơn dateOfBirth.",
+                    HttpStatus.BAD_REQUEST);
         }
         if (managerEmployeeId != null && employeeId != null && managerEmployeeId.equals(employeeId)) {
-            throw new BusinessException("EMPLOYEE_MANAGER_INVALID", "Nhân sự không thể tự là quản lý trực tiếp của chính mình.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("EMPLOYEE_MANAGER_INVALID",
+                    "Nhân sự không thể tự là quản lý trực tiếp của chính mình.", HttpStatus.BAD_REQUEST);
         }
     }
 
     private void validateIdentificationUnique(Long identificationId, EmployeeIdentificationRequest request) {
         boolean duplicate = identificationId == null
-                ? identificationRepository.existsByDocumentTypeAndDocumentNumberAndDeletedFalse(request.documentType(), request.documentNumber())
-                : identificationRepository.existsByDocumentTypeAndDocumentNumberAndDeletedFalseAndEmployeeIdentificationIdNot(request.documentType(), request.documentNumber(), identificationId);
+                ? identificationRepository.existsByDocumentTypeAndDocumentNumberAndDeletedFalse(request.documentType(),
+                        request.documentNumber())
+                : identificationRepository
+                        .existsByDocumentTypeAndDocumentNumberAndDeletedFalseAndEmployeeIdentificationIdNot(
+                                request.documentType(), request.documentNumber(), identificationId);
         if (duplicate) {
-            throw new BusinessException("EMPLOYEE_IDENTIFICATION_DUPLICATE", "documentType + documentNumber đã tồn tại.", HttpStatus.CONFLICT);
+            throw new BusinessException("EMPLOYEE_IDENTIFICATION_DUPLICATE",
+                    "documentType + documentNumber đã tồn tại.", HttpStatus.CONFLICT);
         }
-        if (request.issueDate() != null && request.expiryDate() != null && request.expiryDate().isBefore(request.issueDate())) {
-            throw new BusinessException("EMPLOYEE_IDENTIFICATION_DATE_INVALID", "expiryDate không được nhỏ hơn issueDate.", HttpStatus.BAD_REQUEST);
+        if (request.issueDate() != null && request.expiryDate() != null
+                && request.expiryDate().isBefore(request.issueDate())) {
+            throw new BusinessException("EMPLOYEE_IDENTIFICATION_DATE_INVALID",
+                    "expiryDate không được nhỏ hơn issueDate.", HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -544,16 +629,26 @@ public class EmployeeService {
     }
 
     private void clearPrimaryAddresses(Long employeeId) {
-        addressRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeAddressIdAsc(employeeId).forEach(item -> item.setPrimary(false));
+        addressRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeAddressIdAsc(employeeId)
+                .forEach(item -> item.setPrimary(false));
     }
+
     private void clearPrimaryEmergencyContacts(Long employeeId) {
-        emergencyContactRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmergencyContactIdAsc(employeeId).forEach(item -> item.setPrimary(false));
+        emergencyContactRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmergencyContactIdAsc(employeeId)
+                .forEach(item -> item.setPrimary(false));
     }
+
     private void clearPrimaryIdentifications(Long employeeId) {
-        identificationRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeIdentificationIdAsc(employeeId).forEach(item -> item.setPrimary(false));
+        identificationRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeIdentificationIdAsc(employeeId)
+                .forEach(item -> item.setPrimary(false));
     }
+
     private void clearPrimaryBankAccounts(Long employeeId) {
-        bankAccountRepository.findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeBankAccountIdAsc(employeeId).forEach(item -> item.setPrimary(false));
+        bankAccountRepository
+                .findAllByEmployeeEmployeeIdAndDeletedFalseOrderByPrimaryDescEmployeeBankAccountIdAsc(employeeId)
+                .forEach(item -> item.setPrimary(false));
     }
 
     private HrEmployee getEmployee(Long employeeId) {
@@ -575,23 +670,32 @@ public class EmployeeService {
 
     private HrEmployeeAddress getAddress(Long addressId) {
         return addressRepository.findByEmployeeAddressIdAndDeletedFalse(addressId)
-                .orElseThrow(() -> new NotFoundException("EMPLOYEE_ADDRESS_NOT_FOUND", "Không tìm thấy địa chỉ nhân sự."));
+                .orElseThrow(
+                        () -> new NotFoundException("EMPLOYEE_ADDRESS_NOT_FOUND", "Không tìm thấy địa chỉ nhân sự."));
     }
+
     private HrEmployeeEmergencyContact getEmergencyContact(Long id) {
         return emergencyContactRepository.findByEmergencyContactIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("EMPLOYEE_EMERGENCY_CONTACT_NOT_FOUND", "Không tìm thấy liên hệ khẩn cấp."));
+                .orElseThrow(() -> new NotFoundException("EMPLOYEE_EMERGENCY_CONTACT_NOT_FOUND",
+                        "Không tìm thấy liên hệ khẩn cấp."));
     }
+
     private HrEmployeeIdentification getIdentification(Long id) {
         return identificationRepository.findByEmployeeIdentificationIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("EMPLOYEE_IDENTIFICATION_NOT_FOUND", "Không tìm thấy giấy tờ định danh."));
+                .orElseThrow(() -> new NotFoundException("EMPLOYEE_IDENTIFICATION_NOT_FOUND",
+                        "Không tìm thấy giấy tờ định danh."));
     }
+
     private HrEmployeeBankAccount getBankAccount(Long id) {
         return bankAccountRepository.findByEmployeeBankAccountIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("EMPLOYEE_BANK_ACCOUNT_NOT_FOUND", "Không tìm thấy tài khoản ngân hàng."));
+                .orElseThrow(() -> new NotFoundException("EMPLOYEE_BANK_ACCOUNT_NOT_FOUND",
+                        "Không tìm thấy tài khoản ngân hàng."));
     }
+
     private HrEmployeeDocument getDocument(Long id) {
         return documentRepository.findByEmployeeDocumentIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("EMPLOYEE_DOCUMENT_NOT_FOUND", "Không tìm thấy tài liệu nhân sự."));
+                .orElseThrow(
+                        () -> new NotFoundException("EMPLOYEE_DOCUMENT_NOT_FOUND", "Không tìm thấy tài liệu nhân sự."));
     }
 
     private void validateOwnership(Long expectedEmployeeId, Long actualEmployeeId, String code) {
@@ -610,43 +714,71 @@ public class EmployeeService {
 
     private EmployeeListItemResponse toListItem(HrEmployee entity) {
         return new EmployeeListItemResponse(
-                entity.getEmployeeId(), entity.getEmployeeCode(), entity.getFullName(), entity.getWorkEmail(), entity.getWorkPhone(),
+                entity.getEmployeeId(), entity.getEmployeeCode(), entity.getFullName(), entity.getWorkEmail(),
+                entity.getWorkPhone(),
                 entity.getGenderCode().name(), entity.getEmploymentStatus().name(),
-                entity.getOrgUnit().getOrgUnitId(), entity.getOrgUnit().getOrgUnitCode(), entity.getOrgUnit().getOrgUnitName(),
-                entity.getJobTitle().getJobTitleId(), entity.getJobTitle().getJobTitleCode(), entity.getJobTitle().getJobTitleName(),
+                entity.getOrgUnit().getOrgUnitId(), entity.getOrgUnit().getOrgUnitCode(),
+                entity.getOrgUnit().getOrgUnitName(),
+                entity.getJobTitle().getJobTitleId(), entity.getJobTitle().getJobTitleCode(),
+                entity.getJobTitle().getJobTitleName(),
                 entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getEmployeeId(),
                 entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getEmployeeCode(),
-                entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getFullName()
-        );
+                entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getFullName());
     }
 
     private EmployeeDetailResponse toDetail(HrEmployee entity) {
         return new EmployeeDetailResponse(
-                entity.getEmployeeId(), entity.getEmployeeCode(), entity.getFullName(), entity.getWorkEmail(), entity.getWorkPhone(), entity.getGenderCode().name(), entity.getDateOfBirth(), entity.getHireDate(), entity.getEmploymentStatus().name(), entity.getWorkLocation(), entity.getTaxCode(), entity.getPersonalEmail(), entity.getMobilePhone(), entity.getAvatarUrl(), entity.getNote(),
-                entity.getOrgUnit().getOrgUnitId(), entity.getOrgUnit().getOrgUnitCode(), entity.getOrgUnit().getOrgUnitName(), entity.getOrgUnit().getOrgUnitType().name(),
-                entity.getJobTitle().getJobTitleId(), entity.getJobTitle().getJobTitleCode(), entity.getJobTitle().getJobTitleName(), entity.getJobTitle().getJobLevelCode(),
+                entity.getEmployeeId(), entity.getEmployeeCode(), entity.getFullName(), entity.getWorkEmail(),
+                entity.getWorkPhone(), entity.getGenderCode().name(), entity.getDateOfBirth(), entity.getHireDate(),
+                entity.getEmploymentStatus().name(), entity.getWorkLocation(), entity.getTaxCode(),
+                entity.getPersonalEmail(), entity.getMobilePhone(), entity.getAvatarUrl(), entity.getNote(),
+                entity.getOrgUnit().getOrgUnitId(), entity.getOrgUnit().getOrgUnitCode(),
+                entity.getOrgUnit().getOrgUnitName(), entity.getOrgUnit().getOrgUnitType().name(),
+                entity.getJobTitle().getJobTitleId(), entity.getJobTitle().getJobTitleCode(),
+                entity.getJobTitle().getJobTitleName(), entity.getJobTitle().getJobLevelCode(),
                 entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getEmployeeId(),
                 entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getEmployeeCode(),
-                entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getFullName()
-        );
+                entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getFullName());
     }
 
     private EmployeeProfileResponse toProfileResponse(HrEmployeeProfile entity) {
-        return new EmployeeProfileResponse(entity.getEmployeeProfileId(), entity.getEmployee().getEmployeeId(), entity.getFirstName(), entity.getMiddleName(), entity.getLastName(), entity.getMaritalStatus() == null ? null : entity.getMaritalStatus().name(), entity.getNationality(), entity.getPlaceOfBirth(), entity.getEthnicGroup(), entity.getReligion(), entity.getEducationLevel(), entity.getMajor(), entity.getEmergencyNote());
+        return new EmployeeProfileResponse(entity.getEmployeeProfileId(), entity.getEmployee().getEmployeeId(),
+                entity.getFirstName(), entity.getMiddleName(), entity.getLastName(),
+                entity.getMaritalStatus() == null ? null : entity.getMaritalStatus().name(), entity.getNationality(),
+                entity.getPlaceOfBirth(), entity.getEthnicGroup(), entity.getReligion(), entity.getEducationLevel(),
+                entity.getMajor(), entity.getEmergencyNote());
     }
+
     private EmployeeAddressResponse toAddressResponse(HrEmployeeAddress entity) {
-        return new EmployeeAddressResponse(entity.getEmployeeAddressId(), entity.getEmployee().getEmployeeId(), entity.getAddressType().name(), entity.getCountryName(), entity.getProvinceName(), entity.getDistrictName(), entity.getWardName(), entity.getAddressLine(), entity.getPostalCode(), entity.isPrimary());
+        return new EmployeeAddressResponse(entity.getEmployeeAddressId(), entity.getEmployee().getEmployeeId(),
+                entity.getAddressType().name(), entity.getCountryName(), entity.getProvinceName(),
+                entity.getDistrictName(), entity.getWardName(), entity.getAddressLine(), entity.getPostalCode(),
+                entity.isPrimary());
     }
+
     private EmergencyContactResponse toEmergencyContactResponse(HrEmployeeEmergencyContact entity) {
-        return new EmergencyContactResponse(entity.getEmergencyContactId(), entity.getEmployee().getEmployeeId(), entity.getContactName(), entity.getRelationshipCode().name(), entity.getPhoneNumber(), entity.getEmail(), entity.getAddressLine(), entity.isPrimary(), entity.getNote());
+        return new EmergencyContactResponse(entity.getEmergencyContactId(), entity.getEmployee().getEmployeeId(),
+                entity.getContactName(), entity.getRelationshipCode().name(), entity.getPhoneNumber(),
+                entity.getEmail(), entity.getAddressLine(), entity.isPrimary(), entity.getNote());
     }
+
     private EmployeeIdentificationResponse toIdentificationResponse(HrEmployeeIdentification entity) {
-        return new EmployeeIdentificationResponse(entity.getEmployeeIdentificationId(), entity.getEmployee().getEmployeeId(), entity.getDocumentType().name(), entity.getDocumentNumber(), entity.getIssueDate(), entity.getIssuePlace(), entity.getExpiryDate(), entity.getCountryOfIssue(), entity.isPrimary(), entity.getStatus().name());
+        return new EmployeeIdentificationResponse(entity.getEmployeeIdentificationId(),
+                entity.getEmployee().getEmployeeId(), entity.getDocumentType().name(), entity.getDocumentNumber(),
+                entity.getIssueDate(), entity.getIssuePlace(), entity.getExpiryDate(), entity.getCountryOfIssue(),
+                entity.isPrimary(), entity.getStatus().name());
     }
+
     private EmployeeBankAccountResponse toBankAccountResponse(HrEmployeeBankAccount entity) {
-        return new EmployeeBankAccountResponse(entity.getEmployeeBankAccountId(), entity.getEmployee().getEmployeeId(), entity.getBankName(), entity.getBankCode(), entity.getAccountNumber(), entity.getAccountHolderName(), entity.getBranchName(), entity.isPrimary(), entity.getStatus().name());
+        return new EmployeeBankAccountResponse(entity.getEmployeeBankAccountId(), entity.getEmployee().getEmployeeId(),
+                entity.getBankName(), entity.getBankCode(), entity.getAccountNumber(), entity.getAccountHolderName(),
+                entity.getBranchName(), entity.isPrimary(), entity.getStatus().name());
     }
+
     private EmployeeDocumentResponse toDocumentResponse(HrEmployeeDocument entity) {
-        return new EmployeeDocumentResponse(entity.getEmployeeDocumentId(), entity.getEmployee().getEmployeeId(), entity.getDocumentCategory().name(), entity.getDocumentName(), entity.getStoragePath(), entity.getMimeType(), entity.getFileSizeBytes(), entity.getUploadedAt(), entity.getUploadedBy(), entity.getStatus().name(), entity.getNote());
+        return new EmployeeDocumentResponse(entity.getEmployeeDocumentId(), entity.getEmployee().getEmployeeId(),
+                entity.getDocumentCategory().name(), entity.getDocumentName(), entity.getStoragePath(),
+                entity.getMimeType(), entity.getFileSizeBytes(), entity.getUploadedAt(), entity.getUploadedBy(),
+                entity.getStatus().name(), entity.getNote());
     }
 }
