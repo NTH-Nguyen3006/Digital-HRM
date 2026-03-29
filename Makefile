@@ -1,51 +1,41 @@
-ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-COMPOSE_PROJECT_NAME ?= khanhhoa
-BACKEND_DIR ?= backend
-FRONTEND_DIR ?= frontend
-FLASK_APP ?= manage:app
-PYTHON ?= $(shell if [ -x "$(ROOT_DIR)/.venv/bin/python" ]; then printf %s "$(ROOT_DIR)/.venv/bin/python"; elif command -v python3 >/dev/null 2>&1; then command -v python3; else printf %s python; fi)
+DC = docker compose
+BE_DIR = backend
+FE_DIR = frontend
 
-.PHONY: help db-upgrade seed-baseline sync-admin bootstrap run-backend docker-up docker-backend docker-logs-backend docker-down
+.PHONY: up down restart logs ps dev-be dev-fe build clean migrate
 
-help:
-	@printf "Available commands:\n"
-	@printf "  make db-upgrade          Apply Alembic migrations locally\n"
-	@printf "  make seed-baseline       Seed baseline categories + admin locally\n"
-	@printf "  make sync-admin          Force sync admin password from .env\n"
-	@printf "  make bootstrap           Wait DB, migrate, then seed locally\n"
-	@printf "  make run-backend         Run Flask backend locally\n"
-	@printf "  make run-frontend        Run React frontend locally\n"
-	@printf "  make docker-up           Build and start full Docker stack\n"
-	@printf "  make docker-backend      Build and start DB, Redis, backend only\n"
-	@printf "  make docker-logs-backend Tail backend container logs\n"
-	@printf "  make docker-down         Stop Docker stack\n"
+up:
+	$(DC) up -d --build
 
-db-upgrade:
-	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py db-upgrade
+down:
+	$(DC) down
 
-seed-baseline:
-	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py seed-baseline
+restart:
+	$(DC) restart
 
-sync-admin:
-	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py sync-admin
+logs:
+	$(DC) logs -f
 
-bootstrap:
-	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py bootstrap-production
+ps:
+	$(DC) ps
 
-run-backend:
-	cd $(BACKEND_DIR) && FLASK_APP=$(FLASK_APP) $(PYTHON) manage.py runserver
+test-be:
+	cd $(BE_DIR) && ./mvnw test
 
-run-frontend:
-	cd $(FRONTEND_DIR) && npm run dev
+dev-be:
+	cd $(BE_DIR) && ./mvnw spring-boot:run
 
-docker-up:
-	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose up -d --build
+dev-fe:
+	cd $(FE_DIR) && npm run dev
 
-docker-backend:
-	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose up -d --build db redis backend
+build:
+	cd $(BE_DIR) && ./mvnw clean package -DskipTests
+	cd $(FE_DIR) && npm install && npm run build
 
-docker-logs-backend:
-	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose logs -f backend
+migrate:
+	cd $(BE_DIR) && ./mvnw flyway:migrate
 
-docker-down:
-	COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) docker compose down
+clean:
+	cd $(BE_DIR) && ./mvnw clean
+	rm -rf $(FE_DIR)/dist
+	rm -rf $(FE_DIR)/node_modules
