@@ -102,7 +102,6 @@ FROM dbo.sec_role_permission rp
 INNER JOIN dbo.sec_role r ON rp.role_id = r.role_id
 INNER JOIN dbo.sec_permission p ON rp.permission_id = p.permission_id
 INNER JOIN @rolePermissionSeed s ON s.role_code = r.role_code AND s.permission_code = p.permission_code;
- -- removed GO to keep @rolePermissionSeed in scope
 
 DECLARE @rolePermissionSeedInsert TABLE (
     role_code VARCHAR(30),
@@ -120,4 +119,7 @@ INNER JOIN dbo.sec_permission p ON p.permission_code = s.permission_code AND p.i
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.sec_role_permission rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
 );
+GO
+
+SET NOCOUNT OFF;
 GO

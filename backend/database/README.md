@@ -7,3 +7,6 @@
 - `schema/V004__employee_profile_detail.sql`: Sprint 2 employee detail tables
 - `seed/R__base_roles_admin.sql`: seed role, permission, role-permission, default admin bootstrap note
 - `seed/R__sprint2_hr_permissions.sql`: seed permission cho Sprint 2
+
+- `schema/V005__contract_core.sql`: Sprint 3 contract legal core
+- `seed/R__sprint3_contract_permissions.sql`: seed permission cho Sprint 3 contract
