@@ -64,3 +64,11 @@ hrm-backend/
 - Fixed role: `ADMIN`, `HR`, `MANAGER`, `EMPLOYEE`
 - Custom role đang bị khóa mặc định ở Sprint 1 (`app.role-management.allow-custom-role=false`)
 - Nếu đã chạy migration cũ trước đó và chỉnh sửa checksum, nên drop DB local rồi chạy lại sạch từ đầu
+
+
+## Sprint 3 contract legal core
+- Contract type master
+- Labor contract core + status history
+- Appendix management
+- Attachment metadata management
+- Expiring contract query
