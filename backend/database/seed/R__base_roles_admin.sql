@@ -214,3 +214,6 @@ WHERE NOT EXISTS (
       AND ISNULL(d.target_ref_id, '') = ISNULL(s.target_ref_id, '')
 );
 GO
+
+SET NOCOUNT OFF;
+GO
