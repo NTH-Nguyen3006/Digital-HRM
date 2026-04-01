@@ -26,13 +26,15 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
-        return ApiResponse.success("AUTH_LOGIN_SUCCESS", "Đăng nhập thành công.", response, null, RequestTraceContext.getTraceId());
+        return ApiResponse.success("AUTH_LOGIN_SUCCESS", "Đăng nhập thành công.", response, null,
+                RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/refresh")
     public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         LoginResponse response = authService.refresh(request);
-        return ApiResponse.success("AUTH_REFRESH_SUCCESS", "Làm mới access token thành công.", response, null, RequestTraceContext.getTraceId());
+        return ApiResponse.success("AUTH_REFRESH_SUCCESS", "Làm mới access token thành công.", response, null,
+                RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/logout")
@@ -45,19 +47,22 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        return ApiResponse.success("AUTH_FORGOT_PASSWORD_ACCEPTED", "Nếu email hợp lệ, hệ thống sẽ gửi hướng dẫn đặt lại mật khẩu.", RequestTraceContext.getTraceId());
+        return ApiResponse.success("AUTH_FORGOT_PASSWORD_ACCEPTED",
+                "Nếu email hợp lệ, hệ thống sẽ gửi hướng dẫn đặt lại mật khẩu.", RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/reset-password")
     public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
-        return ApiResponse.success("AUTH_RESET_PASSWORD_SUCCESS", "Đặt lại mật khẩu thành công.", RequestTraceContext.getTraceId());
+        return ApiResponse.success("AUTH_RESET_PASSWORD_SUCCESS", "Đặt lại mật khẩu thành công.",
+                RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/change-password")
     @PreAuthorize("hasAuthority('auth.change_password')")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
-        return ApiResponse.success("AUTH_CHANGE_PASSWORD_SUCCESS", "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.", RequestTraceContext.getTraceId());
+        return ApiResponse.success("AUTH_CHANGE_PASSWORD_SUCCESS", "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.",
+                RequestTraceContext.getTraceId());
     }
 }
