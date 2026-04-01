@@ -39,7 +39,7 @@ const router = useRouter()
           <a href="#features" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Tính
             năng</a>
           <a href="#services" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Dịch vụ
-            ESS</a>
+          </a>
           <a href="#news" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Tin tức</a>
         </nav>
         <div class="flex items-center space-x-4">

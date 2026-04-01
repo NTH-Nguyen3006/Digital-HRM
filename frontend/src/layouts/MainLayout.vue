@@ -10,14 +10,16 @@ import {
   Banknote,
   UserPlus,
   UserMinus,
-  FileText,
   ShieldCheck,
   History,
   LogOut,
   Bell,
   Search,
   Menu,
-  ChevronRight
+  ChevronRight,
+  KeyRound,
+  Settings,
+  FilePenLine
 } from 'lucide-vue-next'
 
 const isSidebarOpen = ref(true)
@@ -27,16 +29,41 @@ const user = ref({
   avatar: null
 })
 
-const menuItems = [
-  { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' },
-  { name: 'Cơ cấu tổ chức', icon: Building2, path: '/org-units' },
-  { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
-  { name: 'Hợp đồng lao động', icon: FileSignature, path: '/contracts' },
-  { name: 'Quản lý nghỉ phép', icon: CalendarOff, path: '/leaves' },
-  { name: 'Chấm công', icon: Clock, path: '/attendance' },
-  { name: 'Tính lương', icon: Banknote, path: '/payroll' },
-  { name: 'Tiếp nhận nhân sự', icon: UserPlus, path: '/onboarding' },
-  { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' }
+const menuGroups = [
+  {
+    label: 'Tổng hợp',
+    items: [
+      { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' },
+    ]
+  },
+  {
+    label: 'Quản lý nhân sự',
+    items: [
+      { name: 'Cơ cấu tổ chức', icon: Building2, path: '/org-units' },
+      { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
+      { name: 'Hợp đồng lao động', icon: FileSignature, path: '/contracts' },
+      { name: 'Quản lý nghỉ phép', icon: CalendarOff, path: '/leaves' },
+      { name: 'Chấm công', icon: Clock, path: '/attendance' },
+      { name: 'Tính lương', icon: Banknote, path: '/payroll' },
+      { name: 'Thay đổi hồ sơ', icon: FilePenLine, path: '/profile-change-requests' },
+    ]
+  },
+  {
+    label: 'Vòng đời nhân sự',
+    items: [
+      { name: 'Tiếp nhận (Onboarding)', icon: UserPlus, path: '/onboarding' },
+      { name: 'Thôi việc (Offboarding)', icon: UserMinus, path: '/offboarding' },
+    ]
+  },
+  {
+    label: 'Hệ thống',
+    items: [
+      { name: 'Tài khoản hệ thống', icon: KeyRound, path: '/users' },
+      { name: 'Vai trò & Phân quyền', icon: ShieldCheck, path: '/roles' },
+      { name: 'Nhật ký hoạt động', icon: History, path: '/audit-logs' },
+      { name: 'Cài đặt hệ thống', icon: Settings, path: '/settings' },
+    ]
+  },
 ]
 </script>
 
@@ -60,19 +87,27 @@ const menuItems = [
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 space-y-2">
-          <router-link v-for="item in menuItems" :key="item.name" :to="item.path"
-            class="flex items-center space-x-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group hover:translate-x-1"
-            :class="[
-              $route.path === item.path
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 scale-105'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
-            ]">
-            <component :is="item.icon" class="w-5 h-5 shrink-0" />
-            <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap">{{ item.name }}</span>
-            <ChevronRight v-if="isSidebarOpen && $route.path === item.path"
-              class="w-4 h-4 ml-auto opacity-50 shrink-0" />
-          </router-link>
+        <nav class="flex-1 space-y-1 overflow-y-auto">
+          <template v-for="group in menuGroups" :key="group.label">
+            <!-- Group Label -->
+            <div v-if="isSidebarOpen" class="px-4 pt-4 pb-1">
+              <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ group.label }}</span>
+            </div>
+            <div v-else class="border-b border-slate-100 my-2"></div>
+            <!-- Group Items -->
+            <router-link v-for="item in group.items" :key="item.name" :to="item.path"
+              class="flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 group hover:translate-x-1"
+              :class="[
+                $route.path === item.path
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
+              ]">
+              <component :is="item.icon" class="w-5 h-5 shrink-0" />
+              <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap">{{ item.name }}</span>
+              <ChevronRight v-if="isSidebarOpen && $route.path === item.path"
+                class="w-4 h-4 ml-auto opacity-50 shrink-0" />
+            </router-link>
+          </template>
         </nav>
 
         <!-- Logout -->
