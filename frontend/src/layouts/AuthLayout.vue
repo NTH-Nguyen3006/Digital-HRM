@@ -9,14 +9,11 @@ const router = useRouter()
 <template>
   <div class="min-h-screen bg-slate-50 flex flex-col relative overflow-hidden font-sans">
     <div class="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
-      <div
-        class="absolute -top-40 -left-20 w-[500px] h-[500px] bg-indigo-200/50 rounded-full blur-[120px] animate-pulse">
+      <div class="absolute -top-40 -left-20 w-125 h-125 bg-indigo-200/50 rounded-full blur-[120px] animate-pulse">
       </div>
-      <div
-        class="absolute top-1/2 -right-20 w-[600px] h-[600px] bg-emerald-100/60 rounded-full blur-[150px] animate-float">
+      <div class="absolute top-1/2 -right-20 w-150 h-150 bg-emerald-100/60 rounded-full blur-[150px] animate-float">
       </div>
-      <div
-        class="absolute -bottom-40 left-1/3 w-[400px] h-[400px] bg-sky-200/40 rounded-full blur-[100px] animate-pulse"
+      <div class="absolute -bottom-40 left-1/3 w-100 h-100 bg-sky-200/40 rounded-full blur-[100px] animate-pulse"
         style="animation-delay: -2s"></div>
     </div>
 
@@ -24,10 +21,10 @@ const router = useRouter()
 
     <main class="flex-1 flex items-center justify-center pt-24 p-4 md:p-8 relative z-10 w-full">
       <div
-        class="w-full max-w-[1200px] min-h-[600px] flex flex-col lg:flex-row bg-white/40 backdrop-blur-2xl rounded-[3rem] border border-white/60 shadow-2xl overflow-hidden">
+        class="w-full max-w-300 min-h-150 flex flex-col lg:flex-row bg-white/40 backdrop-blur-2xl rounded-[3rem] border border-white/60 shadow-2xl overflow-hidden">
 
         <div
-          class="hidden lg:flex flex-1 flex-col justify-between p-16 relative bg-gradient-to-br from-indigo-50/50 to-white/50 border-r border-white/40">
+          class="hidden lg:flex flex-1 flex-col justify-between p-16 relative bg-linear-to-br from-indigo-50/50 to-white/50 border-r border-white/40">
           <div class="absolute inset-0 opacity-10"
             style="background-image: radial-gradient(#4f46e5 1px, transparent 1px); background-size: 32px 32px;"></div>
 
@@ -44,7 +41,7 @@ const router = useRouter()
 
             <h1 class="text-4xl font-bold text-slate-800 leading-[1.2] tracking-tight mb-4">
               Không gian làm việc <br />
-              <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">hợp nhất.</span>
+              <span class="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 to-sky-500">hợp nhất.</span>
             </h1>
             <p class="text-slate-500 text-base font-medium leading-relaxed max-w-md">
               Đăng nhập để kết nối với đội ngũ, quản lý quy trình hành chính và nâng cao năng suất tổ chức từ một cổng
