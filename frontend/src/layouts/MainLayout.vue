@@ -23,6 +23,7 @@ import {
 } from 'lucide-vue-next'
 
 const isSidebarOpen = ref(true)
+
 const user = ref({
   name: 'Admin User',
   role: 'Hệ thống Quản trị',
@@ -87,7 +88,7 @@ const menuGroups = [
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 space-y-1 overflow-y-auto">
+        <nav class="flex-1 space-y-1 " :class="[isSidebarOpen ? '' : 'place-items-center']">
           <template v-for="group in menuGroups" :key="group.label">
             <!-- Group Label -->
             <div v-if="isSidebarOpen" class="px-4 pt-4 pb-1">

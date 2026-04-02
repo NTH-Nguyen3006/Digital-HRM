@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
-import { Plus, Search, Filter, FileSignature, MoreVertical } from 'lucide-vue-next'
+import { FileSignature, MoreVertical, Plus, Search } from 'lucide-vue-next';
+import { ref } from 'vue';
+import MainLayout from '../../../layouts/MainLayout.vue';
 
 const contracts = ref([
   { id: 'HD001', employee: 'Nguyễn Văn A', type: 'Xác định thời hạn (12 tháng)', startDate: '01/01/2026', endDate: '31/12/2026', status: 'Đang hiệu lực' },
@@ -25,7 +25,8 @@ const contracts = ref([
             <input type="text" placeholder="Tìm hợp đồng..."
               class="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-64 shadow-sm" />
           </div>
-          <button class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
+          <button
+            class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
             <Plus class="w-5 h-5 mr-2" /> Tạo hợp đồng
           </button>
         </div>
@@ -58,12 +59,14 @@ const contracts = ref([
                 <td class="py-4 px-6 font-semibold text-slate-600">{{ contract.startDate }}</td>
                 <td class="py-4 px-6 font-semibold text-slate-600">{{ contract.endDate }}</td>
                 <td class="py-4 px-6">
-                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset" :class="contract.status === 'Đang hiệu lực' ? 'bg-sky-50 text-sky-700 ring-sky-600/20' : 'bg-rose-50 text-rose-700 ring-rose-600/20'">
+                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
+                    :class="contract.status === 'Đang hiệu lực' ? 'bg-sky-50 text-sky-700 ring-sky-600/20' : 'bg-rose-50 text-rose-700 ring-rose-600/20'">
                     {{ contract.status }}
                   </span>
                 </td>
                 <td class="py-4 px-6 text-right">
-                  <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button
+                    class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
                     <MoreVertical class="w-5 h-5" />
                   </button>
                 </td>

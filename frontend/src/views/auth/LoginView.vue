@@ -27,7 +27,7 @@ const handleLogin = async () => {
 
 <template>
   <AuthLayout class="p-16">
-    <div class="w-full max-w-[360px] mx-auto animate-fade-in-up" style="animation-delay: 0.1s;">
+    <div class="w-full max-w-90 mx-auto animate-fade-in-up" style="animation-delay: 0.1s;">
       <div class="text-center mb-10">
         <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-3">Đăng nhập</h2>
         <p class="text-slate-500 font-medium">Chào mừng trở lại Digital HRM</p>
