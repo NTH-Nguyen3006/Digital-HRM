@@ -1,7 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import MainLayout from '../../../layouts/MainLayout.vue'
 import { Plus, Search, Filter, MoreVertical, Building2, Users } from 'lucide-vue-next'
+import { onMounted } from "vue"
+import { OrgChart } from "d3-org-chart"
 
 const departments = ref([
   { id: 1, name: 'Khối Phát triển Phần mềm', code: 'DEV', manager: 'Nguyễn Văn A', employees: 45, status: 'Hoạt động' },
@@ -9,6 +11,83 @@ const departments = ref([
   { id: 3, name: 'Khối Nhân sự - Hành chính', code: 'HR', manager: 'Lê Văn C', employees: 5, status: 'Hoạt động' },
   { id: 4, name: 'Khối Tài chính Kế toán', code: 'FIN', manager: 'Phạm Thị D', employees: 4, status: 'Hoạt động' },
 ])
+/* convert departments -> org chart data */
+const orgData = computed(() => [
+  {
+    id: "root",
+    name: "Digital HRM",
+    manager: "CEO",
+    parentId: null
+  },
+  ...departments.value.map(d => ({
+    id: d.code,
+    name: d.name,
+    manager: d.manager,
+    employees: d.employees,
+    parentId: "root"
+  }))
+])
+
+onMounted(() => {
+  const chart = new OrgChart()
+    .container("#org-chart")
+    .data(orgData.value)
+    .nodeWidth(() => 260)
+    .nodeHeight(() => 120)
+    .childrenMargin(() => 50)
+    .nodeContent((d) => {
+      const data = d.data
+
+      return `
+      <div style="
+          width:260px;
+          background:white;
+          border-radius:16px;
+          border:1px solid #e2e8f0;
+          box-shadow:0 4px 10px rgba(0,0,0,0.05);
+          padding:16px;
+          font-family:Inter;
+          text-align:center;
+      ">
+          
+          <div style="
+              width:40px;
+              height:40px;
+              border-radius:50%;
+              background:#eef2ff;
+              color:#4f46e5;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              font-weight:700;
+              margin:auto;
+              margin-bottom:8px;
+          ">
+            ${data.name.charAt(0)}
+          </div>
+
+          <div style="font-weight:700;color:#0f172a">
+            ${data.name}
+          </div>
+
+          <div style="font-size:12px;color:#64748b">
+            ${data.manager ?? ""}
+          </div>
+
+          <div style="
+              margin-top:6px;
+              font-size:12px;
+              color:#4f46e5;
+              font-weight:600;
+          ">
+            ${data.employees ?? 0} nhân sự
+          </div>
+
+      </div>
+      `
+    })
+    .render()
+})
 </script>
 
 <template>
@@ -35,6 +114,13 @@ const departments = ref([
         </div>
       </div>
 
+      <!-- ORG CHART -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-visible">
+        <div class="p-8 overflow-x-auto flex justify-center min-h-[350px]">
+          <div id="org-chart" class="w-full"></div>
+        </div>
+      </div>
+      
       <!-- Content -->
       <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto">
