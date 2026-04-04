@@ -7,10 +7,14 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    allowedHosts: ['all', '15c5-116-111-184-231.ngrok-free.app']
+  },
   plugins: [
     vue(),
     // vueDevTools(),
     tailwindcss(),
+
   ],
 
   resolve: {
