@@ -5,6 +5,7 @@ import { Mail, Lock, LogIn } from 'lucide-vue-next'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { testAuthFlow } from '@/api/test/test_auth'
 
 const router = useRouter()
 const email = ref('')
@@ -23,6 +24,8 @@ const handleLogin = async () => {
     router.push('/dashboard')
   }, 1000)
 }
+
+testAuthFlow()
 </script>
 
 <template>
