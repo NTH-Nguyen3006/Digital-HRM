@@ -52,6 +52,12 @@ export const adminRoutes = [
         component: () => import('../views/dashboard/contracts/ContractDetail.vue')
     },
 
+    {
+        path: '/contracts/add',
+        name: 'add-contract',
+        component: () => import('../views/dashboard/contracts/AddContract.vue')
+    },
+
     // ── Gap Fill: Profile Change Requests / Onboarding / Settings ─
     {
         path: '/profile-change-requests',
