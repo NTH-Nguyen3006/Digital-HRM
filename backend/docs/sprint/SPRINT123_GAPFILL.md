@@ -21,6 +21,6 @@ Bản cập nhật này bổ sung các phần còn thiếu để source tiến g
 - Contract export HTML
 
 ## Lưu ý
-- Attachment/upload file vật lý vẫn cần sprint storage nếu muốn upload/download thật.
+- Đã bổ sung storage foundation riêng để upload/download file vật lý thật qua `sys_stored_file` + `/api/v1/storage/files`.
 - Contract export hiện dùng HTML template ổn định để FE/ops có thể chuyển tiếp sang PDF nếu cần.
 - Chưa verify build Maven trong môi trường hiện tại do container không có Maven/dependency cache.
