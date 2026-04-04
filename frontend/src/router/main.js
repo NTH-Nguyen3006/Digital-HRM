@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { adminRoutes } from './admin'
+import { employeeRoutes } from './employee'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,6 +28,7 @@ const router = createRouter({
     },
 
     ...adminRoutes,
+    ...employeeRoutes,
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
