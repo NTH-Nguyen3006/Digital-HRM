@@ -8,7 +8,7 @@ const contracts = ref([
   { id: 'HD002', employee: 'Trần Thị B', type: 'Thử việc (2 tháng)', startDate: '15/03/2026', endDate: '15/05/2026', status: 'Đang hiệu lực' },
   { id: 'HD003', employee: 'Lê Văn C', type: 'Không xác định thời hạn', startDate: '01/01/2020', endDate: '-', status: 'Đang hiệu lực' },
   { id: 'HD004', employee: 'Phạm Thị D', type: 'Thời vụ (3 tháng)', startDate: '01/10/2025', endDate: '31/12/2025', status: 'Đã hết hạn' },
-])
+]);
 </script>
 
 <template>
