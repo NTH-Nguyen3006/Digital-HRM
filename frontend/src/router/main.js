@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { adminRoutes } from './admin'
-import { employeeRoutes } from './employee'
+import { dashboardRoutes } from './dashboard'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -9,16 +8,19 @@ const router = createRouter({
     {
       path: '/',
       name: 'portal',
+      meta: { roles: ['employee'] }, // HR, Admin, Manager: bỏ cổng thông tin
       component: () => import('../views/portal/PortalView.vue')
     },
     {
       path: '/portal/profile',
       name: 'my-profile',
+      meta: { roles: ['employee'] },
       component: () => import('../views/portal/MyProfile.vue')
     },
     {
       path: '/portal/attendance',
       name: 'my-attendance',
+      meta: { roles: ['employee'] },
       component: () => import('../views/portal/MyAttendance.vue')
     },
     {
@@ -27,8 +29,7 @@ const router = createRouter({
       component: () => import('../views/auth/LoginView.vue')
     },
 
-    ...adminRoutes,
-    ...employeeRoutes,
+    ...dashboardRoutes,
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
