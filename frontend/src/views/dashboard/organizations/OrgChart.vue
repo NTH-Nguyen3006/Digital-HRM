@@ -5,12 +5,34 @@ import { Plus, Search, Filter, MoreVertical, Building2, Users } from 'lucide-vue
 import { onMounted } from "vue"
 import { OrgChart } from "d3-org-chart"
 
+const tab = ref("tree")
+
+const branches = ref([
+  { id: "HCM", name: "Chi nhánh Hồ Chí Minh", parentId: "root" },
+  { id: "HN", name: "Chi nhánh Hà Nội", parentId: "root" }
+]);
+
 const departments = ref([
-  { id: 1, name: 'Khối Phát triển Phần mềm', code: 'DEV', manager: 'Nguyễn Văn A', employees: 45, status: 'Hoạt động' },
-  { id: 2, name: 'Khối Kinh doanh & Marketing', code: 'SALES', manager: 'Trần Thị B', employees: 12, status: 'Hoạt động' },
-  { id: 3, name: 'Khối Nhân sự - Hành chính', code: 'HR', manager: 'Lê Văn C', employees: 5, status: 'Hoạt động' },
-  { id: 4, name: 'Khối Tài chính Kế toán', code: 'FIN', manager: 'Phạm Thị D', employees: 4, status: 'Hoạt động' },
-])
+  { id: 1, name: 'Khối Phát triển Phần mềm', code: 'DEV', manager: 'Nguyễn Văn A', employees: 45, status: 'Hoạt động', parentId: "HCM" },
+  { id: 2, name: 'Khối Kinh doanh & Marketing', code: 'SALES', manager: 'Trần Thị B', employees: 12, status: 'Hoạt động', parentId: "HCM" },
+  { id: 3, name: 'Khối Nhân sự - Hành chính', code: 'HR', manager: 'Lê Văn C', employees: 5, status: 'Hoạt động', parentId: "HN" },
+  { id: 4, name: 'Khối Tài chính Kế toán', code: 'FIN', manager: 'Phạm Thị D', employees: 4, status: 'Hoạt động', parentId: "HN" },
+]);
+
+const employees = ref([
+  { id: "emp1", name: "Nguyễn Văn A", parentId: "DEV" },
+  { id: "emp2", name: "Nguyễn Văn B", parentId: "DEV" },
+  { id: "emp3", name: "Nguyễn Văn C", parentId: "DEV" },
+
+  { id: "emp4", name: "Trần Thị D", parentId: "SALES" },
+  { id: "emp5", name: "Trần Văn E", parentId: "SALES" },
+
+  { id: "emp6", name: "Lê Văn F", parentId: "HR" },
+  { id: "emp7", name: "Nguyễn Văn G", parentId: "HR" },
+
+  { id: "emp8", name: "Phạm Thị H", parentId: "FIN" }
+]);
+
 /* convert departments -> org chart data */
 const orgData = computed(() => [
   {
@@ -19,12 +41,23 @@ const orgData = computed(() => [
     manager: "CEO",
     parentId: null
   },
+
+  ...branches.value,
+
   ...departments.value.map(d => ({
     id: d.code,
     name: d.name,
     manager: d.manager,
     employees: d.employees,
-    parentId: "root"
+    parentId: d.parentId
+  })),
+
+  ...employees.value.map(e => ({
+    id: e.id,
+    name: e.name,
+    manager: "Nhân viên",
+    employees: 1,
+    parentId: e.parentId
   }))
 ])
 
@@ -32,56 +65,87 @@ onMounted(() => {
   const chart = new OrgChart()
     .container("#org-chart")
     .data(orgData.value)
-    .nodeWidth(() => 260)
-    .nodeHeight(() => 120)
-    .childrenMargin(() => 50)
+    .nodeWidth(() => 280)
+    .nodeHeight(() => 130)
+    .childrenMargin(() => 70)
+    .siblingsMargin(() => 40)
+    .compact(false)
+    .initialZoom(0.9)
     .nodeContent((d) => {
       const data = d.data
 
+      const isCompany = data.id === "root"
+      const isBranch = ["HCM", "HN"].includes(data.id)
+      const isEmployee = data.manager === "Nhân viên"
+
+      const bg = isCompany
+        ? "#eef2ff"
+        : isBranch
+          ? "#ecfeff"
+          : isEmployee
+            ? "#f8fafc"
+            : "#ffffff"
+
+      const border = isCompany
+        ? "#6366f1"
+        : isBranch
+          ? "#06b6d4"
+          : "#e2e8f0"
+
       return `
       <div style="
-          width:260px;
-          background:white;
-          border-radius:16px;
-          border:1px solid #e2e8f0;
-          box-shadow:0 4px 10px rgba(0,0,0,0.05);
+          width:${isEmployee ? 220 : 260}px;
+          background:${bg};
+          border-radius:18px;
+          border:1px solid ${border};
+          box-shadow:0 6px 16px rgba(0,0,0,0.06);
           padding:16px;
           font-family:Inter;
           text-align:center;
       ">
-          
+
           <div style="
-              width:40px;
-              height:40px;
-              border-radius:50%;
-              background:#eef2ff;
-              color:#4f46e5;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              font-weight:700;
-              margin:auto;
-              margin-bottom:8px;
+            width:40px;
+            height:40px;
+            border-radius:50%;
+            background:white;
+            color:#4f46e5;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:700;
+            margin:auto;
+            margin-bottom:8px;
           ">
             ${data.name.charAt(0)}
           </div>
 
-          <div style="font-weight:700;color:#0f172a">
+          <div style="
+            font-weight:700;
+            color:#0f172a;
+            font-size:${isEmployee ? "13px" : "14px"}
+          ">
             ${data.name}
           </div>
 
-          <div style="font-size:12px;color:#64748b">
-            ${data.manager ?? ""}
-          </div>
+          ${data.manager
+          ? `<div style="font-size:12px;color:#64748b;margin-top:2px">
+                  ${data.manager}
+                </div>`
+          : ""
+        }
 
-          <div style="
-              margin-top:6px;
-              font-size:12px;
-              color:#4f46e5;
-              font-weight:600;
-          ">
-            ${data.employees ?? 0} nhân sự
-          </div>
+          ${data.employees
+          ? `<div style="
+                  margin-top:6px;
+                  font-size:12px;
+                  color:#4f46e5;
+                  font-weight:600;
+              ">
+                  ${data.employees} nhân sự
+                </div>`
+          : ""
+        }
 
       </div>
       `
@@ -105,24 +169,47 @@ onMounted(() => {
             <input type="text" placeholder="Tìm kiếm phòng ban..."
               class="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-64 shadow-sm" />
           </div>
-          <button class="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+          <button
+            class="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
             <Filter class="w-5 h-5" />
           </button>
-          <button class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
+          <button
+            class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
             <Plus class="w-5 h-5 mr-2" /> Thêm phòng ban
           </button>
         </div>
       </div>
 
+      <!-- TAB -->
+      <div class="flex gap-2">
+        <button @click="tab = 'tree'" :class="[
+          'px-4 py-2 rounded-xl font-semibold',
+          tab === 'tree'
+            ? 'bg-indigo-600 text-white'
+            : 'bg-white border'
+        ]">
+          Cơ cấu tổ chức
+        </button>
+
+        <button @click="tab = 'list'" :class="[
+          'px-4 py-2 rounded-xl font-semibold',
+          tab === 'list'
+            ? 'bg-indigo-600 text-white'
+            : 'bg-white border'
+        ]">
+          Danh mục
+        </button>
+      </div>
+
       <!-- ORG CHART -->
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-visible">
-        <div class="p-8 overflow-x-auto flex justify-center min-h-[350px]">
+      <div v-if="tab === 'tree'" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-visible">
+        <div class="p-8 overflow-x-auto flex justify-center">
           <div id="org-chart" class="w-full"></div>
         </div>
       </div>
-      
+
       <!-- Content -->
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      <div v-if="tab === 'list'" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -139,7 +226,8 @@ onMounted(() => {
               <tr v-for="dept in departments" :key="dept.id" class="hover:bg-slate-50/50 transition-colors group">
                 <td class="py-4 px-6">
                   <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-sm border border-indigo-100/50">
+                    <div
+                      class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-sm border border-indigo-100/50">
                       <Building2 class="w-5 h-5" />
                     </div>
                     <span class="font-bold text-slate-900">{{ dept.name }}</span>
@@ -148,7 +236,8 @@ onMounted(() => {
                 <td class="py-4 px-6 font-semibold text-slate-600">{{ dept.code }}</td>
                 <td class="py-4 px-6">
                   <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                    <div
+                      class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                       {{ dept.manager.split(' ').pop().charAt(0) }}
                     </div>
                     <span class="font-medium text-slate-700">{{ dept.manager }}</span>
@@ -161,12 +250,14 @@ onMounted(() => {
                   </div>
                 </td>
                 <td class="py-4 px-6">
-                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                  <span
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
                     {{ dept.status }}
                   </span>
                 </td>
                 <td class="py-4 px-6 text-right">
-                  <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button
+                    class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
                     <MoreVertical class="w-5 h-5" />
                   </button>
                 </td>

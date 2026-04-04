@@ -1,25 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  FileSignature,
-  CalendarOff,
-  Clock,
-  Banknote,
-  UserPlus,
-  UserMinus,
-  ShieldCheck,
-  History,
-  LogOut,
-  Bell,
-  Search,
-  Menu,
-  ChevronRight,
-  KeyRound,
-  Settings,
-  FilePenLine
+  LayoutDashboard, Users, Building2, FileSignature, CalendarOff,
+  Clock, Banknote, UserPlus, UserMinus, ShieldCheck, History,
+  LogOut, Bell, Search, Menu, ChevronRight, ChevronDown,
+  KeyRound, Settings, FilePenLine
 } from 'lucide-vue-next'
 
 const isSidebarOpen = ref(true)
@@ -33,9 +18,7 @@ const user = ref({
 const menuGroups = [
   {
     label: 'Tổng hợp',
-    items: [
-      { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' },
-    ]
+    items: [{ name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' }]
   },
   {
     label: 'Quản lý nhân sự',
@@ -69,40 +52,42 @@ const menuGroups = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex font-sans text-slate-900">
-    <!-- Sidebar -->
+  <div class="h-screen overflow-hidden bg-slate-50 flex font-sans text-slate-900 w-full">
+
+    <div v-if="isSidebarOpen" @click="isSidebarOpen = false"
+      class="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity"></div>
+
     <aside
-      class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-500 lg:relative lg:translate-x-0"
+      class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-500 lg:relative lg:translate-x-0 flex flex-col"
       :class="!isSidebarOpen ? '-translate-x-full lg:w-20' : ''">
-      <div class="h-full flex flex-col p-6">
-        <!-- Logo -->
-        <div class="flex items-center space-x-3 mb-12">
+
+      <div class="p-6 shrink-0 border-b border-transparent">
+        <div class="flex items-center space-x-3 mb-2">
           <div
             class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span v-if="isSidebarOpen" class="text-xl font-bold tracking-tight whitespace-nowrap">Digital <span
-              class="text-indigo-600">HRM</span></span>
+          <span v-if="isSidebarOpen" class="text-xl font-bold tracking-tight whitespace-nowrap">
+            Digital <span class="text-indigo-600">HRM</span>
+          </span>
         </div>
+      </div>
 
-        <!-- Navigation -->
-        <nav class="flex-1 space-y-1 " :class="[isSidebarOpen ? '' : 'place-items-center']">
+      <div class="flex-1 overflow-y-auto overscroll-contain hide-scrollbar px-6 pb-6">
+        <nav class="space-y-1 mt-4" :class="[isSidebarOpen ? '' : 'place-items-center']">
           <template v-for="group in menuGroups" :key="group.label">
-            <!-- Group Label -->
+
             <div v-if="isSidebarOpen" class="px-4 pt-4 pb-1">
               <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ group.label }}</span>
             </div>
-            <div v-else class="border-b border-slate-100 my-2"></div>
-            <!-- Group Items -->
+            <div v-else class="border-b border-slate-100 my-2 w-full"></div>
+
             <router-link v-for="item in group.items" :key="item.name" :to="item.path"
+              :title="!isSidebarOpen ? item.name : ''"
               class="flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 group hover:translate-x-1"
-              :class="[
-                $route.path === item.path
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
-              ]">
+              :class="[$route.path === item.path ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600']">
               <component :is="item.icon" class="w-5 h-5 shrink-0" />
               <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap">{{ item.name }}</span>
               <ChevronRight v-if="isSidebarOpen && $route.path === item.path"
@@ -111,29 +96,27 @@ const menuGroups = [
           </template>
         </nav>
 
-        <!-- Logout -->
         <button
-          class="flex items-center space-x-3 px-4 py-3.5 mt-8 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-300 group">
+          class="flex items-center space-x-3 px-4 py-3.5 mt-8 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-300 group w-full">
           <LogOut class="w-5 h-5 transition-transform group-hover:-translate-x-1" />
           <span v-if="isSidebarOpen" class="font-semibold text-sm">Đăng xuất</span>
         </button>
       </div>
     </aside>
+    <main class="flex-1 min-w-0 flex flex-col h-screen">
 
-    <!-- Main Content -->
-    <main class="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
-      <!-- Top Navbar -->
       <header
-        class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between z-40 sticky top-0 shrink-0">
+        class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between z-30 sticky top-0 shrink-0">
         <div class="flex items-center space-x-4">
           <button @click="isSidebarOpen = !isSidebarOpen" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <Menu class="w-6 h-6 text-slate-500" />
           </button>
 
-          <div class="hidden md:flex items-center bg-slate-100 rounded-xl px-4 py-2 border border-slate-200">
-            <Search class="w-4 h-4 text-slate-400 mr-3" />
+          <div
+            class="hidden md:flex items-center bg-slate-100/70 rounded-xl px-4 py-2 border border-slate-200 focus-within:bg-white focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all">
+            <Search class="w-4 h-4 text-slate-400 mr-2" />
             <input type="text" placeholder="Tìm kiếm nhanh..."
-              class="bg-transparent border-none outline-none text-sm w-64 text-slate-600 font-medium placeholder:text-slate-400" />
+              class="bg-transparent border-none outline-none text-sm w-56 text-slate-700 font-medium placeholder:text-slate-400" />
           </div>
         </div>
 
@@ -144,21 +127,19 @@ const menuGroups = [
           </button>
 
           <div
-            class="flex items-center space-x-3 p-1 pl-4 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors">
+            class="flex items-center space-x-3 p-1 pl-4 pr-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 hover:border-slate-200 transition-all">
             <div class="text-right hidden sm:block">
               <p class="text-sm font-bold text-slate-900 leading-tight">{{ user.name }}</p>
               <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{{ user.role }}</p>
             </div>
             <div
-              class="w-10 h-10 bg-linear-to-tr from-indigo-500 to-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-100 border-2 border-white">
-              AD
-            </div>
+              class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200 border-2 border-white">
+              AD</div>
+            <ChevronDown class="w-4 h-4 text-slate-400" />
           </div>
         </div>
       </header>
-
-      <!-- Page Content -->
-      <div class="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+      <div class="flex-1 overflow-y-auto overscroll-contain p-8 bg-slate-50/50">
         <div class="max-w-7xl mx-auto animate-fade-in">
           <slot />
         </div>
@@ -169,7 +150,6 @@ const menuGroups = [
 
 <style scoped>
 @reference "../assets/css/main.css";
-
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
@@ -188,6 +168,15 @@ const menuGroups = [
 }
 
 .router-link-active {
-  @apply bg-indigo-600 text-white shadow-lg shadow-indigo-100 scale-105;
+  @apply bg-indigo-600 text-white shadow-md shadow-indigo-200;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 </style>
