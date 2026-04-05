@@ -4,8 +4,10 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=DigitalHRM;encrypt=true;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:Password123}
+    password: ${DB_PASSWORD:123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      connection-init-sql: SET NOCOUNT OFF
   jpa:
     hibernate:
       ddl-auto: validate
@@ -21,6 +23,10 @@ spring:
     placeholder-replacement: false
   jackson:
     time-zone: Asia/Ho_Chi_Minh
+  servlet:
+    multipart:
+      max-file-size: ${APP_STORAGE_MAX_FILE_SIZE_MB:20}MB
+      max-request-size: ${APP_STORAGE_MAX_FILE_SIZE_MB:20}MB
 
 management:
   endpoints:
@@ -40,6 +46,14 @@ app:
     max-failed-login-attempts: ${APP_MAX_FAILED_LOGIN_ATTEMPTS:5}
     auto-lock-minutes: ${APP_AUTO_LOCK_MINUTES:30}
     default-new-user-status: ${APP_DEFAULT_NEW_USER_STATUS:ACTIVE}
+    access-token-cookie-name: ${APP_ACCESS_TOKEN_COOKIE_NAME:hrm_access_token}
+    refresh-token-cookie-name: ${APP_REFRESH_TOKEN_COOKIE_NAME:hrm_refresh_token}
+    access-token-cookie-path: ${APP_ACCESS_TOKEN_COOKIE_PATH:/}
+    refresh-token-cookie-path: ${APP_REFRESH_TOKEN_COOKIE_PATH:/api/v1/auth}
+    cookie-same-site: ${APP_COOKIE_SAME_SITE:Lax}
+    cookie-secure: ${APP_COOKIE_SECURE:false}
+    cookie-domain: ${APP_COOKIE_DOMAIN:}
+    cors-allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   bootstrap:
     seed-default-admin: ${APP_BOOTSTRAP_SEED_DEFAULT_ADMIN:true}
     admin-username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
@@ -52,3 +66,11 @@ app:
     reset-url-base: ${APP_MAIL_RESET_URL_BASE:http://localhost:5173/auth/reset-password}
   role-management:
     allow-custom-role: ${APP_ROLE_MANAGEMENT_ALLOW_CUSTOM_ROLE:false}
+  storage:
+    base-dir: ${APP_STORAGE_BASE_DIR:./storage}
+    max-file-size-mb: ${APP_STORAGE_MAX_FILE_SIZE_MB:20}
+    auto-create-base-dir: ${APP_STORAGE_AUTO_CREATE_BASE_DIR:true}
+
+  reporting:
+    scheduler-enabled: ${APP_REPORTING_SCHEDULER_ENABLED:true}
+    scheduler-fixed-delay-ms: ${APP_REPORTING_SCHEDULER_FIXED_DELAY_MS:300000}
