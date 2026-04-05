@@ -1,8 +1,11 @@
 package com.company.hrm.module.employee.entity;
 
 import com.company.hrm.common.constant.MaritalStatus;
+import com.company.hrm.common.constant.ProfileStatus;
 import com.company.hrm.common.entity.SoftDeleteAuditableEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -54,4 +57,23 @@ public class HrEmployeeProfile extends SoftDeleteAuditableEntity {
 
     @Column(name = "emergency_note", length = 500)
     private String emergencyNote;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "profile_status", nullable = false, length = 20)
+    private ProfileStatus profileStatus = ProfileStatus.ACTIVE;
+
+    @Column(name = "locked_reason", length = 500)
+    private String lockedReason;
+
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
+    @Column(name = "locked_by")
+    private UUID lockedBy;
+
+    @Column(name = "restored_at")
+    private LocalDateTime restoredAt;
+
+    @Column(name = "restored_by")
+    private UUID restoredBy;
 }
