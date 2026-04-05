@@ -1,31 +1,35 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Mail, Lock, LogIn } from 'lucide-vue-next'
+import { Mail, Lock, LogIn, AlertTriangle } from 'lucide-vue-next'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
-import { testAuthFlow } from '@/api/test/test_auth'
+import { handleLogin as loginApi } from '@/api/auth'
 
 const router = useRouter()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const rememberMe = ref(false)
+const errorMessage = ref('')
 
 const handleLogin = async () => {
   if (!email.value || !password.value) return
 
   loading.value = true
+  errorMessage.value = ''
 
-  // Simulate API call
-  setTimeout(() => {
-    loading.value = false
+  try {
+    const response = await loginApi(email.value, password.value)
     router.push('/dashboard')
-  }, 1000)
+  } catch (error) {
+    console.error('Login Error:', error)
+    errorMessage.value = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
+  } finally {
+    loading.value = false
+  }
 }
-
-testAuthFlow()
 </script>
 
 <template>
@@ -34,6 +38,11 @@ testAuthFlow()
       <div class="text-center mb-10">
         <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-3">Đăng nhập</h2>
         <p class="text-slate-500 font-medium">Chào mừng trở lại Digital HRM</p>
+      </div>
+
+      <div v-if="errorMessage" class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center gap-3 animate-shake">
+        <AlertTriangle class="w-5 h-5 shrink-0" />
+        {{ errorMessage }}
       </div>
 
       <form @submit.prevent="handleLogin" class="space-y-6">

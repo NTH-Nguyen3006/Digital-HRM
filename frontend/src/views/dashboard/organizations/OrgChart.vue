@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { Plus, Search, Filter, MoreVertical, Building2, Users } from 'lucide-vue-next'
 import { onMounted } from "vue"
 import { OrgChart } from "d3-org-chart"
@@ -63,6 +63,8 @@ const orgData = computed(() => [
 
 onMounted(() => {
   const chart = new OrgChart()
+
+  chart
     .container("#org-chart")
     .data(orgData.value)
     .nodeWidth(() => 280)
@@ -73,84 +75,59 @@ onMounted(() => {
     .initialZoom(0.9)
     .nodeContent((d) => {
       const data = d.data
-
       const isCompany = data.id === "root"
       const isBranch = ["HCM", "HN"].includes(data.id)
       const isEmployee = data.manager === "Nhân viên"
 
-      const bg = isCompany
-        ? "#eef2ff"
+      // Chọn class màu dựa trên vai trò
+      const cardClass = isCompany
+        ? "bg-indigo-100 border-indigo-500"
         : isBranch
-          ? "#ecfeff"
+          ? "bg-green-100 border-green-500"
           : isEmployee
-            ? "#f8fafc"
-            : "#ffffff"
-
-      const border = isCompany
-        ? "#6366f1"
-        : isBranch
-          ? "#06b6d4"
-          : "#e2e8f0"
+            ? "bg-slate-50 border-slate-200"
+            : "bg-cyan-100 border-cyan-500"
 
       return `
-      <div style="
-          width:${isEmployee ? 220 : 260}px;
-          background:${bg};
-          border-radius:18px;
-          border:1px solid ${border};
-          box-shadow:0 6px 16px rgba(0,0,0,0.06);
-          padding:16px;
-          font-family:Inter;
-          text-align:center;
-      ">
-
-          <div style="
-            width:40px;
-            height:40px;
-            border-radius:50%;
-            background:white;
-            color:#4f46e5;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-weight:700;
-            margin:auto;
-            margin-bottom:8px;
-          ">
+      <div class="${cardClass} ${isEmployee ? "w-[220px]" : "w-[260px]"} rounded-[18px] border shadow-sm p-4 text-center cursor-pointer font-sans transition-all hover:shadow-md">
+          
+          <!-- Avatar/Icon Circle -->
+          <div class="w-10 h-10 rounded-full bg-white text-indigo-600 flex items-center justify-center font-bold mx-auto mb-2 shadow-sm border border-slate-100">
             ${data.name.charAt(0)}
           </div>
 
-          <div style="
-            font-weight:700;
-            color:#0f172a;
-            font-size:${isEmployee ? "13px" : "14px"}
-          ">
+          <!-- Name -->
+          <div class="font-bold text-slate-900 ${isEmployee ? "text-[13px]" : "text-[14px]"} leading-tight">
             ${data.name}
           </div>
 
+          <!-- Role/Manager -->
           ${data.manager
-          ? `<div style="font-size:12px;color:#64748b;margin-top:2px">
-                  ${data.manager}
-                </div>`
+          ? `<div class="text-[12px] text-slate-500 mt-0.5">${data.manager}</div>`
           : ""
         }
 
+          <!-- Stats -->
           ${data.employees
-          ? `<div style="
-                  margin-top:6px;
-                  font-size:12px;
-                  color:#4f46e5;
-                  font-weight:600;
-              ">
-                  ${data.employees} nhân sự
-                </div>`
+          ? `<div class="mt-2 text-[12px] text-indigo-600 font-bold bg-indigo-100/50 rounded-full py-0.5 px-2 inline-block">
+                ${data.employees} nhân sự
+             </div>`
           : ""
         }
 
       </div>
       `
     })
+    .onNodeClick((nodeId) => {
+      chart.setExpanded(nodeId)
+      chart.render()
+    })
     .render()
+
+  // Trạng thái ban đầu: Thu gọn hết và chỉ mở node gốc
+  chart.collapseAll()
+  chart.setExpanded("root", true)
+  chart.render()
 })
 </script>
 
@@ -202,14 +179,14 @@ onMounted(() => {
       </div>
 
       <!-- ORG CHART -->
-      <div v-if="tab === 'tree'" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-visible">
+      <div v-show="tab === 'tree'" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-visible">
         <div class="p-8 overflow-x-auto flex justify-center">
           <div id="org-chart" class="w-full"></div>
         </div>
       </div>
 
       <!-- Content -->
-      <div v-if="tab === 'list'" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      <div v-show="tab === 'list'" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>

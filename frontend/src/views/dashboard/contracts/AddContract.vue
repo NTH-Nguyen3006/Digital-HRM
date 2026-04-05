@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from "vue"
-import MainLayout from "../../../layouts/MainLayout.vue"
 import { Upload } from "lucide-vue-next";
 
 const form = ref({
@@ -209,5 +209,4 @@ select {
     background-repeat: no-repeat;
     background-position: right 16px center;
     padding-right: 2.5rem;
-}
-</style>
+</style>}

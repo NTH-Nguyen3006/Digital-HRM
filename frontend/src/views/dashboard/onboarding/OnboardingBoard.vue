@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { UserCheck, Laptop, Mail, Key } from 'lucide-vue-next'
 
 const candidates = ref([

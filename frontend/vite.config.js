@@ -22,6 +22,19 @@ export default defineConfig({
     tailwindcss(),
   ],
 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
+          'charts': ['vue3-apexcharts', 'apexcharts'],
+          'icons': ['lucide-vue-next']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+  },
+
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

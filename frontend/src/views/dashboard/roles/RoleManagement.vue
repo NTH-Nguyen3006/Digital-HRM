@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { Plus, Edit, ToggleLeft, ToggleRight, Shield, ChevronDown, ChevronRight, CheckSquare, Square } from 'lucide-vue-next'
 
 const showModal = ref(false)

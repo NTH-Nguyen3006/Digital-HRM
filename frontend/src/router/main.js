@@ -30,6 +30,13 @@ const router = createRouter({
     },
 
     ...dashboardRoutes,
+    // ── Catch-all (404) ──────────────────────────────────────────
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: (to) => {
+        return { name: 'dashboard' } // Or a dedicated 404 view
+      }
+    }
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {

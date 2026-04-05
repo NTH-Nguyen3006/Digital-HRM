@@ -1,7 +1,7 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { FileSignature, MoreVertical, Plus, Search } from 'lucide-vue-next';
 import { ref } from 'vue';
-import MainLayout from '../../../layouts/MainLayout.vue';
 import router from '@/router/main';
 
 const contracts = ref([

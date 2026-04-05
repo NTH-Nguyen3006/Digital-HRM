@@ -18,6 +18,7 @@ spring:
   flyway:
     enabled: true
     locations: filesystem:database/schema,filesystem:database/seed
+    placeholder-replacement: false
   jackson:
     time-zone: Asia/Ho_Chi_Minh
 

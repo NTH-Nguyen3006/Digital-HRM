@@ -1,15 +1,24 @@
+<script setup>
+import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
+</script>
+
 <template>
-  <router-view v-slot="{ Component }">
-    <transition name="page" mode="out-in">
-      <component :is="Component" />
-    </transition>
-  </router-view>
+  <ErrorBoundary>
+    <router-view v-slot="{ Component, route }">
+      <transition name="page" mode="out-in">
+        <div :key="route.path" class="w-full h-full">
+          <component :is="Component" />
+        </div>
+      </transition>
+    </router-view>
+  </ErrorBoundary>
 </template>
+
 
 <style>
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity .2s ease, transform 0.1s ease;
 }
 
 .page-enter-from {
