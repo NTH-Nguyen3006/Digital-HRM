@@ -18,10 +18,10 @@ import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
 <style>
 .page-enter-active,
 .page-leave-active {
-  transition: opacity .2s ease, transform 0.1s ease;
+  transition: opacity .2s ease;
 }
 
-.page-enter-from {
+/* .page-enter-from {
   opacity: 0;
   transform: translateY(10px);
 }
@@ -29,5 +29,5 @@ import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
 .page-leave-to {
   opacity: 0;
   transform: translateY(-10px);
-}
+} */
 </style>
