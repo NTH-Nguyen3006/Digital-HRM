@@ -6,7 +6,12 @@ import com.company.hrm.common.response.PageResponse;
 import com.company.hrm.module.audit.support.RequestTraceContext;
 import com.company.hrm.module.jobtitle.dto.*;
 import com.company.hrm.module.jobtitle.service.JobTitleService;
+import com.company.hrm.common.dto.ImportResultResponse;
 import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,5 +58,20 @@ public class AdminJobTitleController {
     @PreAuthorize("hasAuthority('jobtitle.change_status')")
     public ApiResponse<JobTitleDetailResponse> changeStatus(@PathVariable Long jobTitleId, @Valid @RequestBody UpdateJobTitleStatusRequest request) {
         return ApiResponse.success("JOB_TITLE_STATUS_SUCCESS", "Cập nhật trạng thái chức danh thành công.", jobTitleService.changeStatus(jobTitleId, request), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    @PreAuthorize("hasAuthority('orgunit.import_export')")
+    public ResponseEntity<String> exportCsv() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=job-titles.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(jobTitleService.exportCsv());
+    }
+
+    @PostMapping("/import")
+    @PreAuthorize("hasAuthority('orgunit.import_export')")
+    public ApiResponse<ImportResultResponse> importRows(@Valid @RequestBody List<@Valid JobTitleImportRowRequest> requests) {
+        return ApiResponse.success("JOB_TITLE_IMPORT_SUCCESS", "Import chức danh thành công.", jobTitleService.importRows(requests), null, RequestTraceContext.getTraceId());
     }
 }
