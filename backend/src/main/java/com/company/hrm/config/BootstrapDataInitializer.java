@@ -1,24 +1,22 @@
 package com.company.hrm.config;
 
+import com.company.hrm.common.constant.RecordStatus;
+import com.company.hrm.common.constant.RoleCode;
+import com.company.hrm.common.constant.UserStatus;
+import com.company.hrm.config.AppProperties;
+import com.company.hrm.module.role.entity.SecRole;
+import com.company.hrm.module.user.entity.SecUserAccount;
+import com.company.hrm.module.user.entity.SecUserRole;
+import com.company.hrm.module.role.repository.SecRoleRepository;
+import com.company.hrm.module.user.repository.SecUserAccountRepository;
+import com.company.hrm.module.user.repository.SecUserRoleRepository;
 import java.time.LocalDateTime;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.company.hrm.common.constant.RecordStatus;
-import com.company.hrm.common.constant.RoleCode;
-import com.company.hrm.common.constant.UserStatus;
-import com.company.hrm.module.role.entity.SecRole;
-import com.company.hrm.module.role.repository.SecRoleRepository;
-import com.company.hrm.module.user.entity.SecUserAccount;
-import com.company.hrm.module.user.entity.SecUserRole;
-import com.company.hrm.module.user.repository.SecUserAccountRepository;
-import com.company.hrm.module.user.repository.SecUserRoleRepository;
-
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -35,7 +33,8 @@ public class BootstrapDataInitializer implements ApplicationRunner {
             PasswordEncoder passwordEncoder,
             SecUserAccountRepository userAccountRepository,
             SecRoleRepository roleRepository,
-            SecUserRoleRepository userRoleRepository) {
+            SecUserRoleRepository userRoleRepository
+    ) {
         this.appProperties = appProperties;
         this.passwordEncoder = passwordEncoder;
         this.userAccountRepository = userAccountRepository;
@@ -50,8 +49,7 @@ public class BootstrapDataInitializer implements ApplicationRunner {
             return;
         }
 
-        if (userAccountRepository
-                .findByUsernameIgnoreCaseAndDeletedFalse(appProperties.getBootstrap().getAdminUsername()).isPresent()) {
+        if (userAccountRepository.findByUsernameIgnoreCaseAndDeletedFalse(appProperties.getBootstrap().getAdminUsername()).isPresent()) {
             return;
         }
 
