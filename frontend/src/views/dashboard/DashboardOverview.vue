@@ -1,7 +1,7 @@
 <script setup>
-import MainLayout from "../../layouts/MainLayout.vue"
-import GlassCard from "../../components/common/GlassCard.vue"
-import StatCard from "../../components/common/StatCard.vue"
+import MainLayout from "@/layouts/MainLayout.vue"
+import GlassCard from "@/components/common/GlassCard.vue"
+import StatCard from "@/components/common/StatCard.vue"
 
 import VueApexCharts from "vue3-apexcharts"
 
@@ -254,5 +254,4 @@ const contractOptions = {
     </div>
   </MainLayout>
 </template>
-
 <style scoped></style>

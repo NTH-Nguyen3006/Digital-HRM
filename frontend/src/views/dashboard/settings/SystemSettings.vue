@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import {
   Settings, Bell, Shield, Monitor, Palette,
   ToggleLeft, ToggleRight, Save, RefreshCw, ChevronRight

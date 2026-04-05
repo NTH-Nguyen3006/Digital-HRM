@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { Calculator, Send, FileText } from 'lucide-vue-next'
 
 const payroll = ref([

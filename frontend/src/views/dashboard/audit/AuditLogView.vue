@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { Search, Filter, Download, History, AlertCircle, Info } from 'lucide-vue-next'
 
 const searchQuery = ref('')

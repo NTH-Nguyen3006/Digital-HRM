@@ -22,12 +22,11 @@ const router = useRouter()
       <!-- Logo -->
       <div class="flex items-center space-x-3 cursor-pointer" @click="router.push('/')">
         <div :class="[
-          'w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg',
+          'w-10 h-10 bg-white rounded-xl flex items-center justify-center text-white shadow-lg',
           variant === 'portal' ? 'shadow-indigo-100' : 'shadow-indigo-200'
         ]">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+
+          <img src="@/assets/images/logo.webp" alt="Logo" class="w-6 h-6" />
         </div>
         <span class="text-xl font-bold tracking-tight text-slate-900">Digital <span
             class="text-indigo-600">HRM</span></span>
