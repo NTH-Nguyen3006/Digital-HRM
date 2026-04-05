@@ -7,7 +7,11 @@ import com.company.hrm.module.audit.support.RequestTraceContext;
 import com.company.hrm.module.orgunit.dto.*;
 import com.company.hrm.module.orgunit.service.OrgUnitService;
 import jakarta.validation.Valid;
+import com.company.hrm.common.dto.ImportResultResponse;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -66,5 +70,20 @@ public class AdminOrgUnitController {
     @PreAuthorize("hasAuthority('orgunit.assign_manager')")
     public ApiResponse<OrgUnitDetailResponse> assignManager(@PathVariable Long orgUnitId, @Valid @RequestBody UpdateOrgUnitManagerRequest request) {
         return ApiResponse.success("ORG_UNIT_ASSIGN_MANAGER_SUCCESS", "Gán quản lý đơn vị thành công.", orgUnitService.assignManager(orgUnitId, request), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    @PreAuthorize("hasAuthority('orgunit.import_export')")
+    public ResponseEntity<String> exportCsv() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=org-units.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(orgUnitService.exportCsv());
+    }
+
+    @PostMapping("/import")
+    @PreAuthorize("hasAuthority('orgunit.import_export')")
+    public ApiResponse<ImportResultResponse> importRows(@Valid @RequestBody List<@Valid OrgUnitImportRowRequest> requests) {
+        return ApiResponse.success("ORG_UNIT_IMPORT_SUCCESS", "Import cơ cấu tổ chức thành công.", orgUnitService.importRows(requests), null, RequestTraceContext.getTraceId());
     }
 }
