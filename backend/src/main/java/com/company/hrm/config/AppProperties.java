@@ -1,6 +1,8 @@
 package com.company.hrm.config;
 
 import com.company.hrm.common.constant.UserStatus;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -11,6 +13,8 @@ public class AppProperties {
     private Bootstrap bootstrap = new Bootstrap();
     private Mail mail = new Mail();
     private RoleManagement roleManagement = new RoleManagement();
+    private Storage storage = new Storage();
+    private Reporting reporting = new Reporting();
 
     @Data
     public static class Auth {
@@ -21,6 +25,17 @@ public class AppProperties {
         private int maxFailedLoginAttempts = 5;
         private long autoLockMinutes = 30;
         private UserStatus defaultNewUserStatus = UserStatus.ACTIVE;
+        private String accessTokenCookieName = "hrm_access_token";
+        private String refreshTokenCookieName = "hrm_refresh_token";
+        private String accessTokenCookiePath = "/";
+        private String refreshTokenCookiePath = "/api/v1/auth";
+        private String cookieSameSite = "Lax";
+        private boolean cookieSecure = false;
+        private String cookieDomain;
+        private List<String> corsAllowedOrigins = new ArrayList<>(List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173"
+        ));
     }
 
     @Data
@@ -43,4 +58,19 @@ public class AppProperties {
     public static class RoleManagement {
         private boolean allowCustomRole = false;
     }
+
+    @Data
+    public static class Storage {
+        private String baseDir = "./storage";
+        private int maxFileSizeMb = 20;
+        private boolean autoCreateBaseDir = true;
+    }
+
+
+    @Data
+    public static class Reporting {
+        private boolean schedulerEnabled = true;
+        private long schedulerFixedDelayMs = 300000;
+    }
+
 }
