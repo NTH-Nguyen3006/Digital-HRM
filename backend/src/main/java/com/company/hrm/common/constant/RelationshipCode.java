@@ -4,6 +4,7 @@ public enum RelationshipCode {
     FATHER,
     MOTHER,
     SPOUSE,
+    CHILD,
     SIBLING,
     OTHER
 }
