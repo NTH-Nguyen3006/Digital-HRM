@@ -1,7 +1,7 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import {
   ArrowLeft, ChevronRight, Edit, Send, CheckCircle2,
   XCircle, Zap, History, Paperclip, Plus, Download,

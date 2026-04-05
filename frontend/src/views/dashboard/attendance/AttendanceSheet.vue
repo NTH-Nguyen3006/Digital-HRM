@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { Download, Search, CheckCircle, Clock } from 'lucide-vue-next'
 
 const attendance = ref([

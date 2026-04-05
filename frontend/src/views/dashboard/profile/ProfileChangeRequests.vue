@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import { Plus, Search, Eye, CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-vue-next'
 
 const filterStatus = ref('ALL')

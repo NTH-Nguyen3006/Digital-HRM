@@ -1,6 +1,6 @@
 <script setup>
+import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
-import MainLayout from '../../../layouts/MainLayout.vue'
 import {
   Plus, Search, MoreVertical, ShieldCheck, ShieldOff,
   Lock, Unlock, Mail, Eye, Edit, UserX, Users, Key, RefreshCw
