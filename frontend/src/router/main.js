@@ -9,33 +9,31 @@ const router = createRouter({
       path: '/',
       name: 'portal',
       meta: { roles: ['employee'] }, // HR, Admin, Manager: bỏ cổng thông tin
-      component: () => import('../views/portal/PortalView.vue')
+      component: () => import('@/views/portal/PortalView.vue')
     },
     {
       path: '/portal/profile',
       name: 'my-profile',
       meta: { roles: ['employee'] },
-      component: () => import('../views/portal/MyProfile.vue')
+      component: () => import('@/views/portal/MyProfile.vue')
     },
     {
       path: '/portal/attendance',
       name: 'my-attendance',
       meta: { roles: ['employee'] },
-      component: () => import('../views/portal/MyAttendance.vue')
+      component: () => import('@/views/portal/MyAttendance.vue')
     },
     {
       path: '/login',
       name: 'login',
-      component: () => import('../views/auth/LoginView.vue')
+      component: () => import('@/views/auth/LoginView.vue')
     },
 
     ...dashboardRoutes,
     // ── Catch-all (404) ──────────────────────────────────────────
     {
       path: '/:pathMatch(.*)*',
-      redirect: (to) => {
-        return { name: 'dashboard' } // Or a dedicated 404 view
-      }
+      component: () => import('@/views/errors/404.vue')
     }
   ],
   scrollBehavior(to, from, savedPosition) {
