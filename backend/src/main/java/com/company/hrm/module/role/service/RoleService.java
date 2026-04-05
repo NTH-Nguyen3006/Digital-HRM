@@ -18,6 +18,7 @@ import com.company.hrm.module.role.dto.PermissionSummaryResponse;
 import com.company.hrm.module.role.dto.RoleDetailResponse;
 import com.company.hrm.module.role.dto.RoleListItemResponse;
 import com.company.hrm.module.role.dto.UpdateRoleRequest;
+import com.company.hrm.module.role.dto.UpdateRoleStatusRequest;
 import com.company.hrm.module.role.repository.SecDataScopeAssignmentRepository;
 import com.company.hrm.module.permission.repository.SecPermissionRepository;
 import com.company.hrm.module.role.repository.SecRolePermissionRepository;
@@ -157,6 +158,22 @@ public class RoleService {
 
         auditLogService.logSuccess("CREATE", "ROLE", "sec_role", role.getRoleId().toString(), null, getRoleDetail(role.getRoleId()), "Tạo role tùy biến.");
         return getRoleDetail(role.getRoleId());
+    }
+
+    @Transactional
+    public RoleDetailResponse changeStatus(UUID roleId, UpdateRoleStatusRequest request) {
+        SecRole role = getRole(roleId);
+        RoleDetailResponse oldSnapshot = getRoleDetail(roleId);
+
+        if (role.isSystemRole() && request.status() == RecordStatus.INACTIVE) {
+            throw new BusinessException("ROLE_SYSTEM_DISABLE_FORBIDDEN", "Không được ngừng sử dụng 4 role hệ thống cố định.", HttpStatus.CONFLICT);
+        }
+
+        role.setStatus(request.status());
+        roleRepository.save(role);
+        RoleDetailResponse response = getRoleDetail(roleId);
+        auditLogService.logSuccess("CHANGE_STATUS", "ROLE", "sec_role", roleId.toString(), oldSnapshot, response, request.reason());
+        return response;
     }
 
     @Transactional
