@@ -64,13 +64,11 @@ const menuGroups = [
       <div class="p-6 shrink-0 border-b border-transparent">
         <div class="flex items-center space-x-3 mb-2">
           <div
-            class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 shrink-0">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+            class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-white shadow-lg border-3 border-slate-200 shrink-0">
+            <img src="@/assets/images/logo.webp" alt="Logo" class="w-full h-full object-cover rounded-xl">
           </div>
           <span v-if="isSidebarOpen" class="text-xl font-bold tracking-tight whitespace-nowrap">
-            Digital <span class="text-indigo-600">HRM</span>
+            <span class="text-indigo-600">CONVERGED</span>
           </span>
         </div>
       </div>

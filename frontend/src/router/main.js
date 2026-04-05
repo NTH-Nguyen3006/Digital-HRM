@@ -36,6 +36,8 @@ const router = createRouter({
       component: () => import('@/views/errors/404.vue')
     }
   ],
+
+
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition
