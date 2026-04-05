@@ -22,5 +22,7 @@ public interface SecUserAccountRepository extends JpaRepository<SecUserAccount, 
 
     boolean existsByEmployeeIdAndDeletedFalse(Long employeeId);
 
+    Optional<SecUserAccount> findByEmployeeIdAndDeletedFalse(Long employeeId);
+
     boolean existsByEmployeeIdAndDeletedFalseAndUserIdNot(Long employeeId, UUID userId);
 }

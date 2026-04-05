@@ -6,6 +6,7 @@ import com.company.hrm.module.role.dto.CreateRoleRequest;
 import com.company.hrm.module.role.dto.RoleDetailResponse;
 import com.company.hrm.module.role.dto.RoleListItemResponse;
 import com.company.hrm.module.role.dto.UpdateRoleRequest;
+import com.company.hrm.module.role.dto.UpdateRoleStatusRequest;
 import com.company.hrm.module.role.service.RoleService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -49,5 +50,12 @@ public class RoleController {
     public ApiResponse<RoleDetailResponse> updateRole(@PathVariable UUID roleId, @Valid @RequestBody UpdateRoleRequest request) {
         RoleDetailResponse response = roleService.updateRole(roleId, request);
         return ApiResponse.success("ROLE_UPDATE_SUCCESS", "Cập nhật role thành công.", response, null, RequestTraceContext.getTraceId());
+    }
+
+    @PatchMapping("/{roleId}/status")
+    @PreAuthorize("hasAuthority('role.change_status')")
+    public ApiResponse<RoleDetailResponse> changeStatus(@PathVariable UUID roleId, @Valid @RequestBody UpdateRoleStatusRequest request) {
+        RoleDetailResponse response = roleService.changeStatus(roleId, request);
+        return ApiResponse.success("ROLE_STATUS_SUCCESS", "Cập nhật trạng thái role thành công.", response, null, RequestTraceContext.getTraceId());
     }
 }
