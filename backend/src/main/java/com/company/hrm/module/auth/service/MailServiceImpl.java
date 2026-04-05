@@ -47,4 +47,23 @@ public class MailServiceImpl implements MailService {
 
         mailSender.send(message);
     }
+
+    @Override
+    public boolean sendSimpleMail(String email, String subject, String body) {
+        if (appProperties.getMail().isMockEnabled()) {
+            log.info("[MOCK_MAIL] Send simple mail to email={} subject={} body={}", email, subject, body);
+            return true;
+        }
+
+        JavaMailSender mailSender = Optional.ofNullable(mailSenderProvider.getIfAvailable())
+                .orElseThrow(() -> new IllegalStateException("JavaMailSender is not configured."));
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(appProperties.getMail().getFromAddress());
+        message.setTo(email);
+        message.setSubject(subject);
+        message.setText(body);
+        mailSender.send(message);
+        return false;
+    }
 }

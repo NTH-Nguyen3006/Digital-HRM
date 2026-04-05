@@ -1,6 +1,5 @@
 package com.company.hrm.module.auth.service;
 
-import com.company.hrm.module.audit.service.AuditLogService;
 import com.company.hrm.common.constant.RecordStatus;
 import com.company.hrm.common.constant.ResetChannel;
 import com.company.hrm.common.constant.ResetTokenStatus;
@@ -12,19 +11,20 @@ import com.company.hrm.common.util.HashUtils;
 import com.company.hrm.common.util.PasswordPolicyValidator;
 import com.company.hrm.common.util.RequestContextUtils;
 import com.company.hrm.config.AppProperties;
-import com.company.hrm.module.auth.entity.SecAuthSession;
-import com.company.hrm.module.auth.entity.SecPasswordResetToken;
-import com.company.hrm.module.user.entity.SecUserAccount;
-import com.company.hrm.module.user.entity.SecUserRole;
+import com.company.hrm.module.audit.service.AuditLogService;
+import com.company.hrm.module.auth.dto.AuthResult;
 import com.company.hrm.module.auth.dto.ChangePasswordRequest;
 import com.company.hrm.module.auth.dto.ForgotPasswordRequest;
 import com.company.hrm.module.auth.dto.LoginRequest;
 import com.company.hrm.module.auth.dto.LoginResponse;
-import com.company.hrm.module.auth.dto.RefreshTokenRequest;
 import com.company.hrm.module.auth.dto.ResetPasswordRequest;
+import com.company.hrm.module.auth.entity.SecAuthSession;
+import com.company.hrm.module.auth.entity.SecPasswordResetToken;
 import com.company.hrm.module.auth.repository.SecAuthSessionRepository;
 import com.company.hrm.module.auth.repository.SecPasswordResetTokenRepository;
 import com.company.hrm.module.role.repository.SecRolePermissionRepository;
+import com.company.hrm.module.user.entity.SecUserAccount;
+import com.company.hrm.module.user.entity.SecUserRole;
 import com.company.hrm.module.user.repository.SecUserAccountRepository;
 import com.company.hrm.module.user.repository.SecUserRoleRepository;
 import com.company.hrm.security.JwtTokenProvider;
@@ -76,7 +76,7 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
         SecUserAccount user = findByLoginId(request.loginId());
 
         if (user == null || user.isDeleted()) {
@@ -111,9 +111,10 @@ public class AuthService {
 
         List<String> permissions = rolePermissionRepository.findAllowedPermissionCodes(activeRole.getRole().getRoleId());
 
+        LocalDateTime now = LocalDateTime.now();
         user.setFailedLoginCount(0);
         user.setLockedUntil(null);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(now);
         user.setLastLoginIp(RequestContextUtils.getClientIp());
         userAccountRepository.save(user);
 
@@ -126,20 +127,24 @@ public class AuthService {
         authSession.setBrowserName(request.browserName());
         authSession.setIpAddress(RequestContextUtils.getClientIp());
         authSession.setUserAgent(RequestContextUtils.getUserAgent());
-        authSession.setLoginAt(LocalDateTime.now());
-        authSession.setExpiresAt(LocalDateTime.now().plusDays(appProperties.getAuth().getRefreshTokenDays()));
+        authSession.setLoginAt(now);
+        authSession.setExpiresAt(now.plusDays(appProperties.getAuth().getRefreshTokenDays()));
         authSession.setStatus(SessionStatus.ACTIVE);
         authSessionRepository.save(authSession);
 
-        LoginResponse response = buildLoginResponse(user, activeRole, permissions, authSession.getAuthSessionId(), rawRefreshToken);
-        auditLogService.logSystemSuccess(user.getUsername(), "LOGIN", "AUTH", "sec_user_account", user.getUserId().toString(), null, response, "Đăng nhập thành công.");
-        return response;
+        AuthResult result = buildAuthResult(user, activeRole, permissions, authSession.getAuthSessionId(), rawRefreshToken);
+        auditLogService.logSystemSuccess(user.getUsername(), "LOGIN", "AUTH", "sec_user_account", user.getUserId().toString(), null, result.response(), "Đăng nhập thành công.");
+        return result;
     }
 
     @Transactional
-    public LoginResponse refresh(RefreshTokenRequest request) {
+    public AuthResult refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new UnauthorizedException("AUTH_REFRESH_INVALID", "Refresh token không hợp lệ.");
+        }
+
         SecAuthSession session = authSessionRepository.findByRefreshTokenHashAndStatus(
-                        HashUtils.sha256(request.refreshToken()),
+                        HashUtils.sha256(refreshToken),
                         SessionStatus.ACTIVE
                 )
                 .orElseThrow(() -> new UnauthorizedException("AUTH_REFRESH_INVALID", "Refresh token không hợp lệ."));
@@ -159,7 +164,7 @@ public class AuthService {
                 .orElseThrow(() -> new UnauthorizedException("AUTH_ROLE_NOT_FOUND", "Tài khoản chưa được gán role active."));
 
         List<String> permissions = rolePermissionRepository.findAllowedPermissionCodes(activeRole.getRole().getRoleId());
-        return buildLoginResponse(user, activeRole, permissions, session.getAuthSessionId(), request.refreshToken());
+        return buildAuthResult(user, activeRole, permissions, session.getAuthSessionId(), refreshToken);
     }
 
     @Transactional
@@ -307,7 +312,7 @@ public class AuthService {
         authSessionRepository.saveAll(sessions);
     }
 
-    private LoginResponse buildLoginResponse(
+    private AuthResult buildAuthResult(
             SecUserAccount user,
             SecUserRole activeRole,
             List<String> permissions,
@@ -323,10 +328,8 @@ public class AuthService {
                 permissions
         );
 
-        return new LoginResponse(
-                accessToken,
-                refreshToken,
-                "Bearer",
+        LoginResponse response = new LoginResponse(
+                "COOKIE",
                 appProperties.getAuth().getAccessTokenMinutes() * 60,
                 user.getUserId(),
                 user.getUsername(),
@@ -336,6 +339,8 @@ public class AuthService {
                 user.isMustChangePassword(),
                 resolveHomeRoute(activeRole.getRole().getRoleCode().name())
         );
+
+        return new AuthResult(response, accessToken, refreshToken);
     }
 
     private String resolveHomeRoute(String roleCode) {
