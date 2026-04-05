@@ -20,4 +20,6 @@ public interface HrOrgUnitRepository extends JpaRepository<HrOrgUnit, Long>, Jpa
     List<HrOrgUnit> findAllByPathCodeStartingWithAndDeletedFalseOrderByHierarchyLevelAscSortOrderAscOrgUnitNameAsc(String pathCodePrefix);
 
     List<HrOrgUnit> findAllByOrgUnitIdInAndDeletedFalseOrderByHierarchyLevelAscSortOrderAscOrgUnitNameAsc(Collection<Long> orgUnitIds);
+
+    Optional<HrOrgUnit> findByOrgUnitCodeIgnoreCaseAndDeletedFalse(String orgUnitCode);
 }

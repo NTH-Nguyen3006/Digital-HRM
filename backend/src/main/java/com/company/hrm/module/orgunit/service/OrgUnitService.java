@@ -1,6 +1,7 @@
 package com.company.hrm.module.orgunit.service;
 
 import com.company.hrm.common.constant.RecordStatus;
+import com.company.hrm.common.dto.ImportResultResponse;
 import com.company.hrm.common.exception.BusinessException;
 import com.company.hrm.common.exception.NotFoundException;
 import com.company.hrm.common.response.PageResponse;
@@ -12,6 +13,7 @@ import com.company.hrm.module.orgunit.dto.*;
 import com.company.hrm.module.orgunit.entity.HrOrgUnit;
 import com.company.hrm.module.orgunit.repository.HrOrgUnitRepository;
 import java.time.LocalDate;
+import java.util.stream.Collectors;
 import java.util.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -203,6 +205,74 @@ public class OrgUnitService {
         return response;
     }
 
+
+    @Transactional(readOnly = true)
+    public String exportCsv() {
+        List<OrgUnitExportRowResponse> rows = orgUnitRepository.findAllByDeletedFalseOrderByHierarchyLevelAscSortOrderAscOrgUnitNameAsc()
+                .stream()
+                .map(entity -> new OrgUnitExportRowResponse(
+                        entity.getOrgUnitCode(),
+                        entity.getParentOrgUnit() == null ? null : entity.getParentOrgUnit().getOrgUnitCode(),
+                        entity.getOrgUnitName(),
+                        entity.getOrgUnitType().name(),
+                        entity.getManagerEmployee() == null ? null : entity.getManagerEmployee().getEmployeeId(),
+                        entity.getSortOrder(),
+                        entity.getStatus().name(),
+                        entity.getEffectiveFrom(),
+                        entity.getEffectiveTo()
+                ))
+                .toList();
+        String header = "orgUnitCode,parentOrgUnitCode,orgUnitName,orgUnitType,managerEmployeeId,sortOrder,status,effectiveFrom,effectiveTo";
+        return header + "\n" + rows.stream()
+                .map(row -> String.join(",",
+                        csv(row.orgUnitCode()), csv(row.parentOrgUnitCode()), csv(row.orgUnitName()), csv(row.orgUnitType()),
+                        csv(row.managerEmployeeId()), csv(row.sortOrder()), csv(row.status()), csv(row.effectiveFrom()), csv(row.effectiveTo())))
+                .collect(Collectors.joining("\n"));
+    }
+
+    @Transactional
+    public ImportResultResponse importRows(List<OrgUnitImportRowRequest> requests) {
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
+        List<String> messages = new ArrayList<>();
+
+        for (OrgUnitImportRowRequest request : requests) {
+            try {
+                validateEffectiveRange(request.effectiveFrom(), request.effectiveTo());
+                HrOrgUnit parent = request.parentOrgUnitCode() == null || request.parentOrgUnitCode().isBlank()
+                        ? null
+                        : orgUnitRepository.findByOrgUnitCodeIgnoreCaseAndDeletedFalse(request.parentOrgUnitCode().trim())
+                        .orElseThrow(() -> new BusinessException("ORG_UNIT_PARENT_NOT_FOUND", "parentOrgUnitCode không tồn tại: " + request.parentOrgUnitCode(), HttpStatus.BAD_REQUEST));
+                HrEmployee manager = request.managerEmployeeId() == null ? null : getEmployee(request.managerEmployeeId());
+                HrOrgUnit entity = orgUnitRepository.findByOrgUnitCodeIgnoreCaseAndDeletedFalse(request.orgUnitCode().trim()).orElse(null);
+                boolean isCreate = entity == null;
+                if (isCreate) {
+                    entity = new HrOrgUnit();
+                    entity.setOrgUnitCode(normalizeCode(request.orgUnitCode()));
+                }
+                entity.setParentOrgUnit(parent);
+                entity.setOrgUnitName(request.orgUnitName().trim());
+                entity.setOrgUnitType(request.orgUnitType());
+                entity.setManagerEmployee(manager);
+                entity.setHierarchyLevel(parent == null ? 1 : parent.getHierarchyLevel() + 1);
+                entity.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+                entity.setStatus(request.status());
+                entity.setEffectiveFrom(request.effectiveFrom());
+                entity.setEffectiveTo(request.effectiveTo());
+                entity = orgUnitRepository.save(entity);
+                entity.setPathCode(buildPathCode(parent, entity.getOrgUnitCode()));
+                orgUnitRepository.save(entity);
+                if (isCreate) created++; else updated++;
+            } catch (RuntimeException ex) {
+                skipped++;
+                messages.add(request.orgUnitCode() + ": " + ex.getMessage());
+            }
+        }
+        auditLogService.logSuccess("IMPORT", "ORG_UNIT", "hr_org_unit", null, null, Map.of("totalRows", requests.size(), "created", created, "updated", updated, "skipped", skipped), "Import cơ cấu tổ chức.");
+        return new ImportResultResponse(requests.size(), created, updated, skipped, messages);
+    }
+
     private void rebuildDescendantPaths(String oldPrefix, String newPrefix) {
         List<HrOrgUnit> descendants = orgUnitRepository.findAll((root, query, builder) -> builder.and(
                 builder.isFalse(root.get("deleted")),
@@ -226,6 +296,12 @@ public class OrgUnitService {
     private String buildPathCode(HrOrgUnit parent, String orgUnitCode) {
         String normalized = normalizeCode(orgUnitCode);
         return parent == null ? "/" + normalized + "/" : parent.getPathCode() + normalized + "/";
+    }
+
+    private String csv(Object value) {
+        if (value == null) return "";
+        String raw = String.valueOf(value).replace("\"", "\"\"");
+        return "\"" + raw + "\"";
     }
 
     private String normalizeCode(String code) {
