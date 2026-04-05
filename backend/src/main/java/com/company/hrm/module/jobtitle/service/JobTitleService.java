@@ -1,6 +1,7 @@
 package com.company.hrm.module.jobtitle.service;
 
 import com.company.hrm.common.constant.RecordStatus;
+import com.company.hrm.common.dto.ImportResultResponse;
 import com.company.hrm.common.exception.BusinessException;
 import com.company.hrm.common.exception.NotFoundException;
 import com.company.hrm.common.response.PageResponse;
@@ -9,6 +10,10 @@ import com.company.hrm.module.employee.repository.HrEmployeeRepository;
 import com.company.hrm.module.jobtitle.dto.*;
 import com.company.hrm.module.jobtitle.entity.HrJobTitle;
 import com.company.hrm.module.jobtitle.repository.HrJobTitleRepository;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -110,9 +115,56 @@ public class JobTitleService {
         return response;
     }
 
+
+    @Transactional(readOnly = true)
+    public String exportCsv() {
+        List<JobTitleExportRowResponse> rows = jobTitleRepository.findAll((root, query, builder) -> builder.isFalse(root.get("deleted")), Sort.by("sortOrder", "jobTitleName"))
+                .stream()
+                .map(entity -> new JobTitleExportRowResponse(entity.getJobTitleCode(), entity.getJobTitleName(), entity.getJobLevelCode(), entity.getDescription(), entity.getSortOrder(), entity.getStatus().name()))
+                .toList();
+        String header = "jobTitleCode,jobTitleName,jobLevelCode,description,sortOrder,status";
+        return header + "\n" + rows.stream().map(row -> String.join(",", csv(row.jobTitleCode()), csv(row.jobTitleName()), csv(row.jobLevelCode()), csv(row.description()), csv(row.sortOrder()), csv(row.status()))).collect(Collectors.joining("\n"));
+    }
+
+    @Transactional
+    public ImportResultResponse importRows(List<JobTitleImportRowRequest> requests) {
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
+        List<String> messages = new ArrayList<>();
+        for (JobTitleImportRowRequest request : requests) {
+            try {
+                HrJobTitle entity = jobTitleRepository.findByJobTitleCodeIgnoreCaseAndDeletedFalse(request.jobTitleCode().trim()).orElse(null);
+                boolean isCreate = entity == null;
+                if (isCreate) {
+                    entity = new HrJobTitle();
+                    entity.setJobTitleCode(normalizeCode(request.jobTitleCode()));
+                }
+                entity.setJobTitleName(request.jobTitleName().trim());
+                entity.setJobLevelCode(blankToNull(request.jobLevelCode()));
+                entity.setDescription(blankToNull(request.description()));
+                entity.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+                entity.setStatus(request.status());
+                jobTitleRepository.save(entity);
+                if (isCreate) created++; else updated++;
+            } catch (RuntimeException ex) {
+                skipped++;
+                messages.add(request.jobTitleCode() + ": " + ex.getMessage());
+            }
+        }
+        auditLogService.logSuccess("IMPORT", "JOB_TITLE", "hr_job_title", null, null, Map.of("totalRows", requests.size(), "created", created, "updated", updated, "skipped", skipped), "Import chức danh.");
+        return new ImportResultResponse(requests.size(), created, updated, skipped, messages);
+    }
+
     private HrJobTitle getJobTitle(Long jobTitleId) {
         return jobTitleRepository.findByJobTitleIdAndDeletedFalse(jobTitleId)
                 .orElseThrow(() -> new NotFoundException("JOB_TITLE_NOT_FOUND", "Không tìm thấy chức danh."));
+    }
+
+    private String csv(Object value) {
+        if (value == null) return "";
+        String raw = String.valueOf(value).replace("\"", "\"\"");
+        return "\"" + raw + "\"";
     }
 
     private String normalizeCode(String value) {
