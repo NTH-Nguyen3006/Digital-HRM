@@ -8,7 +8,8 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    allowedHosts: ['all', '6d6b-116-111-184-231.ngrok-free.app'],
+    // allowedHosts: ['all'],
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
