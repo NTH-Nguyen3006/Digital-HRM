@@ -1,5 +1,8 @@
 package com.company.hrm.module.employee.dto;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 public record EmployeeProfileResponse(
         Long employeeProfileId,
         Long employeeId,
@@ -13,6 +16,12 @@ public record EmployeeProfileResponse(
         String religion,
         String educationLevel,
         String major,
-        String emergencyNote
+        String emergencyNote,
+        String profileStatus,
+        String lockedReason,
+        LocalDateTime lockedAt,
+        UUID lockedBy,
+        LocalDateTime restoredAt,
+        UUID restoredBy
 ) {
 }
