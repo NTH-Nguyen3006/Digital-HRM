@@ -10,9 +10,13 @@ public final class HashUtils {
     }
 
     public static String sha256(String rawValue) {
+        return sha256(rawValue.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static String sha256(byte[] rawValue) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(rawValue.getBytes(StandardCharsets.UTF_8));
+            byte[] hashed = digest.digest(rawValue);
             StringBuilder builder = new StringBuilder();
             for (byte item : hashed) {
                 builder.append(String.format("%02x", item));
