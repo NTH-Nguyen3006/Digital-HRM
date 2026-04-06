@@ -30,16 +30,28 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
-        return ApiResponse.success("AUTH_LOGIN_SUCCESS", "Đăng nhập thành công.", response, null,
+    public ApiResponse<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse httpServletResponse) {
+        AuthResult result = authService.login(request);
+        authCookieService.writeAuthenticationCookies(httpServletResponse, result.accessToken(), result.refreshToken());
+        return ApiResponse.success("AUTH_LOGIN_SUCCESS", "Đăng nhập thành công.", result.response(), null,
                 RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        LoginResponse response = authService.refresh(request);
-        return ApiResponse.success("AUTH_REFRESH_SUCCESS", "Làm mới access token thành công.", response, null,
+    public ApiResponse<LoginResponse> refresh(
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse) {
+        String refreshToken = authCookieService.resolveRefreshToken(httpServletRequest);
+        if ((refreshToken == null || refreshToken.isBlank()) && request != null) {
+            refreshToken = request.refreshToken();
+        }
+
+        AuthResult result = authService.refresh(refreshToken);
+        authCookieService.writeAuthenticationCookies(httpServletResponse, result.accessToken(), result.refreshToken());
+        return ApiResponse.success("AUTH_REFRESH_SUCCESS", "Làm mới access token thành công.", result.response(), null,
                 RequestTraceContext.getTraceId());
     }
 
@@ -71,6 +83,7 @@ public class AuthController {
             @Valid @RequestBody ChangePasswordRequest request,
             HttpServletResponse httpServletResponse) {
         authService.changePassword(request);
+        authCookieService.clearAuthenticationCookies(httpServletResponse);
         return ApiResponse.success("AUTH_CHANGE_PASSWORD_SUCCESS", "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.",
                 RequestTraceContext.getTraceId());
     }
