@@ -80,8 +80,7 @@ public class AuthService {
 
                 if (user == null || user.isDeleted()) {
                         auditLogService.logSystemFailure(request.loginId(), "LOGIN_FAILED", "AUTH", "sec_user_account",
-                                        null, null,
-                                        null, "Không tìm thấy user.");
+                                        null, null, null, "Không tìm thấy user.");
                         throw new UnauthorizedException("AUTH_INVALID_CREDENTIALS",
                                         "Thông tin đăng nhập không chính xác.");
                 }
@@ -109,9 +108,8 @@ public class AuthService {
                 }
 
                 SecUserRole activeRole = userRoleRepository.findActivePrimaryRole(user.getUserId(), LocalDateTime.now())
-                                .orElseThrow(
-                                                () -> new UnauthorizedException("AUTH_ROLE_NOT_FOUND",
-                                                                "Tài khoản chưa được gán role active."));
+                                .orElseThrow(() -> new UnauthorizedException("AUTH_ROLE_NOT_FOUND",
+                                                "Tài khoản chưa được gán role active."));
 
                 if (activeRole.getRole().getStatus() != RecordStatus.ACTIVE) {
                         throw new UnauthorizedException("AUTH_ROLE_INACTIVE",
@@ -142,12 +140,11 @@ public class AuthService {
                 authSession.setStatus(SessionStatus.ACTIVE);
                 authSessionRepository.save(authSession);
 
-                LoginResponse response = buildLoginResponse(user, activeRole, permissions,
-                                authSession.getAuthSessionId(),
+                AuthResult result = buildAuthResult(user, activeRole, permissions, authSession.getAuthSessionId(),
                                 rawRefreshToken);
                 auditLogService.logSystemSuccess(user.getUsername(), "LOGIN", "AUTH", "sec_user_account",
-                                user.getUserId().toString(), null, response, "Đăng nhập thành công.");
-                return response;
+                                user.getUserId().toString(), null, result.response(), "Đăng nhập thành công.");
+                return result;
         }
 
         @Transactional
@@ -157,7 +154,7 @@ public class AuthService {
                 }
 
                 SecAuthSession session = authSessionRepository.findByRefreshTokenHashAndStatus(
-                                HashUtils.sha256(request.refreshToken()),
+                                HashUtils.sha256(refreshToken),
                                 SessionStatus.ACTIVE)
                                 .orElseThrow(() -> new UnauthorizedException("AUTH_REFRESH_INVALID",
                                                 "Refresh token không hợp lệ."));
@@ -174,14 +171,12 @@ public class AuthService {
                 }
 
                 SecUserRole activeRole = userRoleRepository.findActivePrimaryRole(user.getUserId(), LocalDateTime.now())
-                                .orElseThrow(
-                                                () -> new UnauthorizedException("AUTH_ROLE_NOT_FOUND",
-                                                                "Tài khoản chưa được gán role active."));
+                                .orElseThrow(() -> new UnauthorizedException("AUTH_ROLE_NOT_FOUND",
+                                                "Tài khoản chưa được gán role active."));
 
                 List<String> permissions = rolePermissionRepository
                                 .findAllowedPermissionCodes(activeRole.getRole().getRoleId());
-                return buildLoginResponse(user, activeRole, permissions, session.getAuthSessionId(),
-                                request.refreshToken());
+                return buildAuthResult(user, activeRole, permissions, session.getAuthSessionId(), refreshToken);
         }
 
         @Transactional
@@ -230,8 +225,7 @@ public class AuthService {
                 String resetLink = appProperties.getMail().getResetUrlBase() + "?token=" + rawToken;
                 mailService.sendPasswordResetMail(user.getEmail(), user.getUsername(), resetLink);
                 auditLogService.logSystemSuccess(user.getUsername(), "FORGOT_PASSWORD", "AUTH",
-                                "sec_password_reset_token",
-                                token.getPasswordResetTokenId().toString(), null, null,
+                                "sec_password_reset_token", token.getPasswordResetTokenId().toString(), null, null,
                                 "Phát hành reset token qua email.");
         }
 
@@ -242,8 +236,7 @@ public class AuthService {
                 SecPasswordResetToken token = passwordResetTokenRepository
                                 .findByTokenHashAndStatus(HashUtils.sha256(request.token()), ResetTokenStatus.PENDING)
                                 .orElseThrow(() -> new BusinessException("RESET_TOKEN_INVALID",
-                                                "Token reset không hợp lệ.",
-                                                HttpStatus.BAD_REQUEST));
+                                                "Token reset không hợp lệ.", HttpStatus.BAD_REQUEST));
 
                 if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
                         token.setStatus(ResetTokenStatus.EXPIRED);
@@ -277,15 +270,13 @@ public class AuthService {
                 PasswordPolicyValidator.validate(request.newPassword(), request.confirmPassword());
 
                 UUID userId = SecurityUserContext.getCurrentUserId()
-                                .orElseThrow(
-                                                () -> new UnauthorizedException("AUTH_USER_NOT_FOUND",
-                                                                "Không tìm thấy người dùng hiện tại."));
+                                .orElseThrow(() -> new UnauthorizedException("AUTH_USER_NOT_FOUND",
+                                                "Không tìm thấy người dùng hiện tại."));
 
                 SecUserAccount user = userAccountRepository.findById(userId)
                                 .filter(account -> !account.isDeleted())
-                                .orElseThrow(
-                                                () -> new UnauthorizedException("AUTH_USER_NOT_FOUND",
-                                                                "Không tìm thấy người dùng hiện tại."));
+                                .orElseThrow(() -> new UnauthorizedException("AUTH_USER_NOT_FOUND",
+                                                "Không tìm thấy người dùng hiện tại."));
 
                 if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
                         throw new BusinessException("CURRENT_PASSWORD_INVALID", "Mật khẩu hiện tại không chính xác.",
@@ -372,6 +363,8 @@ public class AuthService {
                                 permissions,
                                 user.isMustChangePassword(),
                                 resolveHomeRoute(activeRole.getRole().getRoleCode().name()));
+
+                return new AuthResult(response, accessToken, refreshToken);
         }
 
         private String resolveHomeRoute(String roleCode) {

@@ -1,5 +1,12 @@
 package com.company.hrm.module.portal.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.company.hrm.common.constant.AttendanceAdjustmentStatus;
 import com.company.hrm.common.constant.LeaveRequestStatus;
 import com.company.hrm.common.constant.PayrollItemStatus;
@@ -8,16 +15,20 @@ import com.company.hrm.common.constant.PortalTaskStatus;
 import com.company.hrm.common.constant.RecordStatus;
 import com.company.hrm.common.exception.ForbiddenException;
 import com.company.hrm.common.exception.NotFoundException;
-import com.company.hrm.module.attendance.dto.*;
+import com.company.hrm.module.attendance.dto.AttendanceAdjustmentDetailResponse;
+import com.company.hrm.module.attendance.dto.AttendanceAdjustmentListItemResponse;
+import com.company.hrm.module.attendance.dto.AttendanceLogResponse;
+import com.company.hrm.module.attendance.dto.CreateAttendanceAdjustmentRequest;
+import com.company.hrm.module.attendance.dto.OvertimeListItemResponse;
 import com.company.hrm.module.attendance.service.AttendanceService;
 import com.company.hrm.module.contract.dto.LaborContractListItemResponse;
 import com.company.hrm.module.contract.repository.CtLaborContractRepository;
 import com.company.hrm.module.contract.service.LaborContractService;
 import com.company.hrm.module.employee.dto.EmployeeDetailResponse;
 import com.company.hrm.module.employee.dto.EmployeeProfileResponse;
-import com.company.hrm.module.employee.entity.HrEmployee;
 import com.company.hrm.module.employee.dto.ProfileChangeRequestResponse;
 import com.company.hrm.module.employee.dto.SubmitProfileChangeRequest;
+import com.company.hrm.module.employee.entity.HrEmployee;
 import com.company.hrm.module.employee.service.EmployeeProfileWorkflowService;
 import com.company.hrm.module.employee.service.EmployeeService;
 import com.company.hrm.module.leave.dto.CreateLeaveRequestRequest;
@@ -28,16 +39,16 @@ import com.company.hrm.module.offboarding.service.OffboardingAccessScopeService;
 import com.company.hrm.module.payroll.dto.PayrollItemResponse;
 import com.company.hrm.module.payroll.dto.SelfPayslipListItemResponse;
 import com.company.hrm.module.payroll.service.PayrollService;
-import com.company.hrm.module.portal.dto.*;
+import com.company.hrm.module.portal.dto.PortalAttendanceOverviewResponse;
+import com.company.hrm.module.portal.dto.PortalContractOverviewResponse;
+import com.company.hrm.module.portal.dto.PortalDashboardResponse;
+import com.company.hrm.module.portal.dto.PortalInboxItemResponse;
+import com.company.hrm.module.portal.dto.PortalLeaveOverviewResponse;
+import com.company.hrm.module.portal.dto.PortalPayrollOverviewResponse;
+import com.company.hrm.module.portal.dto.PortalProfileResponse;
 import com.company.hrm.module.portal.entity.PorPortalInboxItem;
 import com.company.hrm.module.portal.repository.PorPortalInboxItemRepository;
 import com.company.hrm.module.user.entity.SecUserAccount;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PortalService {
@@ -61,8 +72,7 @@ public class PortalService {
             PayrollService payrollService,
             LaborContractService laborContractService,
             CtLaborContractRepository laborContractRepository,
-            PorPortalInboxItemRepository portalInboxItemRepository
-    ) {
+            PorPortalInboxItemRepository portalInboxItemRepository) {
         this.accessScopeService = accessScopeService;
         this.employeeService = employeeService;
         this.employeeProfileWorkflowService = employeeProfileWorkflowService;
@@ -84,14 +94,18 @@ public class PortalService {
         List<AttendanceAdjustmentListItemResponse> adjustmentRequests = attendanceService.listMyAdjustmentRequests();
         List<SelfPayslipListItemResponse> payslips = payrollService.listMyPayslips();
 
-        long unreadInboxCount = portalInboxItemRepository.countByUserUserIdAndDeletedFalseAndReadAtIsNullAndStatus(user.getUserId(), RecordStatus.ACTIVE);
-        long openPortalTaskCount = portalInboxItemRepository.countByUserUserIdAndDeletedFalseAndItemTypeAndTaskStatusAndStatus(user.getUserId(), PortalInboxItemType.TASK, PortalTaskStatus.OPEN, RecordStatus.ACTIVE);
+        long unreadInboxCount = portalInboxItemRepository
+                .countByUserUserIdAndDeletedFalseAndReadAtIsNullAndStatus(user.getUserId(), RecordStatus.ACTIVE);
+        long openPortalTaskCount = portalInboxItemRepository
+                .countByUserUserIdAndDeletedFalseAndItemTypeAndTaskStatusAndStatus(user.getUserId(),
+                        PortalInboxItemType.TASK, PortalTaskStatus.OPEN, RecordStatus.ACTIVE);
 
         long pendingLeaveRequestCount = leaveRequests.stream()
                 .filter(item -> item.requestStatus() != null)
                 .filter(item -> {
                     LeaveRequestStatus status = LeaveRequestStatus.valueOf(item.requestStatus());
-                    return status == LeaveRequestStatus.DRAFT || status == LeaveRequestStatus.SUBMITTED || status == LeaveRequestStatus.APPROVED;
+                    return status == LeaveRequestStatus.DRAFT || status == LeaveRequestStatus.SUBMITTED
+                            || status == LeaveRequestStatus.APPROVED;
                 }).count();
         long pendingAttendanceAdjustmentCount = adjustmentRequests.stream()
                 .filter(item -> item.requestStatus() != null)
@@ -102,7 +116,8 @@ public class PortalService {
                             || status == AttendanceAdjustmentStatus.APPROVED;
                 }).count();
         long publishedPayslipCount = payslips.stream()
-                .filter(item -> item.itemStatus() != null && PayrollItemStatus.valueOf(item.itemStatus()) == PayrollItemStatus.PUBLISHED)
+                .filter(item -> item.itemStatus() != null
+                        && PayrollItemStatus.valueOf(item.itemStatus()) == PayrollItemStatus.PUBLISHED)
                 .count();
         BigDecimal totalAvailableLeaveUnits = balances.stream()
                 .map(LeaveBalanceResponse::availableUnits)
@@ -122,8 +137,7 @@ public class PortalService {
                 pendingLeaveRequestCount,
                 pendingAttendanceAdjustmentCount,
                 publishedPayslipCount,
-                totalAvailableLeaveUnits
-        );
+                totalAvailableLeaveUnits);
     }
 
     @Transactional(readOnly = true)
@@ -167,14 +181,16 @@ public class PortalService {
     }
 
     @Transactional
-    public AttendanceAdjustmentDetailResponse createAttendanceAdjustmentFromPortal(CreateAttendanceAdjustmentRequest request) {
+    public AttendanceAdjustmentDetailResponse createAttendanceAdjustmentFromPortal(
+            CreateAttendanceAdjustmentRequest request) {
         return attendanceService.createAdjustmentRequest(request);
     }
 
     @Transactional(readOnly = true)
     public PortalContractOverviewResponse getContractOverview() {
         HrEmployee employee = accessScopeService.getCurrentEmployeeRequired();
-        List<LaborContractListItemResponse> items = laborContractService.list(null, employee.getEmployeeId(), null, null, null, 0, 50).items();
+        List<LaborContractListItemResponse> items = laborContractService
+                .list(null, employee.getEmployeeId(), null, null, null, 0, 50).items();
         return new PortalContractOverviewResponse(items);
     }
 
@@ -182,7 +198,8 @@ public class PortalService {
     public String exportMyContract(Long laborContractId) {
         HrEmployee employee = accessScopeService.getCurrentEmployeeRequired();
         boolean owned = laborContractRepository.findByLaborContractIdAndDeletedFalse(laborContractId)
-                .map(contract -> contract.getEmployee() != null && contract.getEmployee().getEmployeeId().equals(employee.getEmployeeId()))
+                .map(contract -> contract.getEmployee() != null
+                        && contract.getEmployee().getEmployeeId().equals(employee.getEmployeeId()))
                 .orElse(false);
         if (!owned) {
             throw new ForbiddenException("PORTAL_CONTRACT_SCOPE_DENIED", "Bạn chỉ được xem hợp đồng của chính mình.");
@@ -203,7 +220,8 @@ public class PortalService {
     @Transactional(readOnly = true)
     public List<PortalInboxItemResponse> listInbox() {
         SecUserAccount user = accessScopeService.getCurrentUserRequired();
-        return portalInboxItemRepository.findAllByUserUserIdAndDeletedFalseOrderByCreatedAtDescPortalInboxItemIdDesc(user.getUserId())
+        return portalInboxItemRepository
+                .findAllByUserUserIdAndDeletedFalseOrderByCreatedAtDescPortalInboxItemIdDesc(user.getUserId())
                 .stream()
                 .map(this::toInboxResponse)
                 .toList();
@@ -215,7 +233,8 @@ public class PortalService {
         PorPortalInboxItem item = portalInboxItemRepository.findByPortalInboxItemIdAndDeletedFalse(portalInboxItemId)
                 .orElseThrow(() -> new NotFoundException("PORTAL_INBOX_ITEM_NOT_FOUND", "Không tìm thấy inbox item."));
         if (!item.getUser().getUserId().equals(user.getUserId())) {
-            throw new ForbiddenException("PORTAL_INBOX_SCOPE_DENIED", "Bạn chỉ được thao tác trên inbox của chính mình.");
+            throw new ForbiddenException("PORTAL_INBOX_SCOPE_DENIED",
+                    "Bạn chỉ được thao tác trên inbox của chính mình.");
         }
         if (item.getReadAt() == null) {
             item.setReadAt(java.time.LocalDateTime.now());
@@ -238,7 +257,6 @@ public class PortalService {
                 item.getTaskStatus() == null ? null : item.getTaskStatus().name(),
                 item.getCompletedAt(),
                 item.getStatus() == null ? null : item.getStatus().name(),
-                item.getCreatedAt()
-        );
+                item.getCreatedAt());
     }
 }
