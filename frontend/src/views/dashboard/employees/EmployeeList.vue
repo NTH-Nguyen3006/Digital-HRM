@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { Plus, Search, MoreVertical, Mail, Phone, Filter } from 'lucide-vue-next'

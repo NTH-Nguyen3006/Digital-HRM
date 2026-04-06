@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import {
   Settings, Bell, Shield, Monitor, Palette,
@@ -76,8 +75,7 @@ const saveSettings = () => {
         <!-- Sidebar Navigation -->
         <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-4 h-fit">
           <nav class="space-y-1">
-            <button v-for="sec in sections" :key="sec.key"
-              @click="activeSection = sec.key"
+            <button v-for="sec in sections" :key="sec.key" @click="activeSection = sec.key"
               class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-sm font-bold text-left"
               :class="activeSection === sec.key
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
@@ -99,19 +97,22 @@ const saveSettings = () => {
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Tên công ty / Hệ thống</label>
-                  <input v-model="platform.companyName" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+                  <input v-model="platform.companyName"
+                    class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-bold text-slate-700 mb-1.5">Múi giờ</label>
-                    <select v-model="platform.systemTimezone" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    <select v-model="platform.systemTimezone"
+                      class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
                       <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh (UTC+7)</option>
                       <option value="UTC">UTC</option>
                     </select>
                   </div>
                   <div>
                     <label class="block text-sm font-bold text-slate-700 mb-1.5">Định dạng ngày</label>
-                    <select v-model="platform.dateFormat" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    <select v-model="platform.dateFormat"
+                      class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
                       <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                       <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                       <option value="YYYY-MM-DD">YYYY-MM-DD</option>
@@ -120,7 +121,8 @@ const saveSettings = () => {
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Ngôn ngữ mặc định</label>
-                  <select v-model="platform.defaultLanguage" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                  <select v-model="platform.defaultLanguage"
+                    class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
                     <option value="vi">Tiếng Việt</option>
                     <option value="en">English</option>
                   </select>
@@ -144,7 +146,8 @@ const saveSettings = () => {
               </div>
               <div v-if="platform.maintenanceMode">
                 <label class="block text-sm font-bold text-slate-700 mb-1.5">Thông báo bảo trì</label>
-                <textarea v-model="platform.maintenanceMessage" rows="3" placeholder="Hệ thống đang bảo trì, vui lòng quay lại sau..."
+                <textarea v-model="platform.maintenanceMessage" rows="3"
+                  placeholder="Hệ thống đang bảo trì, vui lòng quay lại sau..."
                   class="w-full px-4 py-2.5 border border-rose-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 resize-none bg-rose-50"></textarea>
               </div>
             </div>
@@ -169,9 +172,9 @@ const saveSettings = () => {
                 </div>
                 <div class="space-y-3">
                   <div v-for="rule in [
-                    {key:'requireUppercase', label:'Yêu cầu chữ hoa (A-Z)'},
-                    {key:'requireNumber', label:'Yêu cầu chữ số (0-9)'},
-                    {key:'requireSpecialChar', label:'Yêu cầu ký tự đặc biệt (!@#$...)'},
+                    { key: 'requireUppercase', label: 'Yêu cầu chữ hoa (A-Z)' },
+                    { key: 'requireNumber', label: 'Yêu cầu chữ số (0-9)' },
+                    { key: 'requireSpecialChar', label: 'Yêu cầu ký tự đặc biệt (!@#$...)' },
                   ]" :key="rule.key" class="flex items-center justify-between">
                     <span class="text-sm font-bold text-slate-700">{{ rule.label }}</span>
                     <button @click="platform[rule.key] = !platform[rule.key]"
@@ -219,7 +222,8 @@ const saveSettings = () => {
           <!-- Notifications -->
           <div v-if="activeSection === 'notifications'" class="space-y-4">
             <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-              <h3 class="font-black text-slate-900 text-lg mb-6 pb-3 border-b border-slate-100">Luồng thông báo tự động</h3>
+              <h3 class="font-black text-slate-900 text-lg mb-6 pb-3 border-b border-slate-100">Luồng thông báo tự động
+              </h3>
               <div class="space-y-4">
                 <div v-for="notif in notifications" :key="notif.key"
                   class="flex items-center justify-between p-4 rounded-2xl border transition-colors"
@@ -263,7 +267,8 @@ const saveSettings = () => {
                   </div>
                   <div class="flex items-center gap-3">
                     <span class="text-xs text-slate-400">Cập nhật: {{ tpl.lastModified }}</span>
-                    <button class="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors">
+                    <button
+                      class="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors">
                       Chỉnh sửa
                     </button>
                   </div>

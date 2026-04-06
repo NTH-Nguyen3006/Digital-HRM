@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import {
   Plus, Search, MoreVertical, ShieldCheck, ShieldOff,
@@ -121,8 +120,7 @@ const stats = computed(() => ({
             class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm" />
         </div>
         <div class="flex gap-2">
-          <button v-for="f in ['ALL', 'ACTIVE', 'INACTIVE']" :key="f"
-            @click="filterStatus = f"
+          <button v-for="f in ['ALL', 'ACTIVE', 'INACTIVE']" :key="f" @click="filterStatus = f"
             class="px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
             :class="filterStatus === f ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'">
             {{ f === 'ALL' ? 'Tất cả' : f === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu' }}
@@ -146,11 +144,11 @@ const stats = computed(() => ({
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr v-for="user in filteredUsers" :key="user.id"
-                class="hover:bg-slate-50/50 transition-colors group cursor-pointer"
-                @click="viewUser(user)">
+                class="hover:bg-slate-50/50 transition-colors group cursor-pointer" @click="viewUser(user)">
                 <td class="py-4 px-6">
                   <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold text-sm shadow-sm"
+                    <div
+                      class="w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold text-sm shadow-sm"
                       :class="user.status === 'ACTIVE' ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600' : 'bg-slate-300'">
                       {{ user.fullName.split(' ').pop().charAt(0) }}
                     </div>
@@ -161,7 +159,8 @@ const stats = computed(() => ({
                   </div>
                 </td>
                 <td class="py-4 px-6">
-                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset" :class="roleColor(user.role)">
+                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
+                    :class="roleColor(user.role)">
                     {{ user.roleLabel }}
                   </span>
                 </td>
@@ -169,7 +168,8 @@ const stats = computed(() => ({
                   <div class="flex items-center space-x-2">
                     <div class="w-2 h-2 rounded-full"
                       :class="user.status === 'ACTIVE' && !user.locked ? 'bg-emerald-500' : 'bg-rose-400'"></div>
-                    <span class="text-sm font-semibold" :class="user.status === 'ACTIVE' && !user.locked ? 'text-emerald-700' : 'text-rose-600'">
+                    <span class="text-sm font-semibold"
+                      :class="user.status === 'ACTIVE' && !user.locked ? 'text-emerald-700' : 'text-rose-600'">
                       {{ user.locked ? 'Bị khóa' : user.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu' }}
                     </span>
                   </div>
@@ -189,13 +189,18 @@ const stats = computed(() => ({
                 </td>
                 <td class="py-4 px-6 text-right" @click.stop>
                   <div class="flex items-center justify-end gap-1">
-                    <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Chỉnh sửa">
+                    <button
+                      class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      title="Chỉnh sửa">
                       <Edit class="w-4 h-4" />
                     </button>
-                    <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Khóa tài khoản">
+                    <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Khóa tài khoản">
                       <Lock class="w-4 h-4" />
                     </button>
-                    <button class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Reset mật khẩu">
+                    <button
+                      class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                      title="Reset mật khẩu">
                       <RefreshCw class="w-4 h-4" />
                     </button>
                   </div>
@@ -205,11 +210,16 @@ const stats = computed(() => ({
           </table>
         </div>
         <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-          <span class="text-sm text-slate-500 font-medium">Hiển thị {{ filteredUsers.length }} / {{ users.length }} tài khoản</span>
+          <span class="text-sm text-slate-500 font-medium">Hiển thị {{ filteredUsers.length }} / {{ users.length }} tài
+            khoản</span>
           <div class="flex items-center gap-2">
-            <button class="px-3 py-1.5 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40">← Trước</button>
+            <button
+              class="px-3 py-1.5 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40">←
+              Trước</button>
             <button class="px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-600 text-white">1</button>
-            <button class="px-3 py-1.5 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Sau →</button>
+            <button
+              class="px-3 py-1.5 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Sau
+              →</button>
           </div>
         </div>
       </div>
@@ -255,7 +265,8 @@ const stats = computed(() => ({
               </select>
             </div>
             <div class="flex items-center gap-3 p-4 bg-indigo-50 rounded-xl">
-              <input type="checkbox" v-model="newUser.sendSetupEmail" id="sendEmail" class="w-4 h-4 accent-indigo-600" />
+              <input type="checkbox" v-model="newUser.sendSetupEmail" id="sendEmail"
+                class="w-4 h-4 accent-indigo-600" />
               <label for="sendEmail" class="text-sm font-bold text-slate-700">
                 Gửi email thiết lập mật khẩu cho người dùng
               </label>
@@ -266,7 +277,8 @@ const stats = computed(() => ({
               class="flex-1 py-3 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
               Hủy
             </button>
-            <button class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+            <button
+              class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
               Tạo tài khoản
             </button>
           </div>
@@ -284,13 +296,15 @@ const stats = computed(() => ({
             <button @click="showDetail = false" class="p-2 hover:bg-slate-100 rounded-xl text-slate-500">✕</button>
           </div>
           <div class="flex flex-col items-center mb-8">
-            <div class="w-20 h-20 rounded-2xl text-white flex items-center justify-center font-black text-2xl mb-4 shadow-lg"
+            <div
+              class="w-20 h-20 rounded-2xl text-white flex items-center justify-center font-black text-2xl mb-4 shadow-lg"
               :class="selectedUser.status === 'ACTIVE' ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600' : 'bg-slate-300'">
               {{ selectedUser.fullName.split(' ').pop().charAt(0) }}
             </div>
             <h4 class="text-2xl font-black text-slate-900">{{ selectedUser.fullName }}</h4>
             <p class="text-slate-400 font-medium">@{{ selectedUser.username }}</p>
-            <span class="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset" :class="roleColor(selectedUser.role)">
+            <span class="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
+              :class="roleColor(selectedUser.role)">
               {{ selectedUser.roleLabel }}
             </span>
           </div>
@@ -305,7 +319,8 @@ const stats = computed(() => ({
             </div>
             <div class="flex justify-between py-3 border-b border-slate-100">
               <span class="text-sm font-bold text-slate-500">Trạng thái</span>
-              <span class="text-sm font-bold" :class="selectedUser.status === 'ACTIVE' ? 'text-emerald-600' : 'text-rose-600'">
+              <span class="text-sm font-bold"
+                :class="selectedUser.status === 'ACTIVE' ? 'text-emerald-600' : 'text-rose-600'">
                 {{ selectedUser.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu' }}
               </span>
             </div>
@@ -321,17 +336,21 @@ const stats = computed(() => ({
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3 mt-8">
-            <button class="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-600 rounded-xl font-bold text-sm hover:bg-amber-100 transition-colors">
+            <button
+              class="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-600 rounded-xl font-bold text-sm hover:bg-amber-100 transition-colors">
               <Lock class="w-4 h-4" />
               {{ selectedUser.locked ? 'Mở khóa' : 'Khóa tài khoản' }}
             </button>
-            <button class="flex items-center justify-center gap-2 p-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors">
+            <button
+              class="flex items-center justify-center gap-2 p-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors">
               <RefreshCw class="w-4 h-4" /> Reset mật khẩu
             </button>
-            <button class="flex items-center justify-center gap-2 p-3 bg-sky-50 text-sky-600 rounded-xl font-bold text-sm hover:bg-sky-100 transition-colors">
+            <button
+              class="flex items-center justify-center gap-2 p-3 bg-sky-50 text-sky-600 rounded-xl font-bold text-sm hover:bg-sky-100 transition-colors">
               <Edit class="w-4 h-4" /> Chỉnh sửa
             </button>
-            <button class="flex items-center justify-center gap-2 p-3 bg-purple-50 text-purple-600 rounded-xl font-bold text-sm hover:bg-purple-100 transition-colors">
+            <button
+              class="flex items-center justify-center gap-2 p-3 bg-purple-50 text-purple-600 rounded-xl font-bold text-sm hover:bg-purple-100 transition-colors">
               <ShieldCheck class="w-4 h-4" /> Đổi vai trò
             </button>
           </div>

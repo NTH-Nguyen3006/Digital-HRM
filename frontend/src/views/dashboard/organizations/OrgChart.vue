@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import { Plus, Search, Filter, MoreVertical, Building2, Users } from 'lucide-vue-next'
 import { onMounted } from "vue"
