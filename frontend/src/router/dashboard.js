@@ -4,6 +4,7 @@ export const dashboardRoutes = [
         path: '/dashboard',
         name: 'dashboard',
         meta: { roles: ['hr', 'admin', 'manager'] },
+        alias: ['/admin'],
         component: () => import('@/views/dashboard/DashboardOverview.vue')
     },
 

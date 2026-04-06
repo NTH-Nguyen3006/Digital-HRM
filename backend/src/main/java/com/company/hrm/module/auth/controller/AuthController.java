@@ -34,9 +34,11 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletResponse httpServletResponse) {
         AuthResult result = authService.login(request);
-        authCookieService.writeAuthenticationCookies(httpServletResponse, result.accessToken(), result.refreshToken());
-        return ApiResponse.success("AUTH_LOGIN_SUCCESS", "Đăng nhập thành công.", result.response(), null,
-                RequestTraceContext.getTraceId());
+        authCookieService.writeAuthenticationCookies(
+                httpServletResponse, result.accessToken(), result.refreshToken());
+        return ApiResponse.success(
+                "AUTH_LOGIN_SUCCESS", "Đăng nhập thành công.", result.response(),
+                null, RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/refresh")

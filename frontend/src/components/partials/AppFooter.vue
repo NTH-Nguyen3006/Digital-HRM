@@ -66,23 +66,4 @@ defineProps({
       &copy; 2026 DIGITAL HRM SYSTEM. CỔNG THÔNG TIN.
     </div>
   </footer>
-
-  <footer v-else-if="variant === 'auth'"
-    class="relative z-10 bg-white/40 backdrop-blur-md border-t border-white/60 py-6 text-center mt-auto">
-    <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex items-center space-x-2">
-        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-        <span class="font-bold text-slate-800">Digital HRM</span>
-      </div>
-      <div class="text-xs font-bold text-slate-500 tracking-widest uppercase">
-        &copy; 2026 DIGITAL HRM SYSTEM. BẢO MẬT & ĐÁNG TIN CẬY.
-      </div>
-      <div class="flex space-x-6">
-        <a href="#" class="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">Hỗ trợ</a>
-        <a href="#" class="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">Bảo mật</a>
-      </div>
-    </div>
-  </footer>
 </template>
