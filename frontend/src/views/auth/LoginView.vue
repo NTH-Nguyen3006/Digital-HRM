@@ -23,7 +23,6 @@ const handleLogin = async () => {
   try {
     const user = await authStore.login(loginId.value, password.value)
 
-    // Redirect based on homeRoute from backend or fallback logic
     if (user.homeRoute) {
       router.push(user.homeRoute)
     } else if (user.roleCode === 'EMPLOYEE') {

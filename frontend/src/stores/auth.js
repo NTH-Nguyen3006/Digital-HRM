@@ -19,6 +19,9 @@ export const useAuthStore = defineStore('auth', {
         // Backend returns an ApiResponse with the actual payload in the "data" field.
         const authData = responseData.data;
 
+        console.log(authData);
+
+
         // Backend sets HttpOnly cookies for tokens automatically.
         // We only save user info and auth status here
         this.user = authData;

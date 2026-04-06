@@ -1,14 +1,33 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import {
-  LayoutDashboard, Users, Building2, FileSignature, CalendarOff,
-  Clock, Banknote, UserPlus, UserMinus, ShieldCheck, History,
-  LogOut, Bell, Search, Menu, ChevronRight, ChevronDown,
-  KeyRound, Settings, FilePenLine, Briefcase, Network, BuildingIcon, Layers,
+  Banknote,
+  Bell,
+  Briefcase,
+  CalendarOff,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  FilePenLine,
+  FileSignature,
+  History,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Network,
+  Search,
+  Settings,
+  ShieldCheck,
+  UserMinus,
+  UserPlus,
+  Users
 } from 'lucide-vue-next'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const isSidebarOpen = ref(localStorage.getItem('isSidebarOpen') !== 'false')
 
@@ -52,9 +71,8 @@ const hideTooltip = () => {
 
 const handleLogout = () => {
   hideTooltip()
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  router.push('/login')
+  authStore.logout();
+  router.push('/')
 }
 
 const user = ref({
@@ -142,7 +160,7 @@ const menuGroups = [
 
             <div v-if="isSidebarOpen" class="px-4 pt-4 pb-1">
               <span class="text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ group.label
-                }}</span>
+              }}</span>
             </div>
             <div v-else class="border-b border-slate-200 my-4 mx-2"></div>
 
@@ -156,7 +174,7 @@ const menuGroups = [
               <component :is="item.icon" class="w-5 h-5 shrink-0" />
 
               <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap overflow-hidden">{{ item.name
-                }}</span>
+              }}</span>
 
               <ChevronRight v-if="isSidebarOpen && $route.path === item.path"
                 class="w-4 h-4 ml-auto opacity-50 shrink-0" />

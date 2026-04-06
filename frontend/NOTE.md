@@ -1,3 +1,5 @@
+** 4/4/26 **
+---
 # Hr
 - lấy hết menu admin -- hr
 - Bỏ cổng thông tin nhân viên
@@ -20,3 +22,8 @@
 - bỏ cơ cấu tổ chức
 - bỏ cổng thông tin nhân viên
 
+---
+
+
+
+** .../4/26 **

@@ -13,11 +13,6 @@ app.config.errorHandler = (err, vm, info) => {
   console.error('[Info]:', info)
 }
 
-// 2. Universal handler for uncaught promise rejections
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('[Unhandled Promise Rejection]:', event.reason)
-})
-
 // 3. Router Error Handling (Robust Chunk Failure Recovery)
 router.onError((error, to) => {
   const chunkFailedMessage = [
