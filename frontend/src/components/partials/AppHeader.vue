@@ -39,7 +39,6 @@ const router = useRouter()
             năng</a>
           <a href="#services" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Dịch vụ
           </a>
-          <a href="#news" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Tin tức</a>
         </nav>
         <div class="flex items-center space-x-4">
           <BaseButton variant="ghost" class="hidden sm:flex" @click="router.push('/login')">Trợ giúp</BaseButton>

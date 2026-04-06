@@ -3,21 +3,26 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/partials/AppHeader.vue'
 import AppFooter from '@/components/partials/AppFooter.vue'
 
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'auth'
+  }
+})
+
 const router = useRouter()
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col relative overflow-hidden font-sans">
-    <div class="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
-      <div class="absolute -top-40 -left-20 w-125 h-125 bg-indigo-200/50 rounded-full blur-[120px] animate-pulse">
-      </div>
-      <div class="absolute top-1/2 -right-20 w-150 h-150 bg-emerald-100/60 rounded-full blur-[150px] animate-float">
-      </div>
-      <div class="absolute -bottom-40 left-1/3 w-100 h-100 bg-sky-200/40 rounded-full blur-[100px] animate-pulse"
-        style="animation-delay: -2s"></div>
+  <div class="min-h-screen bg-slate-50 flex flex-col relative overflow-hidden font-sans text-slate-900">
+    <!-- Animated background gradients -->
+    <div class="absolute top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+      <div class="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-indigo-400/20 rounded-full blur-[120px] animate-pulse"></div>
+      <div class="absolute top-[30%] -right-[15%] w-[60%] h-[60%] bg-sky-300/15 rounded-full blur-[150px] animate-float"></div>
+      <div class="absolute -bottom-[20%] left-[20%] w-[45%] h-[45%] bg-emerald-200/20 rounded-full blur-[100px] animate-pulse" style="animation-delay: -2s"></div>
     </div>
 
-    <AppHeader variant="portal" />
+    <AppHeader :variant="variant" />
 
     <main class="flex-1 flex items-center justify-center pt-24 p-4 md:p-8 relative z-10 w-full">
       <div
@@ -84,7 +89,7 @@ const router = useRouter()
       </div>
     </main>
 
-    <AppFooter variant="portal" />
+    <AppFooter :variant="variant" />
   </div>
 </template>
 

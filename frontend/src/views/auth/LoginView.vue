@@ -1,28 +1,36 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Mail, Lock, LogIn, AlertTriangle } from 'lucide-vue-next'
-import AuthLayout from '@/layouts/AuthLayout.vue'
+import { Mail, Lock, LogIn, AlertTriangle, Fingerprint } from 'lucide-vue-next'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
-import { handleLogin as loginApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const email = ref('')
+const authStore = useAuthStore()
+const loginId = ref('')
 const password = ref('')
 const loading = ref(false)
 const rememberMe = ref(false)
 const errorMessage = ref('')
 
 const handleLogin = async () => {
-  if (!email.value || !password.value) return
+  if (!loginId.value || !password.value) return
 
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const response = await loginApi(email.value, password.value)
-    router.push('/dashboard')
+    const user = await authStore.login(loginId.value, password.value)
+
+    // Redirect based on homeRoute from backend or fallback logic
+    if (user.homeRoute) {
+      router.push(user.homeRoute)
+    } else if (user.roleCode === 'EMPLOYEE') {
+      router.push('/')
+    } else {
+      router.push('/dashboard')
+    }
   } catch (error) {
     console.error('Login Error:', error)
     errorMessage.value = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
@@ -33,24 +41,31 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <AuthLayout class="p-16">
-    <div class="w-full max-w-90 mx-auto animate-fade-in-up" style="animation-delay: 0.1s;">
+  <AuthLayout class="p-0">
+    <div class="w-full max-w-[420px] mx-auto animate-fade-in-up" style="animation-delay: 0.1s;">
       <div class="text-center mb-10">
-        <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-3">Đăng nhập</h2>
-        <p class="text-slate-500 font-medium">Chào mừng trở lại Digital HRM</p>
+        <div
+          class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 mb-6 shadow-sm border border-indigo-100/50">
+          <Fingerprint class="w-9 h-9" />
+        </div>
+        <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">Đăng nhập</h2>
+        <p class="text-slate-500 font-medium text-base">Chào mừng trở lại Digital <span
+            class="text-indigo-600 font-bold">HRM</span></p>
       </div>
 
-      <div v-if="errorMessage" class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center gap-3 animate-shake">
+      <div v-if="errorMessage"
+        class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-bold flex items-center gap-3 animate-shake">
         <AlertTriangle class="w-5 h-5 shrink-0" />
         {{ errorMessage }}
       </div>
 
       <form @submit.prevent="handleLogin" class="space-y-6">
         <div class="space-y-5">
-          <BaseInput v-model="email" label="Email công ty" type="email" placeholder="ten.ho@company.com" :icon="Mail"
-            required />
+          <BaseInput v-model="loginId" label="Tài khoản / Email" type="text"
+            placeholder="Mã nhân viên hoặc email công ty" :icon="Mail" required />
 
-          <BaseInput v-model="password" label="Mật khẩu" type="password" placeholder="••••••••" :icon="Lock" required />
+          <BaseInput v-model="password" label="Mật khẩu" type="password" placeholder="Nhập mật khẩu của bạn"
+            :icon="Lock" required />
         </div>
 
         <div class="flex items-center justify-between mt-2">
@@ -72,15 +87,17 @@ const handleLogin = async () => {
             khẩu?</a>
         </div>
 
-        <BaseButton type="submit" variant="primary" size="lg" class="w-full mt-8 group" :loading="loading" :icon="LogIn"
-          iconRight>
-          <span class="font-bold tracking-wide">Vào Không Gian Làm Việc</span>
+        <BaseButton type="submit" variant="primary" size="lg" class="w-full mt-8 group relative overflow-hidden"
+          :loading="loading" :icon="LogIn" iconRight>
+          <span class="font-bold tracking-wide relative z-10">Xác thực & Truy cập</span>
         </BaseButton>
 
-        <p class="text-center text-sm font-medium text-slate-500 mt-8">
-          Chưa có tài khoản?
-          <a href="#" class="text-indigo-600 font-bold hover:text-indigo-500 transition-colors ml-1">Liên hệ bộ phận
-            HR</a>
+        <p class="text-center text-sm font-medium text-slate-500 mt-10">
+          Gặp khó khăn khi đăng nhập?
+          <a href="#"
+            class="text-indigo-600 font-bold hover:text-indigo-500 transition-colors ml-1 hover:underline">Liên hệ bộ
+            phận
+            IT / HR</a>
         </p>
       </form>
     </div>

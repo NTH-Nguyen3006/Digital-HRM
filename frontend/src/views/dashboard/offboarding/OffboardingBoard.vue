@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
 import { Lock, FileText, MonitorOff } from 'lucide-vue-next'
 

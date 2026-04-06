@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import { Plus, Edit, ToggleLeft, ToggleRight, Shield, ChevronDown, ChevronRight, CheckSquare, Square } from 'lucide-vue-next'
 
@@ -122,9 +121,8 @@ const roleColor = (code) => {
         </div>
         <div class="flex items-center gap-3">
           <div class="flex bg-white border border-slate-200 rounded-xl p-1 gap-1">
-            <button v-for="tab in [{k:'list',l:'Danh sách'},{k:'matrix',l:'Ma trận'}]" :key="tab.k"
-              @click="activeTab = tab.k"
-              class="px-4 py-2 rounded-lg text-sm font-bold transition-all"
+            <button v-for="tab in [{ k: 'list', l: 'Danh sách' }, { k: 'matrix', l: 'Ma trận' }]" :key="tab.k"
+              @click="activeTab = tab.k" class="px-4 py-2 rounded-lg text-sm font-bold transition-all"
               :class="activeTab === tab.k ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'">
               {{ tab.l }}
             </button>
@@ -143,30 +141,36 @@ const roleColor = (code) => {
           <!-- Role Header -->
           <div class="p-6 flex items-center justify-between cursor-pointer" @click="toggleExpand(role.id)">
             <div class="flex items-center space-x-4">
-              <div class="w-12 h-12 rounded-2xl bg-linear-to-br text-white flex items-center justify-center font-black text-lg shadow-lg"
+              <div
+                class="w-12 h-12 rounded-2xl bg-linear-to-br text-white flex items-center justify-center font-black text-lg shadow-lg"
                 :class="roleColor(role.roleCode)">
                 <Shield class="w-6 h-6" />
               </div>
               <div>
                 <div class="flex items-center gap-3">
                   <h3 class="font-black text-slate-900 text-lg">{{ role.roleName }}</h3>
-                  <span class="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-500 rounded-lg">{{ role.roleCode }}</span>
+                  <span class="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-500 rounded-lg">{{ role.roleCode
+                    }}</span>
                   <span class="text-xs font-bold px-2.5 py-1 rounded-full"
                     :class="role.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'">
                     {{ role.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu' }}
                   </span>
                 </div>
-                <p class="text-sm text-slate-400 font-medium mt-0.5">{{ role.description }} • <span class="font-bold text-slate-600">{{ role.userCount }} người dùng</span></p>
+                <p class="text-sm text-slate-400 font-medium mt-0.5">{{ role.description }} • <span
+                    class="font-bold text-slate-600">{{ role.userCount }} người dùng</span></p>
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" @click.stop>
+              <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                @click.stop>
                 <Edit class="w-4 h-4" />
               </button>
-              <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" @click.stop>
+              <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                @click.stop>
                 <ToggleLeft class="w-5 h-5" />
               </button>
-              <component :is="expandedRole === role.id ? ChevronDown : ChevronRight" class="w-5 h-5 text-slate-400 transition-transform" />
+              <component :is="expandedRole === role.id ? ChevronDown : ChevronRight"
+                class="w-5 h-5 text-slate-400 transition-transform" />
             </div>
           </div>
 
@@ -178,8 +182,7 @@ const roleColor = (code) => {
                 <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{{ group.label }}</p>
                 <div class="flex flex-wrap gap-2">
                   <span v-for="perm in group.perms" :key="perm.code"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
-                    :class="hasPermission(role, perm.code)
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset" :class="hasPermission(role, perm.code)
                       ? 'bg-indigo-50 text-indigo-700 ring-indigo-600/20'
                       : 'bg-slate-100 text-slate-400 ring-slate-200 line-through'">
                     <span v-if="hasPermission(role, perm.code)">✓</span>
@@ -199,8 +202,7 @@ const roleColor = (code) => {
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200">
                 <th class="py-4 px-5 font-bold text-slate-600 min-w-[200px]">Quyền / Vai trò</th>
-                <th v-for="role in roles" :key="role.id"
-                  class="py-4 px-5 font-bold text-center whitespace-nowrap">
+                <th v-for="role in roles" :key="role.id" class="py-4 px-5 font-bold text-center whitespace-nowrap">
                   <div class="flex flex-col items-center gap-1">
                     <span class="text-slate-900">{{ role.roleName }}</span>
                     <span class="text-xs text-slate-400 font-medium">{{ role.userCount }} user</span>
@@ -211,11 +213,13 @@ const roleColor = (code) => {
             <tbody>
               <template v-for="group in permissionGroups" :key="group.module">
                 <tr class="bg-slate-50/50 border-b border-slate-100">
-                  <td class="py-2.5 px-5 font-black text-slate-600 text-xs uppercase tracking-wider" :colspan="roles.length + 1">
+                  <td class="py-2.5 px-5 font-black text-slate-600 text-xs uppercase tracking-wider"
+                    :colspan="roles.length + 1">
                     {{ group.label }}
                   </td>
                 </tr>
-                <tr v-for="perm in group.perms" :key="perm.code" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                <tr v-for="perm in group.perms" :key="perm.code"
+                  class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                   <td class="py-3 px-5 text-slate-600 font-medium">{{ perm.label }}</td>
                   <td v-for="role in roles" :key="role.id" class="py-3 px-5 text-center">
                     <div class="flex justify-center">
@@ -223,7 +227,8 @@ const roleColor = (code) => {
                         class="w-6 h-6 rounded-md bg-emerald-500 text-white flex items-center justify-center">
                         <span class="text-xs font-black">✓</span>
                       </div>
-                      <div v-else class="w-6 h-6 rounded-md bg-slate-100 text-slate-300 flex items-center justify-center">
+                      <div v-else
+                        class="w-6 h-6 rounded-md bg-slate-100 text-slate-300 flex items-center justify-center">
                         <span class="text-xs">—</span>
                       </div>
                     </div>
@@ -245,24 +250,31 @@ const roleColor = (code) => {
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-bold text-slate-700 mb-1.5">Mã vai trò (Code) *</label>
-              <input placeholder="VD: ACCOUNTANT" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 uppercase" />
+              <input placeholder="VD: ACCOUNTANT"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 uppercase" />
             </div>
             <div>
               <label class="block text-sm font-bold text-slate-700 mb-1.5">Tên vai trò *</label>
-              <input placeholder="VD: Kế toán" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+              <input placeholder="VD: Kế toán"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
             </div>
             <div>
               <label class="block text-sm font-bold text-slate-700 mb-1.5">Mô tả</label>
-              <textarea rows="3" placeholder="Mô tả ngắn gọn về vai trò và phạm vi quyền..." class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"></textarea>
+              <textarea rows="3" placeholder="Mô tả ngắn gọn về vai trò và phạm vi quyền..."
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"></textarea>
             </div>
             <div>
               <label class="block text-sm font-bold text-slate-700 mb-1.5">Thứ tự hiển thị</label>
-              <input type="number" placeholder="5" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+              <input type="number" placeholder="5"
+                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
             </div>
           </div>
           <div class="flex gap-3 mt-8">
-            <button @click="showModal = false" class="flex-1 py-3 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Hủy</button>
-            <button class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">Tạo vai trò</button>
+            <button @click="showModal = false"
+              class="flex-1 py-3 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Hủy</button>
+            <button
+              class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">Tạo
+              vai trò</button>
           </div>
         </div>
       </div>

@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from "vue"
 import { Upload } from "lucide-vue-next";
 
@@ -208,5 +207,4 @@ select {
     background-size: 16px;
     background-repeat: no-repeat;
     background-position: right 16px center;
-    padding-right: 2.5rem;
-</style>}
+    padding-right: 2.5rem;</style>}

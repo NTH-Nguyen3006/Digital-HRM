@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router/main'
 import './assets/css/main.css'
-
+import '@/interceptors/axios'
 const app = createApp(App)
 
 // 1. Global Error Handler for Vue components
@@ -26,8 +26,8 @@ router.onError((error, to) => {
     'Loading chunk',
     'Cannot find module'
   ];
-  
-  const isChunkLoadFailed = chunkFailedMessage.some(msg => 
+
+  const isChunkLoadFailed = chunkFailedMessage.some(msg =>
     error.message?.toLowerCase().includes(msg.toLowerCase())
   );
 

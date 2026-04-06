@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
 import { Calculator, Send, FileText } from 'lucide-vue-next'
 
@@ -18,7 +17,8 @@ const payroll = ref([
           <p class="text-slate-500 font-medium mt-1">Kỳ lương Tháng 03/2026</p>
         </div>
         <div class="flex items-center space-x-3">
-          <button class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
+          <button
+            class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
             <Calculator class="w-5 h-5 mr-2" /> Chạy bảng lương
           </button>
         </div>
@@ -48,7 +48,8 @@ const payroll = ref([
                 <td class="py-4 px-6 font-semibold text-rose-600">- {{ pay.tax }} ₫</td>
                 <td class="py-4 px-6 font-black text-slate-900">{{ pay.netPay }} ₫</td>
                 <td class="py-4 px-6">
-                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset" :class="pay.status === 'Đã thanh toán' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-100 text-slate-700 ring-slate-600/20'">
+                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
+                    :class="pay.status === 'Đã thanh toán' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-100 text-slate-700 ring-slate-600/20'">
                     {{ pay.status }}
                   </span>
                 </td>
