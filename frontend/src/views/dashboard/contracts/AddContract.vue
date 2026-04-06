@@ -209,4 +209,5 @@ select {
     background-repeat: no-repeat;
     background-position: right 16px center;
     padding-right: 2.5rem;
-</style>}
+    }
+</style>
