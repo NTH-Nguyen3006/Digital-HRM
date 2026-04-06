@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -134,7 +133,8 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
                 class="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all">
                 <RotateCcw class="w-4 h-4" /> Gia hạn
               </button>
-              <button class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all border border-white/20">
+              <button
+                class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all border border-white/20">
                 <Download class="w-4 h-4" /> Xuất HTML
               </button>
             </div>
@@ -146,16 +146,14 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
           <div class="flex items-center gap-2">
             <template v-for="(step, i) in statusFlow" :key="step.key">
               <div class="flex items-center gap-2">
-                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold"
-                  :class="i <= currentStepIdx
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white border border-slate-200 text-slate-400'">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold" :class="i <= currentStepIdx
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-400'">
                   <component :is="step.icon" class="w-4 h-4" />
                   {{ step.label }}
                 </div>
               </div>
-              <div v-if="i < statusFlow.length - 1"
-                class="flex-1 h-0.5 rounded-full"
+              <div v-if="i < statusFlow.length - 1" class="flex-1 h-0.5 rounded-full"
                 :class="i < currentStepIdx ? 'bg-indigo-600' : 'bg-slate-200'"></div>
             </template>
           </div>
@@ -164,8 +162,7 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
 
       <!-- Tab Navigation -->
       <div class="flex overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5 gap-1">
-        <button v-for="tab in tabs" :key="tab.key"
-          @click="activeTab = tab.key"
+        <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
           class="px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all"
           :class="activeTab === tab.key ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'">
           {{ tab.label }}
@@ -229,12 +226,12 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
       <div v-if="activeTab === 'appendix'" class="space-y-4">
         <div class="flex justify-between items-center">
           <h3 class="text-lg font-black text-slate-900">Phụ lục hợp đồng</h3>
-          <button class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
+          <button
+            class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
             <Plus class="w-4 h-4" /> Tạo phụ lục
           </button>
         </div>
-        <div v-for="app in appendices" :key="app.id"
-          class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div v-for="app in appendices" :key="app.id" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <div class="flex items-start justify-between">
             <div class="flex items-start gap-4">
               <div class="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
@@ -243,21 +240,27 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
               <div>
                 <div class="flex items-center gap-2 mb-1">
                   <h4 class="font-black text-slate-900">{{ app.appendixCode }}</h4>
-                  <span class="px-2 py-0.5 text-xs font-bold rounded-md bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+                  <span
+                    class="px-2 py-0.5 text-xs font-bold rounded-md bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
                     {{ app.status === 'ACTIVE' ? 'Hiệu lực' : 'Đã hủy' }}
                   </span>
                 </div>
                 <p class="text-slate-600 font-medium text-sm">{{ app.title }}</p>
                 <div class="flex gap-4 mt-2 text-xs text-slate-400 font-medium">
                   <span>🗓 Hiệu lực: {{ app.effectiveDate }}</span>
-                  <span>💰 Điều chỉnh lương: <span class="font-bold text-emerald-600">{{ app.salaryChange }}</span></span>
+                  <span>💰 Điều chỉnh lương: <span class="font-bold text-emerald-600">{{ app.salaryChange
+                      }}</span></span>
                   <span>✍️ Ký bởi: {{ app.signedBy }}</span>
                 </div>
               </div>
             </div>
             <div class="flex gap-2">
-              <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Download class="w-4 h-4" /></button>
-              <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><XCircle class="w-4 h-4" /></button>
+              <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                <Download class="w-4 h-4" />
+              </button>
+              <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                <XCircle class="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -267,7 +270,8 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
       <div v-if="activeTab === 'attachments'" class="space-y-4">
         <div class="flex justify-between items-center">
           <h3 class="text-lg font-black text-slate-900">Tài liệu đính kèm</h3>
-          <button class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
+          <button
+            class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
             <Paperclip class="w-4 h-4" /> Đính kèm tài liệu
           </button>
         </div>
@@ -275,9 +279,12 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
           <table class="w-full">
             <thead>
               <tr class="bg-slate-50 border-b border-slate-100">
-                <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Tên tài liệu</th>
-                <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Kích thước</th>
-                <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày upload</th>
+                <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Tên tài liệu
+                </th>
+                <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Kích thước
+                </th>
+                <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày upload
+                </th>
                 <th class="py-3 px-5"></th>
               </tr>
             </thead>
@@ -295,8 +302,14 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
                 <td class="py-4 px-5 text-sm text-slate-500 font-medium">{{ att.uploadedAt }}</td>
                 <td class="py-4 px-5">
                   <div class="flex items-center justify-end gap-2">
-                    <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Download class="w-4 h-4" /></button>
-                    <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 class="w-4 h-4" /></button>
+                    <button
+                      class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      <Download class="w-4 h-4" />
+                    </button>
+                    <button
+                      class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                      <Trash2 class="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -314,13 +327,15 @@ const cfg = computed(() => statusConfig[contract.value.status] || statusConfig.D
           <div class="space-y-4">
             <div v-for="h in history" :key="h.id" class="relative flex items-start gap-4 pl-14">
               <!-- Timeline dot -->
-              <div class="absolute left-4 w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center"
+              <div
+                class="absolute left-4 w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center"
                 :class="h.toStatus === 'ACTIVE' ? 'bg-emerald-500' : h.toStatus === 'PENDING_SIGN' ? 'bg-amber-400' : 'bg-indigo-500'">
               </div>
               <!-- Content -->
               <div class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
                 <div class="flex items-center gap-3 mb-2">
-                  <span v-if="h.fromStatus" class="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded">{{ h.fromStatus }}</span>
+                  <span v-if="h.fromStatus" class="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded">{{
+                    h.fromStatus }}</span>
                   <span v-if="h.fromStatus" class="text-slate-400">→</span>
                   <span class="text-xs font-bold px-2 py-0.5 rounded"
                     :class="h.toStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : h.toStatus === 'PENDING_SIGN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'">

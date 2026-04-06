@@ -29,14 +29,12 @@ export const handleLogin = async (username, password, deviceName = '', deviceOs 
 
 /**
  * Làm mới mã xác thực (refresh token)
- * @param {string} refreshToken - Mã làm mới
+ * Backend sẽ tự động lấy refreshToken từ HttpOnly cookie.
  * @returns {Promise<Object>} - Dữ liệu mã xác thực mới
  */
-export const handleRefresh = async (refreshToken) => {
+export const handleRefresh = async () => {
     try {
-        const response = await axios.post(`${AUTH_API}/refresh`, {
-            refreshToken: refreshToken
-        });
+        const response = await axios.post(`${AUTH_API}/refresh`);
         return response.data;
     } catch (error) {
         console.error('Refresh token failed:', error);
@@ -49,10 +47,9 @@ export const handleRefresh = async (refreshToken) => {
  * @param {string} [token] - Access token hiện tại (để gửi trong header Authorization)
  * @returns {Promise<Object>} - Kết quả đăng xuất
  */
-export const handleLogout = async (token) => {
+export const handleLogout = async () => {
     try {
-        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-        const response = await axios.post(`${AUTH_API}/logout`, {}, config);
+        const response = await axios.post(`${AUTH_API}/logout`);
         return response.data;
     } catch (error) {
         console.error('Logout failed:', error);
@@ -106,14 +103,13 @@ export const resetPassword = async (token, newPassword, confirmPassword) => {
  * @param {string} [token] - Access token (Authorization header)
  * @returns {Promise<Object>} - Kết quả thay đổi mật khẩu
  */
-export const changePassword = async (currentPassword, newPassword, confirmPassword, token) => {
+export const changePassword = async (currentPassword, newPassword, confirmPassword) => {
     try {
-        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         const response = await axios.post(`${AUTH_API}/change-password`, {
             currentPassword: currentPassword,
             newPassword: newPassword,
             confirmPassword: confirmPassword
-        }, config);
+        });
         return response.data;
     } catch (error) {
         console.error('Change password failed:', error);

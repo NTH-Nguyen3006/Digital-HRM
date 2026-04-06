@@ -15,33 +15,34 @@ import {
   Zap,
   Layout,
   Star,
-  Globe
+  Globe,
+  LogIn
 } from 'lucide-vue-next'
 
 const router = useRouter()
-
+''
 const features = [
   {
-    title: 'Hệ thống Quản trị Hiện đại',
-    desc: 'Quản lý toàn diện vòng đời nhân viên từ tuyển dụng đến nghỉ hưu.',
-    icon: Layout,
+    title: 'Đồng bộ Đa Chi nhánh',
+    desc: 'Quản lý thông suốt nhân sự, chấm công, và chính sách trên toàn bộ mạng lưới công ty.',
+    icon: Globe,
     color: 'bg-indigo-50 text-indigo-600'
   },
   {
-    title: 'Tự phục vụ (ESS)',
-    desc: 'Nhân viên chủ động đăng ký nghỉ phép, xem bảng lương và cập nhật hồ sơ.',
-    icon: Users,
+    title: 'Dữ liệu Tập trung',
+    desc: 'Hồ sơ nhân viên, hợp đồng và đánh giá năng lực được số hóa bảo mật và khoa học.',
+    icon: ShieldCheck,
     color: 'bg-emerald-50 text-emerald-600'
   },
   {
-    title: 'Chính sách Minh bạch',
-    desc: 'Truy cập mọi quy định, chính sách và cẩm nang nhân viên mọi lúc mọi nơi.',
-    icon: ShieldCheck,
+    title: 'Tự phục vụ (ESS)',
+    desc: 'Nhân viên chủ động thực hiện xin nghỉ, xem bảng lương và đề xuất nội bộ nhanh chóng.',
+    icon: Users,
     color: 'bg-sky-50 text-sky-600'
   },
   {
-    title: 'Báo cáo thông minh',
-    desc: 'Phân tích dữ liệu nhân sự đa chiều giúp đưa ra quyết định chính xác.',
+    title: 'Báo cáo Thời gian thực',
+    desc: 'Dashboard tổng quan về tình hình nhân sự của mọi chi nhánh mọi lúc.',
     icon: TrendingUp,
     color: 'bg-rose-50 text-rose-600'
   }
@@ -52,32 +53,14 @@ const services = [
   { id: 2, name: 'Tra cứu bảng lương', icon: FileText, path: '/payroll' },
   { id: 3, name: 'Hồ sơ cá nhân', icon: Users, path: '/portal/profile' },
   { id: 4, name: 'Lịch sử chấm công', icon: Zap, path: '/portal/attendance' },
-  { id: 5, name: 'Hỗ trợ kỹ thuật', icon: HelpCircle, path: '#' },
-  { id: 6, name: 'Góp ý nội bộ', icon: MessageCircle, path: '#' },
+  { id: 5, name: 'Sổ tay nhân sự', icon: HelpCircle, path: '#' },
+  { id: 6, name: 'Kênh hỗ trợ HR', icon: MessageCircle, path: '#' },
 ]
 
-const newsItems = [
-  {
-    id: 1,
-    title: 'Thông báo nghỉ lễ sắp tới',
-    date: '28/03/2024',
-    category: 'Thông báo',
-    image: 'https://placehold.co/600'
-  },
-  {
-    id: 2,
-    title: 'Chương trình đào tạo kỹ năng mới',
-    date: '25/03/2024',
-    category: 'Đào tạo',
-    image: 'https://placehold.co/600'
-  },
-  {
-    id: 3,
-    title: 'Sổ tay nhân sự phiên bản mới 2024',
-    date: '20/03/2024',
-    category: 'Chính sách',
-    image: 'https://placehold.co/600'
-  }
+const branches = [
+  { id: 'hn', name: 'Trụ sở Hà Nội', address: 'Tòa nhà Landmark, Nam Từ Liêm', employees: 245, active: true },
+  { id: 'hcm', name: 'Chi nhánh TP.HCM', address: 'Quận 1, Thành phố Hồ Chí Minh', employees: 180, active: true },
+  { id: 'dn', name: 'Chi nhánh Đà Nẵng', address: 'Hải Châu, Thành phố Đà Nẵng', employees: 85, active: true },
 ]
 </script>
 
@@ -89,29 +72,29 @@ const newsItems = [
         <div class="flex-1 space-y-10 animate-fade-in-up">
           <div
             class="inline-flex items-center px-4 py-2 rounded-2xl bg-indigo-50 text-indigo-700 text-sm font-bold border border-indigo-100/50">
-            <Star class="w-4 h-4 mr-2" /> Hệ thống Quản trị Nhân sự Số hoá
+            <Star class="w-4 h-4 mr-2" /> Hệ thống Quản trị Nội bộ Tập trung
           </div>
-          <h1 class="text-7xl font-black text-slate-900 leading-[1.1] tracking-tighter">
-            Chào mừng bạn đến với <span
-              class="text-transparent bg-clip-text bg-linear-to-r from-indigo-500 to-indigo-700">COVERAGED</span>.
+          <h1 class="text-6xl md:text-7xl font-black text-slate-900 leading-[1.1] tracking-tighter">
+            Trải nghiệm Không gian <span
+              class="text-transparent bg-clip-text bg-linear-to-r from-indigo-500 to-indigo-700">LÀM VIỆC SỐ</span>.
           </h1>
           <p class="text-xl text-slate-500 font-medium leading-relaxed max-w-xl">
-            Cổng thông tin nhân sự tập trung của toàn bộ cán bộ công dân. Nơi trải nghiệm công nghệ kết nối với mục tiêu
-            phát triển nguồn nhân lực bền vững.
+            Kết nối toàn diện mọi chi nhánh. Cổng thông tin nhân sự nội bộ giúp tối ưu hoá quy trình, nâng cao trải
+            nghiệm nhân viên và xây dựng môi trường làm việc chuyên nghiệp.
           </p>
           <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <BaseButton size="lg" :icon="ArrowRight" iconRight @click="router.push('/login')">
-              Đăng nhập
+            <BaseButton size="lg" :icon="LogIn" iconRight @click="router.push('/login')">
+              Vào hệ thống quản trị
             </BaseButton>
             <div class="flex items-center space-x-4">
               <div class="flex -space-x-4">
                 <div v-for="i in 3" :key="i"
                   class="w-12 h-12 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-sm">
-                  U{{ i }}
+                  C{{ i }}
                 </div>
               </div>
-              <p class="text-sm font-bold text-slate-700">Thêm <span class="text-indigo-600">500+</span> nhân viên đã
-                tin dùng.</p>
+              <p class="text-sm font-bold text-slate-400 leading-tight">Đang vận hành tại<br /><span
+                  class="text-slate-700 font-black">{{ branches.length }} Chi nhánh</span></p>
             </div>
           </div>
         </div>
@@ -209,32 +192,60 @@ const newsItems = [
         </div>
       </section>
 
-      <!-- News Section -->
-      <section id="news" class="max-w-7xl mx-auto px-6">
-        <div class="flex items-center justify-between mb-24">
-          <h2 class="text-5xl font-black text-slate-900 tracking-tight">Tin tức nội bộ.</h2>
-          <BaseButton variant="outline" class="hidden sm:flex">Tất cả tin tức</BaseButton>
+      <!-- Branch Network Section -->
+      <section id="network" class="max-w-7xl mx-auto px-6">
+        <div class="flex flex-col md:flex-row items-center justify-between mb-24 gap-8 text-center md:text-left">
+          <div class="space-y-4">
+            <h2 class="text-5xl font-black text-slate-900 tracking-tight">Mạng lưới Chi nhánh.</h2>
+            <p class="text-slate-500 font-medium max-w-xl">Hệ thống xử lý hàng nghìn dữ liệu cán bộ nhân viên đồng bộ
+              theo thời gian thực tại các chi nhánh văn phòng trên toàn quốc.</p>
+          </div>
+          <div class="px-6 py-4 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center animate-pulse">
+              <Globe class="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p class="text-sm font-bold text-indigo-900/60 leading-tight">Tổng nhân sự</p>
+              <p class="text-2xl font-black text-indigo-700">510+</p>
+            </div>
+          </div>
         </div>
 
-        <div class="grid lg:grid-cols-3 gap-12">
-          <div v-for="item in newsItems" :key="item.id" class="group cursor-pointer">
-            <div class="aspect-4/3 rounded-[2.5rem] overflow-hidden mb-8 relative">
-              <img :src="item.image" :alt="item.title"
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <div class="grid lg:grid-cols-3 gap-8">
+          <div v-for="branch in branches" :key="branch.id"
+            class="group relative p-8 rounded-[2.5rem] bg-slate-50 border border-slate-200 hover:bg-white hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-100/50 transition-all duration-500 overflow-hidden cursor-default">
+
+            <div
+              class="absolute top-0 right-0 p-8 sm:p-12 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-700 pointer-events-none">
+              <Globe class="w-32 h-32" />
+            </div>
+
+            <div class="flex items-center space-x-4 mb-8">
               <div
-                class="absolute top-6 left-6 px-4 py-2 rounded-xl bg-white/90 backdrop-blur-md text-slate-900 font-bold text-xs uppercase tracking-widest">
-                {{ item.category }}
+                class="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center border border-slate-100">
+                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+              </div>
+              <div>
+                <div class="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Office</div>
+                <h3 class="text-xl font-black text-slate-900">{{ branch.name }}</h3>
               </div>
             </div>
-            <div class="space-y-4">
-              <div class="text-slate-400 font-bold text-sm tracking-wide">{{ item.date }}</div>
-              <h3
-                class="text-2xl font-black text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
-                {{ item.title }}</h3>
-              <div class="flex items-center text-indigo-600 font-bold text-sm mt-6">
-                Xem chi tiết
-                <ArrowRight class="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
+
+            <div class="space-y-4 mb-8">
+              <div class="flex items-center text-slate-600">
+                <Layout class="w-5 h-5 mr-3 text-slate-400" />
+                <span class="font-medium text-sm">{{ branch.address }}</span>
               </div>
+              <div class="flex items-center text-slate-600">
+                <Users class="w-5 h-5 mr-3 text-slate-400" />
+                <span class="font-medium text-sm"><strong class="text-slate-900">{{ branch.employees }}</strong> nhân
+                  sự</span>
+              </div>
+            </div>
+
+            <div class="flex items-center text-indigo-600 font-bold text-sm">
+              Trạng thái: Hoạt động ổn định
+              <ShieldCheck class="w-4 h-4 ml-2 text-emerald-500" />
             </div>
           </div>
         </div>

@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import GlassCard from "@/components/common/GlassCard.vue"
 import StatCard from "@/components/common/StatCard.vue"
 

@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
 import { Plus, Check, X, Search } from 'lucide-vue-next'
 
@@ -19,7 +18,8 @@ const requests = ref([
           <p class="text-slate-500 font-medium mt-1">Duyệt đơn và trừ tổng phép năm</p>
         </div>
         <div class="flex items-center space-x-3">
-          <button class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
+          <button
+            class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center">
             <Plus class="w-5 h-5 mr-2" /> Gửi đơn xin nghỉ
           </button>
         </div>
@@ -28,13 +28,14 @@ const requests = ref([
       <div class="grid lg:grid-cols-3 gap-6">
         <!-- Dashboard / Request list -->
         <div class="lg:col-span-2 space-y-4">
-          <div v-for="req in requests" :key="req.id" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-shadow">
+          <div v-for="req in requests" :key="req.id"
+            class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-shadow">
             <div class="flex-1 space-y-3">
               <div class="flex items-center justify-between md:justify-start md:space-x-4">
                 <h3 class="font-bold text-lg text-slate-900">{{ req.employee }}</h3>
                 <span class="px-2.5 py-1 rounded-md text-xs font-bold" :class="[
                   req.status === 'Chờ duyệt' ? 'bg-amber-100 text-amber-700' :
-                  req.status === 'Đã duyệt' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                    req.status === 'Đã duyệt' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                 ]">
                   {{ req.status }}
                 </span>
@@ -54,12 +55,14 @@ const requests = ref([
                 </div>
               </div>
             </div>
-            
+
             <div class="flex items-center gap-2" v-if="req.status === 'Chờ duyệt'">
-              <button class="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
+              <button
+                class="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
                 <Check class="w-4 h-4 mr-1.5" /> Duyệt
               </button>
-              <button class="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
+              <button
+                class="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-xl font-bold transition-all shadow-sm">
                 <X class="w-4 h-4 mr-1.5" /> Từ chối
               </button>
             </div>

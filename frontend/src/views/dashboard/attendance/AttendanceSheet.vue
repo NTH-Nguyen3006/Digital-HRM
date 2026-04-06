@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref } from 'vue'
 import { Download, Search, CheckCircle, Clock } from 'lucide-vue-next'
 
@@ -24,7 +23,8 @@ const attendance = ref([
             <input type="text" placeholder="Tìm theo nhân viên..."
               class="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-64 shadow-sm" />
           </div>
-          <button class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center">
+          <button
+            class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center">
             <Download class="w-5 h-5 mr-2" /> Xuất bảng công
           </button>
         </div>
@@ -76,10 +76,12 @@ const attendance = ref([
                 </td>
                 <td class="py-4 px-6">
                   <div class="text-sm font-bold text-slate-700">{{ att.workHours }}</div>
-                  <div class="text-xs font-semibold text-indigo-500 mt-0.5" v-if="att.overtime !== '0h'">+OT: {{ att.overtime }}</div>
+                  <div class="text-xs font-semibold text-indigo-500 mt-0.5" v-if="att.overtime !== '0h'">+OT: {{
+                    att.overtime }}</div>
                 </td>
                 <td class="py-4 px-6">
-                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset" :class="att.status === 'Đúng giờ' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-amber-50 text-amber-700 ring-amber-600/20'">
+                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
+                    :class="att.status === 'Đúng giờ' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-amber-50 text-amber-700 ring-amber-600/20'">
                     {{ att.status }}
                   </span>
                 </td>

@@ -1,5 +1,4 @@
 <script setup>
-import MainLayout from "@/layouts/MainLayout.vue"
 import { ref, computed } from 'vue'
 import { Plus, Search, Eye, CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-vue-next'
 
@@ -113,7 +112,9 @@ const rejectRequest = (req) => {
 
       <!-- Stats -->
       <div class="grid grid-cols-3 gap-4">
-        <div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="activeTab = 'pending'">
+        <div
+          class="bg-amber-50 border border-amber-100 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
+          @click="activeTab = 'pending'">
           <div class="w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center text-white">
             <Clock class="w-6 h-6" />
           </div>
@@ -122,7 +123,9 @@ const rejectRequest = (req) => {
             <div class="text-amber-600 font-bold text-sm">Chờ duyệt</div>
           </div>
         </div>
-        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="activeTab = 'approved'">
+        <div
+          class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
+          @click="activeTab = 'approved'">
           <div class="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
             <CheckCircle2 class="w-6 h-6" />
           </div>
@@ -131,7 +134,9 @@ const rejectRequest = (req) => {
             <div class="text-emerald-600 font-bold text-sm">Đã duyệt</div>
           </div>
         </div>
-        <div class="bg-rose-50 border border-rose-100 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="activeTab = 'rejected'">
+        <div
+          class="bg-rose-50 border border-rose-100 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
+          @click="activeTab = 'rejected'">
           <div class="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center text-white">
             <XCircle class="w-6 h-6" />
           </div>
@@ -144,9 +149,8 @@ const rejectRequest = (req) => {
 
       <!-- Tab Navigation -->
       <div class="flex gap-1 bg-white border border-slate-100 rounded-2xl p-1.5 shadow-sm w-fit">
-        <button v-for="t in [{k:'pending',l:'⏳ Chờ duyệt'},{k:'approved',l:'✅ Đã duyệt'},{k:'rejected',l:'❌ Từ chối'}]"
-          :key="t.k" @click="activeTab = t.k"
-          class="px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
+        <button v-for="t in [{ k: 'pending', l: '⏳ Chờ duyệt' }, { k: 'approved', l: '✅ Đã duyệt' }, { k: 'rejected', l: '❌ Từ chối' }]"
+          :key="t.k" @click="activeTab = t.k" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
           :class="activeTab === t.k ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'">
           {{ t.l }}
         </button>
@@ -172,13 +176,13 @@ const rejectRequest = (req) => {
               </div>
               <div>
                 <div class="font-black text-slate-900">{{ req.employeeName }}</div>
-                <div class="text-sm text-slate-400 font-medium">{{ req.employeeCode }} · Gửi lúc {{ req.requestDate }}</div>
+                <div class="text-sm text-slate-400 font-medium">{{ req.employeeCode }} · Gửi lúc {{ req.requestDate }}
+                </div>
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <span class="px-3 py-1.5 rounded-xl text-xs font-bold ring-1 ring-inset"
-                :class="req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
-                  : req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+              <span class="px-3 py-1.5 rounded-xl text-xs font-bold ring-1 ring-inset" :class="req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                : req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
                   : 'bg-rose-50 text-rose-700 ring-rose-600/20'">
                 {{ req.status === 'PENDING' ? '⏳ Chờ duyệt' : req.status === 'APPROVED' ? '✅ Đã duyệt' : '❌ Từ chối' }}
               </span>
@@ -188,14 +192,16 @@ const rejectRequest = (req) => {
 
           <!-- Changes preview -->
           <div class="bg-slate-50 rounded-2xl p-4 mb-4">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Các trường thay đổi ({{ req.changes.length }})</p>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Các trường thay đổi ({{
+              req.changes.length }})</p>
             <div class="space-y-2">
-              <div v-for="change in req.changes" :key="change.field"
-                class="flex flex-wrap items-center gap-2 text-sm">
-                <span class="font-bold text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-slate-200">{{ change.field }}</span>
+              <div v-for="change in req.changes" :key="change.field" class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="font-bold text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-slate-200">{{
+                  change.field }}</span>
                 <span class="text-slate-400 font-mono text-xs">{{ change.oldValue }}</span>
                 <span class="text-slate-400">→</span>
-                <span class="text-indigo-700 font-bold font-mono text-xs bg-indigo-50 px-2 py-0.5 rounded-lg">{{ change.newValue }}</span>
+                <span class="text-indigo-700 font-bold font-mono text-xs bg-indigo-50 px-2 py-0.5 rounded-lg">{{
+                  change.newValue }}</span>
               </div>
             </div>
           </div>

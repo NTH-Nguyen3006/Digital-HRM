@@ -1,13 +1,61 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   LayoutDashboard, Users, Building2, FileSignature, CalendarOff,
   Clock, Banknote, UserPlus, UserMinus, ShieldCheck, History,
   LogOut, Bell, Search, Menu, ChevronRight, ChevronDown,
-  KeyRound, Settings, FilePenLine
+  KeyRound, Settings, FilePenLine, Briefcase, Network, BuildingIcon, Layers,
 } from 'lucide-vue-next'
 
-const isSidebarOpen = ref(true)
+const router = useRouter()
+
+const isSidebarOpen = ref(localStorage.getItem('isSidebarOpen') !== 'false')
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+  localStorage.setItem('isSidebarOpen', isSidebarOpen.value)
+  hideTooltip()
+}
+
+const sidebarScrollRef = ref(null)
+
+const handleSidebarScroll = (e) => {
+  hideTooltip()
+  sessionStorage.setItem('sidebarScrollTop', e.target.scrollTop)
+}
+
+onMounted(() => {
+  if (sidebarScrollRef.value) {
+    const savedScroll = sessionStorage.getItem('sidebarScrollTop')
+    if (savedScroll) {
+      sidebarScrollRef.value.scrollTop = parseInt(savedScroll, 10)
+    }
+  }
+})
+
+const tooltip = ref({ show: false, text: '', top: 0 })
+
+const showTooltip = (event, text) => {
+  if (isSidebarOpen.value) return
+  const rect = event.currentTarget.getBoundingClientRect()
+  tooltip.value = {
+    show: true,
+    text: text,
+    top: rect.top + (rect.height / 2)
+  }
+}
+
+const hideTooltip = () => {
+  tooltip.value.show = false
+}
+
+const handleLogout = () => {
+  hideTooltip()
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  router.push('/login')
+}
 
 const user = ref({
   name: 'Admin User',
@@ -17,96 +65,121 @@ const user = ref({
 
 const menuGroups = [
   {
-    label: 'Tổng hợp',
-    items: [{ name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' }]
+    label: 'TỔNG HỢP',
+    items: [
+      { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' }
+    ]
   },
   {
-    label: 'Quản lý nhân sự',
+    label: 'TỔ CHỨC',
     items: [
-      { name: 'Cơ cấu tổ chức', icon: Building2, path: '/org-units' },
+      { name: 'Cơ cấu tổ chức', icon: Network, path: '/org-units' },
+      { name: 'Chức danh', icon: Briefcase, path: '/job-titles' },
+    ]
+  },
+  {
+    label: 'NHÂN SỰ',
+    items: [
       { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
       { name: 'Hợp đồng lao động', icon: FileSignature, path: '/contracts' },
+      { name: 'Phê duyệt hồ sơ', icon: FilePenLine, path: '/profile-change-requests' },
+    ]
+  },
+  {
+    label: 'VÒNG ĐỜI NHÂN SỰ',
+    items: [
+      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
+      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
+    ]
+  },
+  {
+    label: 'CÔNG LƯƠNG',
+    items: [
       { name: 'Quản lý nghỉ phép', icon: CalendarOff, path: '/leaves' },
-      { name: 'Chấm công', icon: Clock, path: '/attendance' },
-      { name: 'Tính lương', icon: Banknote, path: '/payroll' },
-      { name: 'Thay đổi hồ sơ', icon: FilePenLine, path: '/profile-change-requests' },
+      { name: 'Dữ liệu chấm công', icon: Clock, path: '/attendance' },
+      { name: 'Bảng tính lương', icon: Banknote, path: '/payroll' },
     ]
   },
   {
-    label: 'Vòng đời nhân sự',
+    label: 'HỆ THỐNG',
     items: [
-      { name: 'Tiếp nhận (Onboarding)', icon: UserPlus, path: '/onboarding' },
-      { name: 'Thôi việc (Offboarding)', icon: UserMinus, path: '/offboarding' },
-    ]
-  },
-  {
-    label: 'Hệ thống',
-    items: [
-      { name: 'Tài khoản hệ thống', icon: KeyRound, path: '/users' },
-      { name: 'Vai trò & Phân quyền', icon: ShieldCheck, path: '/roles' },
+      { name: 'Tài khoản', icon: KeyRound, path: '/users' },
+      { name: 'Phân quyền', icon: ShieldCheck, path: '/roles' },
       { name: 'Nhật ký hoạt động', icon: History, path: '/audit-logs' },
-      { name: 'Cài đặt hệ thống', icon: Settings, path: '/settings' },
+      { name: 'Cài đặt chung', icon: Settings, path: '/settings' },
     ]
   },
 ]
 </script>
 
 <template>
-  <div class="h-screen overflow-hidden bg-slate-50 flex font-sans text-slate-900 w-full">
+  <div class="h-screen overflow-hidden bg-slate-50 flex font-sans text-slate-900 w-full relative">
 
-    <div v-if="isSidebarOpen" @click="isSidebarOpen = false"
+    <div v-if="isSidebarOpen" @click="toggleSidebar"
       class="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm transition-opacity"></div>
 
     <aside
-      class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-500 lg:relative lg:translate-x-0 flex flex-col"
-      :class="!isSidebarOpen ? '-translate-x-full lg:w-20' : ''">
+      class="fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-100 transition-all duration-300 ease-in-out flex flex-col lg:relative"
+      :class="isSidebarOpen ? 'w-72 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0'">
 
-      <div class="p-6 shrink-0 border-b border-transparent">
-        <div class="flex items-center space-x-3 mb-2">
+      <div class="h-20 shrink-0 border-b border-transparent flex items-center"
+        :class="isSidebarOpen ? 'px-6 justify-start' : 'justify-center'">
+        <div class="flex items-center" :class="isSidebarOpen ? 'space-x-3' : ''">
           <div
-            class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-white shadow-lg border-3 border-slate-200 shrink-0">
+            class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-white shadow-lg border-2 border-slate-200 shrink-0">
             <img src="@/assets/images/logo.webp" alt="Logo" class="w-full h-full object-cover rounded-xl">
           </div>
-          <span v-if="isSidebarOpen" class="text-xl font-bold tracking-tight whitespace-nowrap">
+          <span v-if="isSidebarOpen" class="text-xl font-bold tracking-tight whitespace-nowrap overflow-hidden">
             <span class="text-indigo-600">CONVERGED</span>
           </span>
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto overscroll-contain hide-scrollbar px-6 pb-6">
-        <nav class="space-y-1 mt-4" :class="[isSidebarOpen ? '' : 'place-items-center']">
+      <div class="flex-1 overflow-y-auto overscroll-contain hide-scrollbar pb-6" ref="sidebarScrollRef"
+        @scroll="handleSidebarScroll" :class="isSidebarOpen ? 'px-6' : 'px-3'">
+        <nav class="space-y-1 mt-4">
           <template v-for="group in menuGroups" :key="group.label">
 
             <div v-if="isSidebarOpen" class="px-4 pt-4 pb-1">
-              <span class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ group.label }}</span>
+              <span class="text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ group.label
+                }}</span>
             </div>
-            <div v-else class="border-b border-slate-100 my-2 w-full"></div>
+            <div v-else class="border-b border-slate-200 my-4 mx-2"></div>
 
-            <router-link v-for="item in group.items" :key="item.name" :to="item.path"
-              :title="!isSidebarOpen ? item.name : ''"
-              class="flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 group hover:translate-x-1"
-              :class="[$route.path === item.path ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600']">
+            <router-link v-for="item in group.items" :key="item.name" :to="item.path" @click="handleMenuClick"
+              @mouseenter="showTooltip($event, item.name)" @mouseleave="hideTooltip"
+              class="relative flex items-center py-3 rounded-2xl transition-all duration-300 group" :class="[
+                $route.path === item.path ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600',
+                isSidebarOpen ? 'px-4 space-x-3 hover:translate-x-1' : 'justify-center'
+              ]">
+
               <component :is="item.icon" class="w-5 h-5 shrink-0" />
-              <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap">{{ item.name }}</span>
+
+              <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap overflow-hidden">{{ item.name
+                }}</span>
+
               <ChevronRight v-if="isSidebarOpen && $route.path === item.path"
                 class="w-4 h-4 ml-auto opacity-50 shrink-0" />
             </router-link>
           </template>
         </nav>
 
-        <button
-          class="flex items-center space-x-3 px-4 py-3.5 mt-8 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-300 group w-full">
-          <LogOut class="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-          <span v-if="isSidebarOpen" class="font-semibold text-sm">Đăng xuất</span>
+        <button @click="handleLogout" @mouseenter="showTooltip($event, 'Đăng xuất')" @mouseleave="hideTooltip"
+          class="relative flex items-center py-3.5 mt-8 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-300 group w-full cursor-pointer"
+          :class="isSidebarOpen ? 'px-4 space-x-3' : 'justify-center'">
+
+          <LogOut class="w-5 h-5 shrink-0"
+            :class="isSidebarOpen ? 'group-hover:-translate-x-1 transition-transform' : ''" />
+          <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap overflow-hidden">Đăng xuất</span>
         </button>
       </div>
     </aside>
-    <main class="flex-1 min-w-0 flex flex-col h-screen">
 
+    <main class="flex-1 min-w-0 flex flex-col h-screen">
       <header
         class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between z-30 sticky top-0 shrink-0">
         <div class="flex items-center space-x-4">
-          <button @click="isSidebarOpen = !isSidebarOpen" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <button @click="toggleSidebar" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <Menu class="w-6 h-6 text-slate-500" />
           </button>
 
@@ -137,12 +210,23 @@ const menuGroups = [
           </div>
         </div>
       </header>
+
       <div class="flex-1 overflow-y-auto overscroll-contain p-8 bg-slate-50/50">
         <div class="max-w-7xl mx-auto animate-fade-in">
           <slot />
         </div>
       </div>
     </main>
+
+    <transition name="slide-fade">
+      <div v-if="tooltip.show"
+        class="fixed left-21 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg whitespace-nowrap z-100 shadow-lg pointer-events-none transform -translate-y-1/2 flex items-center"
+        :style="{ top: tooltip.top + 'px' }">
+        <div class="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 rounded-sm"></div>
+        {{ tooltip.text }}
+      </div>
+    </transition>
+
   </div>
 </template>
 
@@ -176,5 +260,22 @@ const menuGroups = [
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translate(-10px, -50%);
+}
+
+.slide-fade-enter-to,
+.slide-fade-leave-from {
+  opacity: 1;
+  transform: translate(0, -50%);
 }
 </style>
