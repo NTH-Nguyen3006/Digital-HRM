@@ -1,5 +1,29 @@
 package com.company.hrm.module.reporting.service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.ResultSetMetaData;
+import java.sql.Timestamp;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.company.hrm.common.constant.RecordStatus;
 import com.company.hrm.common.constant.ReportCode;
 import com.company.hrm.common.constant.ReportRunStatus;
@@ -31,29 +55,6 @@ import com.company.hrm.module.storage.service.StorageFileService;
 import com.company.hrm.module.user.entity.SecUserAccount;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.sql.ResultSetMetaData;
-import java.sql.Timestamp;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReportingService {
@@ -79,8 +80,7 @@ public class ReportingService {
             MailService mailService,
             AuditLogService auditLogService,
             ObjectMapper objectMapper,
-            AppProperties appProperties
-    ) {
+            AppProperties appProperties) {
         this.jdbcTemplate = jdbcTemplate;
         this.reportScheduleConfigRepository = reportScheduleConfigRepository;
         this.reportScheduleRunRepository = reportScheduleRunRepository;
@@ -133,8 +133,8 @@ public class ReportingService {
                   and c.end_date is not null
                   and c.end_date between :fromDate and :toDate
                 """, params()
-                        .addValue("fromDate", LocalDate.now())
-                        .addValue("toDate", LocalDate.now().plusDays(30)));
+                .addValue("fromDate", LocalDate.now())
+                .addValue("toDate", LocalDate.now().plusDays(30)));
         Long pendingOnboardingCount = count("""
                 select count(1)
                 from dbo.onb_onboarding
@@ -149,38 +149,37 @@ public class ReportingService {
                 """);
 
         List<DashboardBreakdownItemResponse> employmentStatusBreakdown = jdbcTemplate.query("""
-                        select employment_status as statusCode, count(1) as totalCount
-                        from dbo.hr_employee
-                        where is_deleted = 0
-                        group by employment_status
-                        order by employment_status
-                        """,
+                select employment_status as statusCode, count(1) as totalCount
+                from dbo.hr_employee
+                where is_deleted = 0
+                group by employment_status
+                order by employment_status
+                """,
                 params(),
                 (rs, rowNum) -> new DashboardBreakdownItemResponse(
                         rs.getString("statusCode"),
                         rs.getString("statusCode"),
-                        rs.getLong("totalCount")
-                ));
+                        rs.getLong("totalCount")));
 
         List<DashboardBreakdownItemResponse> orgUnitHeadcountBreakdown = jdbcTemplate.query("""
-                        select o.org_unit_code as orgUnitCode,
-                               o.org_unit_name as orgUnitName,
-                               count(1) as totalCount
-                        from dbo.hr_employee e
-                        inner join dbo.hr_org_unit o on e.org_unit_id = o.org_unit_id
-                        where e.is_deleted = 0
-                          and e.employment_status in ('PROBATION', 'ACTIVE', 'SUSPENDED')
-                        group by o.org_unit_code, o.org_unit_name
-                        order by totalCount desc, o.org_unit_name asc
-                        """,
+                select o.org_unit_code as orgUnitCode,
+                       o.org_unit_name as orgUnitName,
+                       count(1) as totalCount
+                from dbo.hr_employee e
+                inner join dbo.hr_org_unit o on e.org_unit_id = o.org_unit_id
+                where e.is_deleted = 0
+                  and e.employment_status in ('PROBATION', 'ACTIVE', 'SUSPENDED')
+                group by o.org_unit_code, o.org_unit_name
+                order by totalCount desc, o.org_unit_name asc
+                """,
                 params(),
                 (rs, rowNum) -> new DashboardBreakdownItemResponse(
                         rs.getString("orgUnitCode"),
                         rs.getString("orgUnitName"),
-                        rs.getLong("totalCount")
-                ));
+                        rs.getLong("totalCount")));
 
-        List<DashboardTrendPointResponse> monthlyMovement = buildMonthlyMovement(LocalDate.now().withDayOfMonth(1).minusMonths(5), 6, null);
+        List<DashboardTrendPointResponse> monthlyMovement = buildMonthlyMovement(
+                LocalDate.now().withDayOfMonth(1).minusMonths(5), 6, null);
 
         return new HeadcountDashboardResponse(
                 totalEmployeeCount,
@@ -194,8 +193,7 @@ public class ReportingService {
                 openOffboardingCount,
                 employmentStatusBreakdown,
                 orgUnitHeadcountBreakdown,
-                monthlyMovement
-        );
+                monthlyMovement);
     }
 
     @Transactional(readOnly = true)
@@ -304,42 +302,40 @@ public class ReportingService {
                 """, params);
 
         List<DashboardBreakdownItemResponse> teamOrgBreakdown = jdbcTemplate.query("""
-                        select o.org_unit_code as orgUnitCode,
-                               o.org_unit_name as orgUnitName,
-                               count(1) as totalCount
-                        from dbo.hr_employee e
-                        inner join dbo.hr_org_unit o on e.org_unit_id = o.org_unit_id
-                        where e.is_deleted = 0
-                          and o.path_code like :orgPathPrefix + '%'
-                          and e.employment_status in ('PROBATION', 'ACTIVE', 'SUSPENDED')
-                        group by o.org_unit_code, o.org_unit_name
-                        order by totalCount desc, o.org_unit_name asc
-                        """,
+                select o.org_unit_code as orgUnitCode,
+                       o.org_unit_name as orgUnitName,
+                       count(1) as totalCount
+                from dbo.hr_employee e
+                inner join dbo.hr_org_unit o on e.org_unit_id = o.org_unit_id
+                where e.is_deleted = 0
+                  and o.path_code like :orgPathPrefix + '%'
+                  and e.employment_status in ('PROBATION', 'ACTIVE', 'SUSPENDED')
+                group by o.org_unit_code, o.org_unit_name
+                order by totalCount desc, o.org_unit_name asc
+                """,
                 params,
                 (rs, rowNum) -> new DashboardBreakdownItemResponse(
                         rs.getString("orgUnitCode"),
                         rs.getString("orgUnitName"),
-                        rs.getLong("totalCount")
-                ));
+                        rs.getLong("totalCount")));
 
         List<DashboardBreakdownItemResponse> todayStatusBreakdown = jdbcTemplate.query("""
-                        select d.daily_status as statusCode, count(1) as totalCount
-                        from dbo.att_daily_attendance d
-                        inner join dbo.hr_employee e on d.employee_id = e.employee_id
-                        inner join dbo.hr_org_unit o on e.org_unit_id = o.org_unit_id
-                        where d.is_deleted = 0
-                          and e.is_deleted = 0
-                          and d.attendance_date = :today
-                          and o.path_code like :orgPathPrefix + '%'
-                        group by d.daily_status
-                        order by d.daily_status
-                        """,
+                select d.daily_status as statusCode, count(1) as totalCount
+                from dbo.att_daily_attendance d
+                inner join dbo.hr_employee e on d.employee_id = e.employee_id
+                inner join dbo.hr_org_unit o on e.org_unit_id = o.org_unit_id
+                where d.is_deleted = 0
+                  and e.is_deleted = 0
+                  and d.attendance_date = :today
+                  and o.path_code like :orgPathPrefix + '%'
+                group by d.daily_status
+                order by d.daily_status
+                """,
                 params,
                 (rs, rowNum) -> new DashboardBreakdownItemResponse(
                         rs.getString("statusCode"),
                         rs.getString("statusCode"),
-                        rs.getLong("totalCount")
-                ));
+                        rs.getLong("totalCount")));
 
         return new TeamDashboardResponse(
                 managerEmployee.getEmployeeId(),
@@ -355,8 +351,7 @@ public class ReportingService {
                 contractExpiring30DayCount,
                 openOffboardingCount,
                 teamOrgBreakdown,
-                todayStatusBreakdown
-        );
+                todayStatusBreakdown);
     }
 
     @Transactional(readOnly = true)
@@ -533,7 +528,8 @@ public class ReportingService {
     @Transactional(readOnly = true)
     public String exportPayrollSummaryCsv(Long payrollPeriodId) {
         if (payrollPeriodId == null) {
-            throw new BusinessException("REPORT_PAYROLL_PERIOD_REQUIRED", "payrollPeriodId là bắt buộc.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("REPORT_PAYROLL_PERIOD_REQUIRED", "payrollPeriodId là bắt buộc.",
+                    HttpStatus.BAD_REQUEST);
         }
         return exportQueryAsCsv("""
                 select pp.period_code as periodCode,
@@ -572,7 +568,8 @@ public class ReportingService {
     @Transactional(readOnly = true)
     public String exportPitCsv(Long payrollPeriodId) {
         if (payrollPeriodId == null) {
-            throw new BusinessException("REPORT_PAYROLL_PERIOD_REQUIRED", "payrollPeriodId là bắt buộc.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("REPORT_PAYROLL_PERIOD_REQUIRED", "payrollPeriodId là bắt buộc.",
+                    HttpStatus.BAD_REQUEST);
         }
         return payrollService.exportPitReportCsv(payrollPeriodId);
     }
@@ -635,7 +632,8 @@ public class ReportingService {
     }
 
     @Transactional(readOnly = true)
-    public String exportAuditCsv(String moduleCode, String actionCode, String resultCode, String actorUsername, LocalDateTime from, LocalDateTime to) {
+    public String exportAuditCsv(String moduleCode, String actionCode, String resultCode, String actorUsername,
+            LocalDateTime from, LocalDateTime to) {
         return exportQueryAsCsv("""
                 select action_at as actionAt,
                        actor_username as actorUsername,
@@ -666,23 +664,36 @@ public class ReportingService {
 
     @Transactional(readOnly = true)
     public SystemHealthDashboardResponse getSystemHealthDashboard() {
-        Long profileChangePending = count("select count(1) from dbo.hr_employee_profile_change_request where is_deleted = 0 and request_status = 'PENDING'");
-        Long leavePending = count("select count(1) from dbo.lea_leave_request where is_deleted = 0 and request_status in ('SUBMITTED','APPROVED')");
-        Long attendanceAdjustmentPending = count("select count(1) from dbo.att_adjustment_request where is_deleted = 0 and request_status in ('SUBMITTED','APPROVED')");
-        Long overtimePending = count("select count(1) from dbo.att_overtime_request where is_deleted = 0 and request_status = 'SUBMITTED'");
-        Long payrollPending = count("select count(1) from dbo.pay_payroll_period where is_deleted = 0 and period_status in ('DRAFT','TEAM_REVIEW')");
-        Long onboardingPending = count("select count(1) from dbo.onb_onboarding where is_deleted = 0 and status in ('DRAFT','IN_PROGRESS','READY_FOR_JOIN')");
-        Long offboardingPending = count("select count(1) from dbo.off_offboarding_case where is_deleted = 0 and status not in ('CLOSED','CANCELLED','MANAGER_REJECTED')");
+        Long profileChangePending = count(
+                "select count(1) from dbo.hr_employee_profile_change_request where is_deleted = 0 and request_status = 'PENDING'");
+        Long leavePending = count(
+                "select count(1) from dbo.lea_leave_request where is_deleted = 0 and request_status in ('SUBMITTED','APPROVED')");
+        Long attendanceAdjustmentPending = count(
+                "select count(1) from dbo.att_adjustment_request where is_deleted = 0 and request_status in ('SUBMITTED','APPROVED')");
+        Long overtimePending = count(
+                "select count(1) from dbo.att_overtime_request where is_deleted = 0 and request_status = 'SUBMITTED'");
+        Long payrollPending = count(
+                "select count(1) from dbo.pay_payroll_period where is_deleted = 0 and period_status in ('DRAFT','TEAM_REVIEW')");
+        Long onboardingPending = count(
+                "select count(1) from dbo.onb_onboarding where is_deleted = 0 and status in ('DRAFT','IN_PROGRESS','READY_FOR_JOIN')");
+        Long offboardingPending = count(
+                "select count(1) from dbo.off_offboarding_case where is_deleted = 0 and status not in ('CLOSED','CANCELLED','MANAGER_REJECTED')");
 
         List<HealthMetricResponse> metrics = List.of(
-                new HealthMetricResponse("PROFILE_CHANGE_PENDING", "Profile change chờ xử lý", profileChangePending, severity(profileChangePending, 1L, 5L)),
-                new HealthMetricResponse("LEAVE_PENDING", "Đơn nghỉ chờ xử lý", leavePending, severity(leavePending, 5L, 20L)),
-                new HealthMetricResponse("ATTENDANCE_ADJUSTMENT_PENDING", "Điều chỉnh công chờ xử lý", attendanceAdjustmentPending, severity(attendanceAdjustmentPending, 5L, 20L)),
-                new HealthMetricResponse("OVERTIME_PENDING", "OT chờ xử lý", overtimePending, severity(overtimePending, 5L, 20L)),
-                new HealthMetricResponse("PAYROLL_PENDING", "Kỳ lương chưa hoàn tất", payrollPending, severity(payrollPending, 1L, 3L)),
-                new HealthMetricResponse("ONBOARDING_PENDING", "Onboarding đang mở", onboardingPending, severity(onboardingPending, 3L, 10L)),
-                new HealthMetricResponse("OFFBOARDING_PENDING", "Offboarding đang mở", offboardingPending, severity(offboardingPending, 1L, 5L))
-        );
+                new HealthMetricResponse("PROFILE_CHANGE_PENDING", "Profile change chờ xử lý", profileChangePending,
+                        severity(profileChangePending, 1L, 5L)),
+                new HealthMetricResponse("LEAVE_PENDING", "Đơn nghỉ chờ xử lý", leavePending,
+                        severity(leavePending, 5L, 20L)),
+                new HealthMetricResponse("ATTENDANCE_ADJUSTMENT_PENDING", "Điều chỉnh công chờ xử lý",
+                        attendanceAdjustmentPending, severity(attendanceAdjustmentPending, 5L, 20L)),
+                new HealthMetricResponse("OVERTIME_PENDING", "OT chờ xử lý", overtimePending,
+                        severity(overtimePending, 5L, 20L)),
+                new HealthMetricResponse("PAYROLL_PENDING", "Kỳ lương chưa hoàn tất", payrollPending,
+                        severity(payrollPending, 1L, 3L)),
+                new HealthMetricResponse("ONBOARDING_PENDING", "Onboarding đang mở", onboardingPending,
+                        severity(onboardingPending, 3L, 10L)),
+                new HealthMetricResponse("OFFBOARDING_PENDING", "Offboarding đang mở", offboardingPending,
+                        severity(offboardingPending, 1L, 5L)));
 
         Long overdueChecklistCount = count("""
                 select count(1) from dbo.off_offboarding_checklist_item
@@ -691,11 +702,11 @@ public class ReportingService {
                   and status in ('OPEN','IN_PROGRESS')
                 """, params().addValue("today", LocalDate.now()))
                 + count("""
-                select count(1) from dbo.onb_onboarding_checklist
-                where is_deleted = 0
-                  and due_date < :today
-                  and is_completed = 0
-                """, params().addValue("today", LocalDate.now()));
+                        select count(1) from dbo.onb_onboarding_checklist
+                        where is_deleted = 0
+                          and due_date < :today
+                          and is_completed = 0
+                        """, params().addValue("today", LocalDate.now()));
 
         Long storageFileCount = count("select count(1) from dbo.sys_stored_file where is_deleted = 0");
         Long missingStorageBinaryCount = countMissingStoredBinaries();
@@ -730,8 +741,7 @@ public class ReportingService {
                 overdueChecklistCount,
                 scheduledReportActiveCount,
                 scheduledReportFailedLast7dCount,
-                metrics
-        );
+                metrics);
     }
 
     @Transactional(readOnly = true)
@@ -745,36 +755,46 @@ public class ReportingService {
     @Transactional
     public ReportScheduleConfigResponse createSchedule(ReportScheduleConfigUpsertRequest request) {
         validateScheduleRequest(request);
-        if (reportScheduleConfigRepository.existsByScheduleCodeIgnoreCaseAndDeletedFalse(request.scheduleCode().trim())) {
-            throw new BusinessException("REPORT_SCHEDULE_CODE_EXISTS", "Mã lịch báo cáo đã tồn tại.", HttpStatus.CONFLICT);
+        if (reportScheduleConfigRepository
+                .existsByScheduleCodeIgnoreCaseAndDeletedFalse(request.scheduleCode().trim())) {
+            throw new BusinessException("REPORT_SCHEDULE_CODE_EXISTS", "Mã lịch báo cáo đã tồn tại.",
+                    HttpStatus.CONFLICT);
         }
         RepReportScheduleConfig entity = new RepReportScheduleConfig();
         applySchedule(entity, request);
         entity = reportScheduleConfigRepository.save(entity);
         ReportScheduleConfigResponse response = toReportScheduleConfigResponse(entity);
-        auditLogService.logSuccess("CREATE", "REPORT_SCHEDULE", "rep_report_schedule_config", entity.getReportScheduleConfigId().toString(), null, response, "Tạo lịch xuất báo cáo định kỳ.");
+        auditLogService.logSuccess("CREATE", "REPORT_SCHEDULE", "rep_report_schedule_config",
+                entity.getReportScheduleConfigId().toString(), null, response, "Tạo lịch xuất báo cáo định kỳ.");
         return response;
     }
 
     @Transactional
-    public ReportScheduleConfigResponse updateSchedule(Long reportScheduleConfigId, ReportScheduleConfigUpsertRequest request) {
+    public ReportScheduleConfigResponse updateSchedule(Long reportScheduleConfigId,
+            ReportScheduleConfigUpsertRequest request) {
         validateScheduleRequest(request);
         RepReportScheduleConfig entity = getSchedule(reportScheduleConfigId);
         ReportScheduleConfigResponse oldSnapshot = toReportScheduleConfigResponse(entity);
-        if (reportScheduleConfigRepository.existsByScheduleCodeIgnoreCaseAndDeletedFalseAndReportScheduleConfigIdNot(request.scheduleCode().trim(), reportScheduleConfigId)) {
-            throw new BusinessException("REPORT_SCHEDULE_CODE_EXISTS", "Mã lịch báo cáo đã tồn tại.", HttpStatus.CONFLICT);
+        if (reportScheduleConfigRepository.existsByScheduleCodeIgnoreCaseAndDeletedFalseAndReportScheduleConfigIdNot(
+                request.scheduleCode().trim(), reportScheduleConfigId)) {
+            throw new BusinessException("REPORT_SCHEDULE_CODE_EXISTS", "Mã lịch báo cáo đã tồn tại.",
+                    HttpStatus.CONFLICT);
         }
         applySchedule(entity, request);
         entity = reportScheduleConfigRepository.save(entity);
         ReportScheduleConfigResponse response = toReportScheduleConfigResponse(entity);
-        auditLogService.logSuccess("UPDATE", "REPORT_SCHEDULE", "rep_report_schedule_config", entity.getReportScheduleConfigId().toString(), oldSnapshot, response, "Cập nhật lịch xuất báo cáo định kỳ.");
+        auditLogService.logSuccess("UPDATE", "REPORT_SCHEDULE", "rep_report_schedule_config",
+                entity.getReportScheduleConfigId().toString(), oldSnapshot, response,
+                "Cập nhật lịch xuất báo cáo định kỳ.");
         return response;
     }
 
     @Transactional(readOnly = true)
     public List<ReportScheduleRunResponse> listScheduleRuns(Long reportScheduleConfigId) {
         getSchedule(reportScheduleConfigId);
-        return reportScheduleRunRepository.findAllByReportScheduleConfigReportScheduleConfigIdAndDeletedFalseOrderByStartedAtDescReportScheduleRunIdDesc(reportScheduleConfigId)
+        return reportScheduleRunRepository
+                .findAllByReportScheduleConfigReportScheduleConfigIdAndDeletedFalseOrderByStartedAtDescReportScheduleRunIdDesc(
+                        reportScheduleConfigId)
                 .stream()
                 .map(this::toReportScheduleRunResponse)
                 .toList();
@@ -786,7 +806,8 @@ public class ReportingService {
         SecUserAccount currentUser = reportAccessScopeService.getCurrentUserRequired();
         ReportScheduleRunResponse response = executeSchedule(config, ReportRunTriggerType.MANUAL, currentUser);
         auditLogService.logSuccess("RUN_NOW", "REPORT_SCHEDULE", "rep_report_schedule_run",
-                Objects.toString(response.reportScheduleRunId(), null), null, response, "Thực thi lịch báo cáo thủ công.");
+                Objects.toString(response.reportScheduleRunId(), null), null, response,
+                "Thực thi lịch báo cáo thủ công.");
         return response;
     }
 
@@ -796,18 +817,22 @@ public class ReportingService {
             return;
         }
         List<RepReportScheduleConfig> dueConfigs = reportScheduleConfigRepository
-                .findAllByDeletedFalseAndStatusAndNextRunAtLessThanEqualOrderByNextRunAtAsc(RecordStatus.ACTIVE, LocalDateTime.now());
+                .findAllByDeletedFalseAndStatusAndNextRunAtLessThanEqualOrderByNextRunAtAsc(RecordStatus.ACTIVE,
+                        LocalDateTime.now());
         for (RepReportScheduleConfig config : dueConfigs) {
             try {
                 executeSchedule(config, ReportRunTriggerType.SCHEDULED, null);
             } catch (Exception exception) {
-                auditLogService.logSystemFailure("SYSTEM", "RUN_FAILED", "REPORT_SCHEDULE", "rep_report_schedule_config",
-                        config.getReportScheduleConfigId().toString(), null, null, "Thực thi lịch báo cáo thất bại: " + exception.getMessage());
+                auditLogService.logSystemFailure("SYSTEM", "RUN_FAILED", "REPORT_SCHEDULE",
+                        "rep_report_schedule_config",
+                        config.getReportScheduleConfigId().toString(), null, null,
+                        "Thực thi lịch báo cáo thất bại: " + exception.getMessage());
             }
         }
     }
 
-    private ReportScheduleRunResponse executeSchedule(RepReportScheduleConfig config, ReportRunTriggerType triggerType, SecUserAccount triggeredByUser) {
+    private ReportScheduleRunResponse executeSchedule(RepReportScheduleConfig config, ReportRunTriggerType triggerType,
+            SecUserAccount triggeredByUser) {
         RepReportScheduleRun run = new RepReportScheduleRun();
         run.setReportScheduleConfig(config);
         run.setTriggerType(triggerType);
@@ -825,8 +850,7 @@ public class ReportingService {
                     StorageVisibilityScope.INTERNAL,
                     "Generated by report schedule " + config.getScheduleCode(),
                     artifact.csvContent().getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                    "text/csv"
-            );
+                    "text/csv");
 
             run.setRunStatus(ReportRunStatus.SUCCESS);
             run.setOutputFileKey(storedFile.fileKey());
@@ -839,7 +863,8 @@ public class ReportingService {
             config.setLastRunAt(run.getFinishedAt());
             config.setLastRunStatus(ReportRunStatus.SUCCESS);
             config.setLastRunMessage(run.getRunMessage());
-            config.setNextRunAt(calculateNextRunAt(LocalDateTime.now(), config.getFrequencyCode(), config.getDayOfWeek(), config.getDayOfMonth(), config.getRunAtHour(), config.getRunAtMinute()));
+            config.setNextRunAt(calculateNextRunAt(LocalDateTime.now(), config.getFrequencyCode(),
+                    config.getDayOfWeek(), config.getDayOfMonth(), config.getRunAtHour(), config.getRunAtMinute()));
             reportScheduleConfigRepository.save(config);
 
             for (String email : parseRecipients(config.getRecipientEmailsCsv())) {
@@ -847,20 +872,23 @@ public class ReportingService {
                         email,
                         "[Digital HRM] Scheduled report " + config.getScheduleName(),
                         """
-                        Báo cáo định kỳ đã được tạo thành công.
+                                Báo cáo định kỳ đã được tạo thành công.
 
-                        Schedule code: %s
-                        Report code: %s
-                        File key: %s
-                        Download URL: /api/v1/storage/files/%s/download
-                        Rows: %s
-                        """.formatted(config.getScheduleCode(), config.getReportCode().name(), storedFile.fileKey(), storedFile.fileKey(), artifact.rowCount())
-                );
+                                Schedule code: %s
+                                Report code: %s
+                                File key: %s
+                                Download URL: /api/v1/storage/files/%s/download
+                                Rows: %s
+                                """.formatted(config.getScheduleCode(), config.getReportCode().name(),
+                                storedFile.fileKey(), storedFile.fileKey(), artifact.rowCount()));
             }
 
             ReportScheduleRunResponse response = toReportScheduleRunResponse(run);
-            auditLogService.logSystemSuccess(triggerType == ReportRunTriggerType.SCHEDULED ? "SYSTEM" : reportAccessScopeService.getCurrentUsername().orElse("UNKNOWN"),
-                    "RUN", "REPORT_SCHEDULE", "rep_report_schedule_run", run.getReportScheduleRunId().toString(), null, response, "Thực thi lịch báo cáo thành công.");
+            auditLogService.logSystemSuccess(
+                    triggerType == ReportRunTriggerType.SCHEDULED ? "SYSTEM"
+                            : reportAccessScopeService.getCurrentUsername().orElse("UNKNOWN"),
+                    "RUN", "REPORT_SCHEDULE", "rep_report_schedule_run", run.getReportScheduleRunId().toString(), null,
+                    response, "Thực thi lịch báo cáo thành công.");
             return response;
         } catch (Exception exception) {
             run.setRunStatus(ReportRunStatus.FAILED);
@@ -871,11 +899,13 @@ public class ReportingService {
             config.setLastRunAt(run.getFinishedAt());
             config.setLastRunStatus(ReportRunStatus.FAILED);
             config.setLastRunMessage(run.getRunMessage());
-            config.setNextRunAt(calculateNextRunAt(LocalDateTime.now(), config.getFrequencyCode(), config.getDayOfWeek(), config.getDayOfMonth(), config.getRunAtHour(), config.getRunAtMinute()));
+            config.setNextRunAt(calculateNextRunAt(LocalDateTime.now(), config.getFrequencyCode(),
+                    config.getDayOfWeek(), config.getDayOfMonth(), config.getRunAtHour(), config.getRunAtMinute()));
             reportScheduleConfigRepository.save(config);
             throw exception instanceof RuntimeException runtimeException
                     ? runtimeException
-                    : new BusinessException("REPORT_SCHEDULE_RUN_FAILED", "Thực thi lịch báo cáo thất bại.", HttpStatus.INTERNAL_SERVER_ERROR);
+                    : new BusinessException("REPORT_SCHEDULE_RUN_FAILED", "Thực thi lịch báo cáo thất bại.",
+                            HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -883,19 +913,23 @@ public class ReportingService {
         JsonNode node = parseParameterJson(parameterJson);
         return switch (reportCode) {
             case ORG_MOVEMENT -> buildArtifact("org-movement.csv",
-                    exportOrgMovementCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"), readLong(node, "orgUnitId")));
+                    exportOrgMovementCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"),
+                            readLong(node, "orgUnitId")));
             case CONTRACT_EXPIRY -> buildArtifact("contract-expiry.csv",
-                    exportContractExpiryCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"), readLong(node, "orgUnitId")));
+                    exportContractExpiryCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"),
+                            readLong(node, "orgUnitId")));
             case LEAVE_BALANCE -> buildArtifact("leave-balance.csv",
                     exportLeaveBalanceCsv(readInteger(node, "leaveYear"), readLong(node, "orgUnitId")));
             case ATTENDANCE_ANOMALY_OT -> buildArtifact("attendance-anomaly-ot.csv",
-                    exportAttendanceAnomalyOtCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"), readLong(node, "orgUnitId")));
+                    exportAttendanceAnomalyOtCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"),
+                            readLong(node, "orgUnitId")));
             case PAYROLL_SUMMARY -> buildArtifact("payroll-summary.csv",
                     exportPayrollSummaryCsv(readLong(node, "payrollPeriodId")));
             case PIT -> buildArtifact("payroll-pit.csv",
                     exportPitCsv(readLong(node, "payrollPeriodId")));
             case ONBOARDING_OFFBOARDING -> buildArtifact("onboarding-offboarding.csv",
-                    exportOnboardingOffboardingCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"), readLong(node, "orgUnitId")));
+                    exportOnboardingOffboardingCsv(readLocalDate(node, "fromDate"), readLocalDate(node, "toDate"),
+                            readLong(node, "orgUnitId")));
             case AUDIT_LOG -> buildArtifact("audit-log.csv",
                     exportAuditCsv(
                             readString(node, "moduleCode"),
@@ -903,8 +937,7 @@ public class ReportingService {
                             readString(node, "resultCode"),
                             readString(node, "actorUsername"),
                             readLocalDateTime(node, "from"),
-                            readLocalDateTime(node, "to")
-                    ));
+                            readLocalDateTime(node, "to")));
         };
     }
 
@@ -930,22 +963,25 @@ public class ReportingService {
         entity.setStatus(request.status());
         entity.setDescription(trimToNull(request.description()));
         entity.setNextRunAt(request.status() == RecordStatus.ACTIVE
-                ? calculateNextRunAt(LocalDateTime.now(), request.frequencyCode(), request.dayOfWeek(), request.dayOfMonth(), request.runAtHour(), request.runAtMinute())
+                ? calculateNextRunAt(LocalDateTime.now(), request.frequencyCode(), request.dayOfWeek(),
+                        request.dayOfMonth(), request.runAtHour(), request.runAtMinute())
                 : null);
     }
 
     private void validateScheduleRequest(ReportScheduleConfigUpsertRequest request) {
         if (request.frequencyCode() == ReportScheduleFrequency.WEEKLY && request.dayOfWeek() == null) {
-            throw new BusinessException("REPORT_SCHEDULE_DAY_OF_WEEK_REQUIRED", "dayOfWeek là bắt buộc với lịch WEEKLY.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("REPORT_SCHEDULE_DAY_OF_WEEK_REQUIRED",
+                    "dayOfWeek là bắt buộc với lịch WEEKLY.", HttpStatus.BAD_REQUEST);
         }
         if (request.frequencyCode() == ReportScheduleFrequency.MONTHLY && request.dayOfMonth() == null) {
-            throw new BusinessException("REPORT_SCHEDULE_DAY_OF_MONTH_REQUIRED", "dayOfMonth là bắt buộc với lịch MONTHLY.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("REPORT_SCHEDULE_DAY_OF_MONTH_REQUIRED",
+                    "dayOfMonth là bắt buộc với lịch MONTHLY.", HttpStatus.BAD_REQUEST);
         }
         parseParameterJson(request.parameterJson());
     }
 
     private LocalDateTime calculateNextRunAt(LocalDateTime baseTime, ReportScheduleFrequency frequencyCode,
-                                             Integer dayOfWeek, Integer dayOfMonth, Integer runAtHour, Integer runAtMinute) {
+            Integer dayOfWeek, Integer dayOfMonth, Integer runAtHour, Integer runAtMinute) {
         LocalDateTime normalizedBase = baseTime.withSecond(0).withNano(0);
         return switch (frequencyCode) {
             case DAILY -> {
@@ -971,14 +1007,16 @@ public class ReportingService {
                 LocalDateTime candidate = candidateDate.atTime(runAtHour, runAtMinute);
                 if (!candidate.isAfter(normalizedBase)) {
                     YearMonth nextMonth = currentMonth.plusMonths(1);
-                    candidate = nextMonth.atDay(Math.min(dayOfMonth, nextMonth.lengthOfMonth())).atTime(runAtHour, runAtMinute);
+                    candidate = nextMonth.atDay(Math.min(dayOfMonth, nextMonth.lengthOfMonth())).atTime(runAtHour,
+                            runAtMinute);
                 }
                 yield candidate;
             }
         };
     }
 
-    private List<DashboardTrendPointResponse> buildMonthlyMovement(LocalDate startMonth, int monthCount, String orgPathPrefix) {
+    private List<DashboardTrendPointResponse> buildMonthlyMovement(LocalDate startMonth, int monthCount,
+            String orgPathPrefix) {
         List<DashboardTrendPointResponse> items = new ArrayList<>();
         for (int i = 0; i < monthCount; i++) {
             LocalDate monthStart = startMonth.plusMonths(i);
@@ -1006,17 +1044,18 @@ public class ReportingService {
                       and oc.status in ('HR_FINALIZED', 'ACCESS_REVOKED', 'SETTLEMENT_PREPARED', 'CLOSED')
                       and (:orgPathPrefix is null or o.path_code like :orgPathPrefix + '%')
                     """, params);
-            items.add(new DashboardTrendPointResponse(monthStart.getMonthValue() + "/" + monthStart.getYear(), joinerCount, leaverCount));
+            items.add(new DashboardTrendPointResponse(monthStart.getMonthValue() + "/" + monthStart.getYear(),
+                    joinerCount, leaverCount));
         }
         return items;
     }
 
     private Long countMissingStoredBinaries() {
         List<String> relativePaths = jdbcTemplate.query("""
-                        select storage_path
-                        from dbo.sys_stored_file
-                        where is_deleted = 0
-                        """,
+                select storage_path
+                from dbo.sys_stored_file
+                where is_deleted = 0
+                """,
                 params(),
                 (rs, rowNum) -> rs.getString("storage_path"));
         Path baseDir = Paths.get(appProperties.getStorage().getBaseDir()).toAbsolutePath().normalize();
@@ -1027,7 +1066,8 @@ public class ReportingService {
                 continue;
             }
             Path absolutePath = baseDir.resolve(relativePath).normalize();
-            if (!absolutePath.startsWith(baseDir) || !Files.exists(absolutePath) || !Files.isRegularFile(absolutePath)) {
+            if (!absolutePath.startsWith(baseDir) || !Files.exists(absolutePath)
+                    || !Files.isRegularFile(absolutePath)) {
                 missing++;
             }
         }
@@ -1113,8 +1153,7 @@ public class ReportingService {
                 entity.getLastRunAt(),
                 entity.getLastRunStatus() == null ? null : entity.getLastRunStatus().name(),
                 entity.getLastRunMessage(),
-                entity.getDescription()
-        );
+                entity.getDescription());
     }
 
     private ReportScheduleRunResponse toReportScheduleRunResponse(RepReportScheduleRun entity) {
@@ -1126,12 +1165,12 @@ public class ReportingService {
                 entity.getRunStatus().name(),
                 entity.getOutputFileKey(),
                 entity.getOutputFileName(),
-                entity.getOutputFileKey() == null ? null : "/api/v1/storage/files/" + entity.getOutputFileKey() + "/download",
+                entity.getOutputFileKey() == null ? null
+                        : "/api/v1/storage/files/" + entity.getOutputFileKey() + "/download",
                 entity.getOutputRowCount(),
                 entity.getRunMessage(),
                 entity.getStartedAt(),
-                entity.getFinishedAt()
-        );
+                entity.getFinishedAt());
     }
 
     private List<String> parseRecipients(String csv) {
@@ -1159,7 +1198,8 @@ public class ReportingService {
             }
             return objectMapper.readTree(parameterJson);
         } catch (Exception exception) {
-            throw new BusinessException("REPORT_PARAMETER_JSON_INVALID", "parameterJson không phải JSON hợp lệ.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("REPORT_PARAMETER_JSON_INVALID", "parameterJson không phải JSON hợp lệ.",
+                    HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -1171,7 +1211,8 @@ public class ReportingService {
         try {
             return objectMapper.writeValueAsString(node);
         } catch (Exception exception) {
-            throw new BusinessException("REPORT_PARAMETER_JSON_INVALID", "parameterJson không thể chuẩn hóa.", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("REPORT_PARAMETER_JSON_INVALID", "parameterJson không thể chuẩn hóa.",
+                    HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -1260,7 +1301,6 @@ public class ReportingService {
     private record ExportArtifact(
             String fileName,
             String csvContent,
-            Integer rowCount
-    ) {
+            Integer rowCount) {
     }
 }

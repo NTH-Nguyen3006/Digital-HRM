@@ -1,5 +1,8 @@
 package com.company.hrm.module.employee.service;
 
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
 import com.company.hrm.common.constant.RoleCode;
 import com.company.hrm.common.exception.ForbiddenException;
 import com.company.hrm.common.exception.UnauthorizedException;
@@ -11,9 +14,6 @@ import com.company.hrm.module.user.entity.SecUserAccount;
 import com.company.hrm.module.user.repository.SecUserAccountRepository;
 import com.company.hrm.security.SecurityUserContext;
 import com.company.hrm.security.SecurityUserPrincipal;
-import java.util.Optional;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
 
 @Service
 public class EmployeeAccessScopeService {
@@ -25,8 +25,7 @@ public class EmployeeAccessScopeService {
     public EmployeeAccessScopeService(
             SecUserAccountRepository userAccountRepository,
             HrEmployeeRepository employeeRepository,
-            HrOrgUnitRepository orgUnitRepository
-    ) {
+            HrOrgUnitRepository orgUnitRepository) {
         this.userAccountRepository = userAccountRepository;
         this.employeeRepository = employeeRepository;
         this.orgUnitRepository = orgUnitRepository;
@@ -38,7 +37,8 @@ public class EmployeeAccessScopeService {
             return specification;
         }
         if (scope.orgPathPrefix() != null) {
-            return specification.and((root, query, builder) -> builder.like(root.join("orgUnit").get("pathCode"), scope.orgPathPrefix() + "%"));
+            return specification.and((root, query, builder) -> builder.like(root.join("orgUnit").get("pathCode"),
+                    scope.orgPathPrefix() + "%"));
         }
         return specification.and((root, query, builder) -> builder.equal(root.get("employeeId"), scope.employeeId()));
     }
@@ -49,7 +49,8 @@ public class EmployeeAccessScopeService {
             return specification;
         }
         if (scope.orgPathPrefix() != null) {
-            return specification.and((root, query, builder) -> builder.like(root.get("pathCode"), scope.orgPathPrefix() + "%"));
+            return specification
+                    .and((root, query, builder) -> builder.like(root.get("pathCode"), scope.orgPathPrefix() + "%"));
         }
         return specification.and((root, query, builder) -> builder.equal(root.get("orgUnitId"), scope.orgUnitId()));
     }
@@ -76,7 +77,8 @@ public class EmployeeAccessScopeService {
         if (scope.global()) {
             return;
         }
-        if (scope.orgPathPrefix() != null && orgUnit.getPathCode() != null && orgUnit.getPathCode().startsWith(scope.orgPathPrefix())) {
+        if (scope.orgPathPrefix() != null && orgUnit.getPathCode() != null
+                && orgUnit.getPathCode().startsWith(scope.orgPathPrefix())) {
             return;
         }
         if (scope.orgUnitId() != null && scope.orgUnitId().equals(orgUnit.getOrgUnitId())) {
@@ -97,11 +99,13 @@ public class EmployeeAccessScopeService {
                 .orElseThrow(() -> new UnauthorizedException("USER_NOT_FOUND", "Không tìm thấy tài khoản hiện tại."));
 
         if (user.getEmployeeId() == null) {
-            throw new ForbiddenException("EMPLOYEE_LINK_REQUIRED", "Tài khoản hiện tại chưa được liên kết hồ sơ nhân sự.");
+            throw new ForbiddenException("EMPLOYEE_LINK_REQUIRED",
+                    "Tài khoản hiện tại chưa được liên kết hồ sơ nhân sự.");
         }
 
         HrEmployee employee = employeeRepository.findByEmployeeIdAndDeletedFalse(user.getEmployeeId())
-                .orElseThrow(() -> new ForbiddenException("EMPLOYEE_SCOPE_ROOT_NOT_FOUND", "Không tìm thấy hồ sơ nhân sự gốc để xác định phạm vi dữ liệu."));
+                .orElseThrow(() -> new ForbiddenException("EMPLOYEE_SCOPE_ROOT_NOT_FOUND",
+                        "Không tìm thấy hồ sơ nhân sự gốc để xác định phạm vi dữ liệu."));
 
         Long orgUnitId = employee.getOrgUnit() == null ? null : employee.getOrgUnit().getOrgUnitId();
         String pathCode = employee.getOrgUnit() == null ? null : employee.getOrgUnit().getPathCode();
