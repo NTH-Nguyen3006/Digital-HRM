@@ -15,8 +15,13 @@ import {
   UserPlus,
   Users
 } from "lucide-vue-next"
-import { onMounted, ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { onMounted, ref, computed } from 'vue'
 import VueApexCharts from "vue3-apexcharts"
+
+const authStore = useAuthStore()
+const isHR = authStore.isHR
+const isAdmin = authStore.isAdmin
 
 import { getExpiringContracts } from '@/api/admin/contract.js'
 import { getEmployees } from '@/api/admin/employee.js'
@@ -25,10 +30,10 @@ import { getHeadcountDashboard } from '@/api/admin/report.js'
 
 const loading = ref(true)
 const statsData = ref([
-  { title: "Tổng nhân sự", value: "0", icon: Users, color: "indigo", trend: 0 },
-  { title: "Nhân viên mới", value: "0", icon: UserPlus, color: "emerald", trend: 0 },
-  { title: "Đang thử việc", value: "0", icon: Briefcase, color: "amber" },
-  { title: "Nghỉ việc tháng này", value: "0", icon: UserMinus, color: "rose" }
+  { title: "Tổng nhân sự", value: "0", icon: Users, color: "indigo", trend: 0, visible: true },
+  { title: "Nhân viên mới", value: "0", icon: UserPlus, color: "emerald", trend: 0, visible: true },
+  { title: "Đang thử việc", value: "0", icon: Briefcase, color: "amber", visible: true },
+  { title: "Nghỉ việc tháng này", value: "0", icon: UserMinus, color: "rose", visible: true }
 ])
 
 const alerts = ref([

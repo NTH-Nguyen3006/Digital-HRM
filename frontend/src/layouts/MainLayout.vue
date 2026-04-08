@@ -104,27 +104,6 @@ const adminMenuGroups = [
     ]
   },
   {
-    label: 'TỔ CHỨC',
-    items: [
-      { name: 'Cơ cấu tổ chức', icon: Network, path: '/org-units' },
-      { name: 'Chức danh', icon: Briefcase, path: '/job-titles' },
-    ]
-  },
-  {
-    label: 'NHÂN SỰ',
-    items: [
-      { name: 'Hợp đồng lao động', icon: FileSignature, path: '/contracts' },
-      { name: 'Phê duyệt hồ sơ', icon: FilePenLine, path: '/profile-change-requests' },
-    ]
-  },
-  {
-    label: 'VÒNG ĐỜI NHÂN SỰ',
-    items: [
-      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
-      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
-    ]
-  },
-  {
     label: 'HỆ THỐNG',
     items: [
       { name: 'Tài khoản', icon: KeyRound, path: '/users' },
@@ -146,7 +125,7 @@ const hrMenuGroups = [
     label: 'TỔ CHỨC',
     items: [
       { name: 'Cơ cấu tổ chức', icon: Network, path: '/org-units' },
-      { name: 'Chức danh', icon: Briefcase, path: '/job-titles' },
+      // { name: 'Chức danh', icon: Briefcase, path: '/job-titles' }, // Add if job titles page exists
     ]
   },
   {
@@ -160,8 +139,8 @@ const hrMenuGroups = [
   {
     label: 'VÒNG ĐỜI NHÂN SỰ',
     items: [
-      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
-      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
+      { name: 'Tiếp nhận (Onboarding)', icon: UserPlus, path: '/onboarding' },
+      { name: 'Thôi việc (Offboarding)', icon: UserMinus, path: '/offboarding' },
     ]
   },
   {
@@ -170,15 +149,6 @@ const hrMenuGroups = [
       { name: 'Quản lý nghỉ phép', icon: CalendarOff, path: '/leaves' },
       { name: 'Dữ liệu chấm công', icon: Clock, path: '/attendance' },
       { name: 'Bảng tính lương', icon: Banknote, path: '/payroll' },
-    ]
-  },
-  {
-    label: 'HỆ THỐNG',
-    items: [
-      { name: 'Tài khoản', icon: KeyRound, path: '/users' },
-      { name: 'Phân quyền', icon: ShieldCheck, path: '/roles' },
-      { name: 'Nhật ký hoạt động', icon: History, path: '/audit-logs' },
-      { name: 'Cài đặt chung', icon: Settings, path: '/settings' },
     ]
   },
 ]
@@ -194,6 +164,8 @@ const managerMenuGroups = [
     label: 'QUẢN LÝ NHÂN SỰ',
     items: [
       { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
+      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
+      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
     ]
   },
   {
@@ -202,13 +174,6 @@ const managerMenuGroups = [
       { name: 'Duyệt nghỉ phép', icon: CalendarOff, path: '/manager/leaves' },
       { name: 'Duyệt chấm công', icon: Clock, path: '/manager/attendance' },
       { name: 'Bảng lương Team', icon: Banknote, path: '/manager/payroll' },
-    ]
-  },
-  {
-    label: 'VÒNG ĐỜI',
-    items: [
-      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
-      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
     ]
   },
 ]

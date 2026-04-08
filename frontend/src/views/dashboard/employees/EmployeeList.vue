@@ -4,10 +4,17 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import { useAuthStore } from '@/stores/auth'
 import { Plus, Search, MoreVertical, Mail, Phone, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next'
 import { getEmployees } from '@/api/admin/employee'
 
 /* ------------------ STATE ------------------ */
+
+const authStore = useAuthStore()
+const isAdmin = authStore.isAdmin
+const isHR = authStore.isHR
+const canManage = isHR || isAdmin
+const isManager = authStore.isManager
 
 const employees = ref([])
 const loading = ref(false)
@@ -122,7 +129,7 @@ const deleteSelected = () => {
           <Filter class="w-5 h-5" />
         </button>
 
-        <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold">
+        <BaseButton v-if="canManage" variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold">
           <Plus class="w-5 h-5 mr-2" />
           Thêm mới
         </BaseButton>
@@ -146,7 +153,7 @@ const deleteSelected = () => {
         <div v-for="emp in employees" :key="emp.employeeId"
           class="group bg-white rounded-[28px] border border-slate-200 p-6 transition-all duration-300 hover:border-indigo-200 hover:shadow-[0_20px_40px_rgba(79,70,229,0.08)] relative">
           <!-- Checkbox Overlay on Hover -->
-          <div class="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div v-if="canManage" class="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <input type="checkbox" class="w-5 h-5 accent-indigo-600 cursor-pointer rounded-lg border-slate-300"
               :checked="selectedEmployees.includes(emp.employeeId)" @change="toggleSelect(emp.employeeId)" />
           </div>
@@ -233,6 +240,7 @@ const deleteSelected = () => {
 
   <!-- SELECTION ACTION BAR -->
   <div
+    v-if="canManage"
     class="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 bg-slate-900 shadow-2xl rounded-3xl transition-all duration-500 z-60"
     :class="selectedEmployees.length > 0 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'">
     <div class="flex flex-col">
