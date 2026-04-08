@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import {
   ArrowLeft, Edit, Upload, Download, Plus, Trash2, ChevronRight,
   Phone, Mail, MapPin, CreditCard, Briefcase, UserCheck,
@@ -15,6 +16,11 @@ import {
   listBankAccounts,
   listDocuments
 } from '@/api/admin/employee'
+
+const authStore = useAuthStore()
+const isAdmin = authStore.isAdmin
+const isHR = authStore.isHR
+const canManage = isHR || isAdmin
 
 const route = useRoute()
 const router = useRouter()
@@ -156,7 +162,7 @@ const formatDate = (dateStr) => {
           </div>
         </div>
         <!-- Actions -->
-        <div class="flex flex-wrap gap-3">
+        <div v-if="canManage" class="flex flex-wrap gap-3">
           <button @click="showEditModal = true"
             class="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2.5 rounded-xl font-bold text-sm transition-all border border-white/20">
             <Edit class="w-4 h-4" /> Chỉnh sửa
@@ -238,7 +244,7 @@ const formatDate = (dateStr) => {
     <div v-if="activeTab === 'addresses'" class="space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-black text-slate-900">Danh sách địa chỉ</h3>
-        <button @click="showAddressModal = true"
+        <button v-if="canManage" @click="showAddressModal = true"
           class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
           <Plus class="w-4 h-4" /> Thêm địa chỉ
         </button>
@@ -263,7 +269,7 @@ const formatDate = (dateStr) => {
               </p>
             </div>
           </div>
-          <div class="flex gap-2">
+          <div v-if="canManage" class="flex gap-2">
             <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
               <Edit class="w-4 h-4" />
             </button>
@@ -282,7 +288,7 @@ const formatDate = (dateStr) => {
     <div v-if="activeTab === 'emergency'" class="space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-black text-slate-900">Liên hệ khẩn cấp</h3>
-        <button
+        <button v-if="canManage"
           class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
           <Plus class="w-4 h-4" /> Thêm liên hệ
         </button>
@@ -308,7 +314,7 @@ const formatDate = (dateStr) => {
               </div>
             </div>
           </div>
-          <div class="flex gap-2">
+          <div v-if="canManage" class="flex gap-2">
             <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
               <Edit class="w-4 h-4" />
             </button>
@@ -327,7 +333,7 @@ const formatDate = (dateStr) => {
     <div v-if="activeTab === 'identification'" class="space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-black text-slate-900">Giấy tờ tùy thân</h3>
-        <button
+        <button v-if="canManage"
           class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
           <Plus class="w-4 h-4" /> Thêm giấy tờ
         </button>
@@ -348,7 +354,7 @@ const formatDate = (dateStr) => {
                 </span>
               </div>
             </div>
-            <div class="flex gap-2">
+            <div v-if="canManage" class="flex gap-2">
               <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                 <Edit class="w-4 h-4" />
               </button>
@@ -386,7 +392,7 @@ const formatDate = (dateStr) => {
     <div v-if="activeTab === 'bank'" class="space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-black text-slate-900">Tài khoản ngân hàng</h3>
-        <button
+        <button v-if="canManage"
           class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
           <Plus class="w-4 h-4" /> Thêm tài khoản
         </button>
@@ -413,7 +419,7 @@ const formatDate = (dateStr) => {
               <div class="font-bold">{{ bank.branchName || 'N/A' }}</div>
             </div>
           </div>
-          <div class="flex gap-2 mt-4">
+          <div v-if="canManage" class="flex gap-2 mt-4">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors">
               <Edit class="w-3.5 h-3.5" /> Sửa
@@ -434,7 +440,7 @@ const formatDate = (dateStr) => {
     <div v-if="activeTab === 'documents'" class="space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-black text-slate-900">Hồ sơ & Tài liệu đính kèm</h3>
-        <button
+        <button v-if="canManage"
           class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
           <Upload class="w-4 h-4" /> Tải lên tài liệu
         </button>
@@ -476,7 +482,7 @@ const formatDate = (dateStr) => {
               <td class="py-4 px-5 text-sm text-slate-500 font-medium">{{ formatDate(doc.uploadedAt) }}</td>
               <td class="py-4 px-5 text-sm text-slate-500 font-medium">{{ (doc.fileSizeBytes / 1024 / 1024).toFixed(2) }} MB</td>
               <td class="py-4 px-5">
-                <div class="flex items-center justify-end gap-2">
+                <div v-if="canManage" class="flex items-center justify-end gap-2">
                   <button
                     class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                     <Download class="w-4 h-4" />
