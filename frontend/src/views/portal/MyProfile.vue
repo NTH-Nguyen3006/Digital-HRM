@@ -71,7 +71,7 @@ const portalProfile = ref({
   compensation: {
     total: 45500000,
     salary: 42000000,
-    recurring: 3500000, // Phụ cấp
+    recurring: 3500000,
     oneOff: 0,
     offset: 0
   }
@@ -109,14 +109,14 @@ const formatCurrency = (value) => {
 </script>
 
 <template>
-  <div class="max-w-[1400px] mx-auto px-4 py-8 md:px-8 md:py-12">
+  <div class="max-w-350 mx-auto px-4 py-8 md:px-8 md:py-12">
     <div class="grid gap-8 grid-cols-1 xl:grid-cols-[360px_1fr]">
 
       <aside class="space-y-6">
 
-        <div class="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div class="rounded-4xl border border-slate-200 bg-white shadow-sm overflow-hidden sticky top-8">
 
-          <div class="bg-gradient-to-br from-slate-900 via-indigo-900 to-indigo-800 px-8 py-10 text-white">
+          <div class="bg-linear-to-br from-slate-900 via-indigo-900 to-indigo-800 px-8 py-10 text-white">
             <div class="flex items-start gap-5">
               <div
                 class="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-white/10 text-4xl font-black text-white shadow-inner border border-white/20 backdrop-blur-sm">
@@ -135,7 +135,6 @@ const formatCurrency = (value) => {
           </div>
 
           <div class="p-6 space-y-5">
-
             <div
               class="rounded-2xl border border-slate-100 bg-slate-50 p-5 hover:border-indigo-100 hover:bg-indigo-50/30 transition-colors">
               <p class="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-4">Thông tin liên hệ</p>
@@ -208,22 +207,24 @@ const formatCurrency = (value) => {
 
           </div>
         </div>
-
-        <div class="flex flex-col gap-1 border-y border-slate-200 py-4">
-          <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
-            class="px-5 py-3 text-sm font-semibold rounded-xl text-left transition-all relative flex items-center justify-between group"
-            :class="activeTab === tab.key ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'">
-            {{ tab.label }}
-            <ChevronDown v-if="activeTab === tab.key" class="w-4 h-4 -rotate-90 text-indigo-500" />
-          </button>
-        </div>
       </aside>
 
-      <main class="space-y-6 min-w-0">
+      <main class="min-w-0 flex flex-col">
+
+        <div class="flex gap-8 border-b border-slate-200 overflow-x-auto hide-scrollbar mb-8">
+          <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
+            class="pb-4 text-sm font-bold whitespace-nowrap transition-all relative outline-none focus:outline-none group"
+            :class="activeTab === tab.key ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-900'">
+            {{ tab.label }}
+            <div class="absolute bottom-0 left-0 right-0 h-0.75 rounded-t-full transition-all duration-300"
+              :class="activeTab === tab.key ? 'bg-indigo-600 opacity-100' : 'bg-transparent opacity-0 group-hover:bg-slate-200 group-hover:opacity-100'">
+            </div>
+          </button>
+        </div>
 
         <section v-if="activeTab === 'general'"
           class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <GlassCard padding="p-8" class="rounded-[2rem]">
+          <GlassCard padding="p-8" class="rounded-4xl">
             <div class="flex items-center justify-between gap-4 mb-8">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Lý lịch trích ngang</p>
@@ -257,7 +258,7 @@ const formatCurrency = (value) => {
                 <p class="text-sm font-bold text-slate-900">{{ proData.nationality }}</p>
               </div>
               <div class="space-y-1 border-b border-slate-100 pb-3">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bảo hiểm Y tế (Công ty cấp)</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bảo hiểm Y tế</p>
                 <p class="text-sm font-bold text-slate-900">{{ proData.healthInsurance }}</p>
               </div>
               <div class="space-y-1 border-b border-slate-100 pb-3">
@@ -271,7 +272,7 @@ const formatCurrency = (value) => {
             </div>
           </GlassCard>
 
-          <GlassCard padding="p-8" class="rounded-[2rem]">
+          <GlassCard padding="p-8" class="rounded-4xl">
             <div class="flex items-center justify-between gap-4 mb-8">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Chỗ ở hiện tại</p>
@@ -305,8 +306,7 @@ const formatCurrency = (value) => {
         </section>
 
         <section v-if="activeTab === 'job'" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-
-          <GlassCard padding="p-8" class="rounded-[2rem]">
+          <GlassCard padding="p-8" class="rounded-4xl">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-xl font-black text-slate-900">Lịch sử Công tác</h2>
               <BaseButton variant="secondary" size="sm" :icon="Plus">Thêm sự kiện</BaseButton>
@@ -318,8 +318,8 @@ const formatCurrency = (value) => {
                   class="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-slate-500 text-[11px] font-bold">
                   <tr>
                     <th class="px-6 py-4">Ngày hiệu lực</th>
-                    <th class="px-6 py-4">Chức danh (Job Title)</th>
-                    <th class="px-6 py-4">Khối / Phòng ban</th>
+                    <th class="px-6 py-4">Chức danh</th>
+                    <th class="px-6 py-4">Phòng ban</th>
                     <th class="px-6 py-4">Hình thức</th>
                     <th class="px-6 py-4 text-right">Thao tác</th>
                   </tr>
@@ -340,7 +340,7 @@ const formatCurrency = (value) => {
             </div>
           </GlassCard>
 
-          <GlassCard padding="p-8" class="rounded-[2rem]">
+          <GlassCard padding="p-8" class="rounded-4xl">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-xl font-black text-slate-900">Lịch sử Hợp đồng</h2>
               <BaseButton variant="secondary" size="sm" :icon="Plus">Tạo Hợp đồng</BaseButton>
@@ -361,7 +361,7 @@ const formatCurrency = (value) => {
                 <tbody class="text-sm text-slate-700">
                   <tr class="hover:bg-slate-50/50 transition-colors">
                     <td class="px-6 py-4 font-semibold text-slate-900">HDLD-2023-0501</td>
-                    <td class="px-6 py-4">Hợp đồng Không xác định thời hạn</td>
+                    <td class="px-6 py-4">Hợp đồng KXD thời hạn</td>
                     <td class="px-6 py-4">{{ formatDate(empData.hireDate) }}</td>
                     <td class="px-6 py-4 text-slate-400">—</td>
                     <td class="px-6 py-4 text-right">
@@ -376,7 +376,7 @@ const formatCurrency = (value) => {
 
         <section v-if="activeTab === 'payroll'"
           class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <GlassCard padding="p-8" class="rounded-[2rem] bg-indigo-50/30 border-indigo-100">
+          <GlassCard padding="p-8" class="rounded-4xl bg-indigo-50/30 border-indigo-100">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-2">Gói thu nhập đãi ngộ</p>
@@ -386,7 +386,7 @@ const formatCurrency = (value) => {
             </div>
           </GlassCard>
 
-          <GlassCard padding="p-8" class="rounded-[2rem] space-y-6">
+          <GlassCard padding="p-8" class="rounded-4xl space-y-6">
             <div class="flex items-center justify-between pb-6 border-b border-slate-100">
               <div>
                 <p class="text-sm font-semibold text-slate-900">Mức lương Cơ bản (Gross)</p>
@@ -395,7 +395,7 @@ const formatCurrency = (value) => {
               <span class="text-xl font-bold text-slate-900">{{ formatCurrency(compData.salary) }}</span>
             </div>
 
-            <div class="flex items-center justify-between pb-6 border-b border-slate-100">
+            <div class="flex items-center justify-between pb-6 border-b border-slate-100 group cursor-pointer">
               <div>
                 <p class="text-sm font-semibold text-slate-900">Phụ cấp Cố định (Recurring)</p>
                 <p class="text-xs text-slate-500 mt-1">Trợ cấp ăn trưa, xăng xe</p>
@@ -406,7 +406,7 @@ const formatCurrency = (value) => {
               </div>
             </div>
 
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between group cursor-pointer">
               <div>
                 <p class="text-sm font-semibold text-slate-900">Các khoản Khấu trừ mặc định</p>
               </div>
@@ -420,7 +420,7 @@ const formatCurrency = (value) => {
 
         <section v-if="activeTab === 'documents'"
           class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <GlassCard padding="p-8" class="rounded-[2rem]">
+          <GlassCard padding="p-8" class="rounded-4xl">
             <div class="flex items-center justify-between mb-8">
               <h2 class="text-xl font-black text-slate-900">Hồ sơ cá nhân & Chứng từ</h2>
             </div>
@@ -461,7 +461,7 @@ const formatCurrency = (value) => {
 
         <section v-if="activeTab === 'setting'"
           class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <GlassCard padding="p-8" class="rounded-[2rem]">
+          <GlassCard padding="p-8" class="rounded-4xl">
             <h2 class="text-xl font-black text-slate-900 mb-8">Tùy chọn Cổng thông tin (Portal)</h2>
 
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
@@ -496,3 +496,15 @@ const formatCurrency = (value) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Ẩn scrollbar ngang cho thanh Tabs trên Mobile/Tablet */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>
