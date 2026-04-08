@@ -120,11 +120,142 @@ export const getMyInbox = async (params) => {
 };
 
 /**
- * Đọc (Chuyển tín hiệu unread sang read) cho một chuỗi thư
+ * Đánh dấu đã đọc thông báo
  * @param {string|number} portalInboxItemId 
  * @returns {Promise<Object>}
  */
 export const markInboxAsRead = async (portalInboxItemId) => {
     const response = await axios.patch(`${PORTAL_API}/inbox/${portalInboxItemId}/read`);
+    return response.data;
+};
+
+// --- Profile Change Request (Yêu cầu thay đổi hồ sơ)
+
+/**
+ * Gửi yêu cầu thay đổi thông tin cá nhân
+ * @param {Object} payload - Thông tin cần thay đổi
+ * @returns {Promise<Object>}
+ */
+export const submitProfileChangeRequest = async (payload) => {
+    const response = await axios.post(`${PORTAL_API}/profile-change-requests`, payload);
+    return response.data;
+};
+
+/**
+ * Lấy lịch sử yêu cầu thay đổi hồ sơ
+ * @param {Object} [params]
+ * @returns {Promise<Object>}
+ */
+export const getMyProfileChangeRequests = async (params) => {
+    const response = await axios.get(`${PORTAL_API}/profile-change-requests`, { params });
+    return response.data;
+};
+
+// --- Overtime Request (Yêu cầu làm thêm giờ)
+
+/**
+ * Gửi yêu cầu làm thêm giờ
+ * @param {Object} payload - Thông tin OT
+ * @returns {Promise<Object>}
+ */
+export const submitOvertimeRequest = async (payload) => {
+    const response = await axios.post(`${PORTAL_API}/overtime-requests`, payload);
+    return response.data;
+};
+
+/**
+ * Lấy lịch sử yêu cầu OT
+ * @param {Object} [params]
+ * @returns {Promise<Object>}
+ */
+export const getMyOvertimeRequests = async (params) => {
+    const response = await axios.get(`${PORTAL_API}/overtime-requests`, { params });
+    return response.data;
+};
+
+// --- Resignation Request (Yêu cầu nghỉ việc)
+
+/**
+ * Gửi yêu cầu nghỉ việc
+ * @param {Object} payload - Thông tin nghỉ việc
+ * @returns {Promise<Object>}
+ */
+export const submitResignationRequest = async (payload) => {
+    const response = await axios.post(`${PORTAL_API}/resignation-requests`, payload);
+    return response.data;
+};
+
+/**
+ * Lấy lịch sử yêu cầu nghỉ việc
+ * @param {Object} [params]
+ * @returns {Promise<Object>}
+ */
+export const getMyResignationRequests = async (params) => {
+    const response = await axios.get(`${PORTAL_API}/resignation-requests`, { params });
+    return response.data;
+};
+
+// --- Tasks (Nhiệm vụ cá nhân)
+
+/**
+ * Lấy danh sách nhiệm vụ được giao
+ * @param {Object} [params]
+ * @returns {Promise<Object>}
+ */
+export const getMyTasks = async (params) => {
+    const response = await axios.get(`${PORTAL_API}/tasks`, { params });
+    return response.data;
+};
+
+/**
+ * Cập nhật trạng thái nhiệm vụ
+ * @param {string|number} taskId
+ * @param {Object} payload
+ * @returns {Promise<Object>}
+ */
+export const updateTaskStatus = async (taskId, payload) => {
+    const response = await axios.patch(`${PORTAL_API}/tasks/${taskId}/status`, payload);
+    return response.data;
+};
+
+/**
+ * Cập nhật tiến độ nhiệm vụ
+ * @param {string|number} taskId
+ * @param {Object} payload
+ * @returns {Promise<Object>}
+ */
+export const updateTaskProgress = async (taskId, payload) => {
+    const response = await axios.patch(`${PORTAL_API}/tasks/${taskId}/progress`, payload);
+    return response.data;
+};
+
+// --- Check-in/Check-out (Chấm công)
+
+/**
+ * Check-in làm việc
+ * @param {Object} payload - Thông tin check-in
+ * @returns {Promise<Object>}
+ */
+export const checkIn = async (payload) => {
+    const response = await axios.post(`${PORTAL_API}/check-in`, payload);
+    return response.data;
+};
+
+/**
+ * Check-out làm việc
+ * @param {Object} payload - Thông tin check-out
+ * @returns {Promise<Object>}
+ */
+export const checkOut = async (payload) => {
+    const response = await axios.post(`${PORTAL_API}/check-out`, payload);
+    return response.data;
+};
+
+/**
+ * Lấy trạng thái check-in hiện tại
+ * @returns {Promise<Object>}
+ */
+export const getCheckInStatus = async () => {
+    const response = await axios.get(`${PORTAL_API}/check-in/status`);
     return response.data;
 };

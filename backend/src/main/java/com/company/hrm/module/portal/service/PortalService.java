@@ -7,18 +7,14 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.company.hrm.common.constant.AttendanceAdjustmentStatus;
-import com.company.hrm.common.constant.LeaveRequestStatus;
-import com.company.hrm.common.constant.PayrollItemStatus;
-import com.company.hrm.common.constant.PortalInboxItemType;
-import com.company.hrm.common.constant.PortalTaskStatus;
-import com.company.hrm.common.constant.RecordStatus;
-import com.company.hrm.common.exception.ForbiddenException;
-import com.company.hrm.common.exception.NotFoundException;
+import com.company.hrm.common.constant.*;
+import com.company.hrm.common.exception.*;
 import com.company.hrm.module.attendance.dto.AttendanceAdjustmentDetailResponse;
 import com.company.hrm.module.attendance.dto.AttendanceAdjustmentListItemResponse;
 import com.company.hrm.module.attendance.dto.AttendanceLogResponse;
 import com.company.hrm.module.attendance.dto.CreateAttendanceAdjustmentRequest;
+import com.company.hrm.module.attendance.dto.CreateAttendanceLogRequest;
+import com.company.hrm.module.attendance.dto.CreateOvertimeRequest;
 import com.company.hrm.module.attendance.dto.OvertimeListItemResponse;
 import com.company.hrm.module.attendance.service.AttendanceService;
 import com.company.hrm.module.contract.dto.LaborContractListItemResponse;
@@ -35,17 +31,15 @@ import com.company.hrm.module.leave.dto.CreateLeaveRequestRequest;
 import com.company.hrm.module.leave.dto.LeaveBalanceResponse;
 import com.company.hrm.module.leave.dto.LeaveRequestDetailResponse;
 import com.company.hrm.module.leave.service.LeaveService;
+import com.company.hrm.module.offboarding.dto.CreateOffboardingRequest;
+import com.company.hrm.module.offboarding.dto.OffboardingListItemResponse;
+import com.company.hrm.module.offboarding.dto.OffboardingDetailResponse;
+import com.company.hrm.module.offboarding.service.OffboardingService;
 import com.company.hrm.module.offboarding.service.OffboardingAccessScopeService;
 import com.company.hrm.module.payroll.dto.PayrollItemResponse;
 import com.company.hrm.module.payroll.dto.SelfPayslipListItemResponse;
 import com.company.hrm.module.payroll.service.PayrollService;
-import com.company.hrm.module.portal.dto.PortalAttendanceOverviewResponse;
-import com.company.hrm.module.portal.dto.PortalContractOverviewResponse;
-import com.company.hrm.module.portal.dto.PortalDashboardResponse;
-import com.company.hrm.module.portal.dto.PortalInboxItemResponse;
-import com.company.hrm.module.portal.dto.PortalLeaveOverviewResponse;
-import com.company.hrm.module.portal.dto.PortalPayrollOverviewResponse;
-import com.company.hrm.module.portal.dto.PortalProfileResponse;
+import com.company.hrm.module.portal.dto.*;
 import com.company.hrm.module.portal.entity.PorPortalInboxItem;
 import com.company.hrm.module.portal.repository.PorPortalInboxItemRepository;
 import com.company.hrm.module.user.entity.SecUserAccount;
@@ -62,6 +56,7 @@ public class PortalService {
     private final LaborContractService laborContractService;
     private final CtLaborContractRepository laborContractRepository;
     private final PorPortalInboxItemRepository portalInboxItemRepository;
+    private final OffboardingService offboardingService;
 
     public PortalService(
             OffboardingAccessScopeService accessScopeService,
@@ -72,7 +67,8 @@ public class PortalService {
             PayrollService payrollService,
             LaborContractService laborContractService,
             CtLaborContractRepository laborContractRepository,
-            PorPortalInboxItemRepository portalInboxItemRepository) {
+            PorPortalInboxItemRepository portalInboxItemRepository,
+            OffboardingService offboardingService) {
         this.accessScopeService = accessScopeService;
         this.employeeService = employeeService;
         this.employeeProfileWorkflowService = employeeProfileWorkflowService;
@@ -82,6 +78,7 @@ public class PortalService {
         this.laborContractService = laborContractService;
         this.laborContractRepository = laborContractRepository;
         this.portalInboxItemRepository = portalInboxItemRepository;
+        this.offboardingService = offboardingService;
     }
 
     @Transactional(readOnly = true)
@@ -241,6 +238,86 @@ public class PortalService {
             portalInboxItemRepository.save(item);
         }
         return toInboxResponse(item);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PortalInboxItemResponse> listMyTasks() {
+        SecUserAccount user = accessScopeService.getCurrentUserRequired();
+        return portalInboxItemRepository
+                .findAllByUserUserIdAndDeletedFalseAndItemTypeOrderByCreatedAtDescPortalInboxItemIdDesc(
+                        user.getUserId(), PortalInboxItemType.TASK)
+                .stream()
+                .map(this::toInboxResponse)
+                .toList();
+    }
+
+    @Transactional
+    public PortalInboxItemResponse updateTaskStatus(Long portalInboxItemId, PortalTaskStatus status) {
+        SecUserAccount user = accessScopeService.getCurrentUserRequired();
+        PorPortalInboxItem item = portalInboxItemRepository.findByPortalInboxItemIdAndDeletedFalse(portalInboxItemId)
+                .orElseThrow(() -> new NotFoundException("PORTAL_TASK_NOT_FOUND", "Không tìm thấy task."));
+        if (!item.getUser().getUserId().equals(user.getUserId())) {
+            throw new ForbiddenException("PORTAL_TASK_SCOPE_DENIED", "Bạn chỉ được thao tác trên task của chính mình.");
+        }
+        item.setTaskStatus(status);
+        if (status == PortalTaskStatus.DONE) {
+            item.setCompletedAt(java.time.LocalDateTime.now());
+        }
+        return toInboxResponse(portalInboxItemRepository.save(item));
+    }
+
+    @Transactional
+    public PortalCheckInStatusResponse getCheckInStatus() {
+        HrEmployee employee = accessScopeService.getCurrentEmployeeRequired();
+        List<AttendanceLogResponse> logs = attendanceService.listMyLogs(LocalDate.now().minusDays(1), LocalDate.now());
+        AttendanceLogResponse latest = logs.stream().findFirst().orElse(null);
+
+        boolean canCheckIn = true;
+        boolean canCheckOut = false;
+
+        if (latest != null) {
+            AttendanceLogEventType type = AttendanceLogEventType.valueOf(latest.eventType());
+            if (type == AttendanceLogEventType.CHECK_IN) {
+                canCheckIn = false;
+                canCheckOut = true;
+            }
+        }
+
+        return new PortalCheckInStatusResponse(
+                latest == null ? null : latest.eventTime(),
+                latest == null ? null : latest.eventType(),
+                canCheckIn,
+                canCheckOut);
+    }
+
+    @Transactional
+    public AttendanceLogResponse checkIn(CreateAttendanceLogRequest request) {
+        return attendanceService.createSelfLog(request, AttendanceLogEventType.CHECK_IN);
+    }
+
+    @Transactional
+    public AttendanceLogResponse checkOut(CreateAttendanceLogRequest request) {
+        return attendanceService.createSelfLog(request, AttendanceLogEventType.CHECK_OUT);
+    }
+
+    @Transactional
+    public OvertimeListItemResponse submitOvertimeRequest(CreateOvertimeRequest request) {
+        return attendanceService.createOvertimeRequest(request);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OvertimeListItemResponse> listMyOvertimeRequests() {
+        return attendanceService.listMyOvertimeRequests();
+    }
+
+    @Transactional
+    public OffboardingDetailResponse submitResignationRequest(CreateOffboardingRequest request) {
+        return offboardingService.createMyRequest(request);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OffboardingListItemResponse> listMyResignationRequests() {
+        return offboardingService.listMyRequests();
     }
 
     private PortalInboxItemResponse toInboxResponse(PorPortalInboxItem item) {

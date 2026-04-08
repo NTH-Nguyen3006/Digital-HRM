@@ -251,7 +251,7 @@ const menuGroups = computed(() => {
 
             <div v-if="isSidebarOpen" class="px-4 pt-4 pb-1">
               <span class="text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ group.label
-              }}</span>
+                }}</span>
             </div>
             <div v-else class="border-b border-slate-200 my-4 mx-2"></div>
 
@@ -265,7 +265,7 @@ const menuGroups = computed(() => {
               <component :is="item.icon" class="w-5 h-5 shrink-0" />
 
               <span v-if="isSidebarOpen" class="font-semibold text-sm whitespace-nowrap overflow-hidden">{{ item.name
-              }}</span>
+                }}</span>
 
               <ChevronRight v-if="isSidebarOpen && $route.path === item.path"
                 class="w-4 h-4 ml-auto opacity-50 shrink-0" />

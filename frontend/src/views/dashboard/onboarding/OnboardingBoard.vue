@@ -17,8 +17,12 @@ import {
 import {
   getOnboardings, getOnboardingDetail,
   completeOnboarding, notifyOnboarding,
-  createUserForOnboarding, createInitialContract
+  createUserForOnboarding, createInitialContract,
+  upsertOnboardingChecklist
 } from '@/api/admin/onboarding.js'
+import { Phone, Mail, FileWarning } from 'lucide-vue-next'
+import { useToast } from '@/composables/useToast'
+import { useUiStore } from '@/stores/ui'
 
 /* ------------------ CONFIG ------------------ */
 
@@ -39,6 +43,9 @@ const stepDefs = [
   { key: 'complete', icon: CheckCheck, label: 'Chốt hoàn tất Onboarding', desc: 'Tất cả checklist bắt buộc phải xong', status: 'COMPLETED' },
 ]
 
+
+const toast = useToast()
+const ui = useUiStore()
 
 const records = ref([])
 const loading = ref(false)
@@ -124,9 +131,61 @@ async function handleComplete(record) {
 async function handleNotify(record) {
   try {
     await notifyOnboarding(record.onboardingId, { notifyNewHire: true, notifyManager: true })
+    toast.success('Đã gửi thông báo chào mừng')
+    await openDetail(record) // Refresh detail
   } catch (error) {
     console.error('Failed to notify:', error)
+    toast.error('Gửi thông báo thất bại')
   }
+}
+
+async function handleStepProcess(step) {
+  const record = selectedRecord.value
+  if (!record) return
+
+  try {
+    if (step.key === 'account') {
+      const confirmed = await ui.confirm({
+        title: 'Tạo tài khoản hệ thống',
+        message: `Hệ thống sẽ tự động tạo Username và Email công ty cho ${record.fullName}. Bạn có chắc chắn?`,
+        confirmLabel: 'Tạo ngay'
+      })
+      if (!confirmed) return
+      await createUserForOnboarding(record.onboardingId, {})
+      toast.success('Đã tạo tài khoản thành công')
+    }
+    else if (step.key === 'contract') {
+      const confirmed = await ui.confirm({
+        title: 'Tạo hợp đồng đầu tiên',
+        message: 'Hệ thống sẽ tạo bản nháp hợp đồng dựa trên thông tin ứng viên. Tiếp tục?',
+        confirmLabel: 'Tạo bản nháp'
+      })
+      if (!confirmed) return
+      await createInitialContract(record.onboardingId, { contractType: 'PROBATION' })
+      toast.success('Đã tạo bản nháp hợp đồng')
+    }
+    else if (step.key === 'checklist') {
+      // For now, just mark it as "In Progress" or "Ready" via a simple update
+      toast.info('Tính năng cập nhật Checklist chi tiết đang được phát triển')
+      return
+    }
+    else if (step.key === 'notify') {
+      await handleNotify(record)
+      return
+    }
+    else if (step.key === 'complete') {
+      await handleComplete(record)
+      return
+    }
+
+    await openDetail(record) // Refresh
+  } catch (error) {
+    toast.error('Xử lý thất bại: ' + (error.response?.data?.message || error.message))
+  }
+}
+
+function initials(name) {
+  return name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'
 }
 
 </script>
@@ -148,14 +207,14 @@ async function handleNotify(record) {
         <p class="text-slate-500 font-medium ml-1">Chuẩn bị lộ trình nhập môn cho thành viên mới</p>
       </div>
 
-      <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-[50px]! font-bold">
+      <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold">
         <Plus class="w-5 h-5 mr-2" /> Tạo hồ sơ Onboarding
       </BaseButton>
     </div>
 
     <!-- WORKFLOW DIAGRAM -->
     <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-      <GlassCard :glass="false" class="xl:col-span-12 bg-white border border-slate-100 rounded-[32px] p-6">
+      <GlassCard :glass="false" class="xl:col-span-12 bg-white border border-slate-100 rounded-4xl p-6">
         <div class="flex flex-col lg:flex-row items-center gap-8 justify-between">
           <div class="lg:max-w-xs">
             <h3 class="text-lg font-black text-slate-900 mb-1">Quy trình chuyên môn</h3>
@@ -189,11 +248,11 @@ async function handleNotify(record) {
     <!-- STATS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard v-for="s in statsData" :key="s.title" :title="s.title" :value="s.value" :icon="s.icon" :color="s.color"
-        :trend="s.trend" class="rounded-[32px]!" />
+        :trend="s.trend" class="rounded-4xl!" />
     </div>
 
     <!-- LIST PANEL -->
-    <div class="bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm relative min-h-[500px]">
+    <div class="bg-white border border-slate-100 rounded-4xl overflow-hidden shadow-sm relative min-h-125">
 
       <!-- Loading Overlay -->
       <div v-if="loading"
@@ -229,7 +288,7 @@ async function handleNotify(record) {
         <div v-for="rec in records" :key="rec.onboardingId"
           class="group px-8 py-6 hover:bg-slate-50/50 transition-all cursor-pointer flex flex-col xl:flex-row xl:items-center justify-between gap-6"
           @click="openDetail(rec)">
-          <div class="flex items-start gap-5 min-w-[300px]">
+          <div class="flex items-start gap-5 min-w-75">
             <AvatarBox :name="rec.fullName" :image="rec.avatarUrl" size="lg" shape="rounded-[20px]" class="shadow-sm" />
             <div>
               <div class="flex items-center gap-2 mb-1.5 text-xs font-black">
@@ -357,8 +416,8 @@ async function handleNotify(record) {
                     </div>
                   </div>
 
-                  <button v-if="getStepState(selectedRecord, step) === 'active'"
-                    class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black shadow-sm">
+                  <button v-if="getStepState(selectedRecord, step) === 'active'" @click="handleStepProcess(step)"
+                    class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black shadow-sm hover:bg-indigo-600 hover:text-white transition-all">
                     Xử lý →
                   </button>
                   <div v-else-if="getStepState(selectedRecord, step) === 'done'"
@@ -367,39 +426,45 @@ async function handleNotify(record) {
               </div>
             </div>
 
-            <!-- Contact & Details -->
-            <div class="grid grid-cols-2 gap-6">
-              <div class="p-6 bg-slate-50 rounded-[32px] border border-slate-100">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Thông tin liên hệ</h4>
-                <div class="space-y-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400">
-                      <Mail class="w-4 h-4" />
+            <!-- Documents & Assets -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="p-6 bg-slate-50 rounded-4xl border border-slate-100">
+                <h4
+                  class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                  Hồ sơ đầu vào
+                  <span class="text-indigo-600 cursor-pointer hover:underline">+ Thêm</span>
+                </h4>
+                <div v-if="selectedRecord.documents?.length" class="space-y-3">
+                  <div v-for="doc in selectedRecord.documents" :key="doc.id"
+                    class="flex items-center justify-between text-xs font-bold bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                    <span class="truncate">{{ doc.documentName }}</span>
+                    <div class="flex items-center gap-2">
+                      <span v-if="doc.received" class="text-emerald-500 text-[10px]">Đã nhận</span>
+                      <Eye class="w-4 h-4 text-slate-400 cursor-pointer hover:text-indigo-600" />
                     </div>
-                    <span class="text-xs font-bold text-slate-700 truncate">{{ selectedRecord.personalEmail }}</span>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-400">
-                      <Phone class="w-4 h-4" />
-                    </div>
-                    <span class="text-xs font-bold text-slate-700">{{ selectedRecord.mobilePhone }}</span>
                   </div>
                 </div>
+                <div v-else class="py-4 text-center text-xs text-slate-400 italic">Chưa có hồ sơ nào</div>
               </div>
 
-              <div class="p-6 bg-indigo-600 rounded-[32px] text-white shadow-xl shadow-indigo-100">
-                <h4 class="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-4">Hồ sơ đính kèm</h4>
-                <div class="flex flex-col gap-2">
-                  <div class="flex items-center justify-between text-xs font-bold bg-white/10 p-2.5 rounded-xl">
-                    <span class="truncate">Sơ yếu lý lịch.pdf</span>
-                    <Eye class="w-4 h-4 cursor-pointer" />
+              <div
+                class="p-6 bg-indigo-600 rounded-4xl text-white shadow-xl shadow-indigo-100 overflow-hidden relative">
+                <div class="relative z-10">
+                  <h4
+                    class="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-4 flex items-center justify-between">
+                    Trang thiết bị
+                    <span class="text-white cursor-pointer hover:underline">+ Cấp phát</span>
+                  </h4>
+                  <div v-if="selectedRecord.assets?.length" class="space-y-2">
+                    <div v-for="asset in selectedRecord.assets" :key="asset.id"
+                      class="flex items-center justify-between text-xs font-bold bg-white/10 p-2.5 rounded-xl">
+                      <span class="truncate">{{ asset.assetName }}</span>
+                      <span class="text-[10px] opacity-70">{{ asset.specifications }}</span>
+                    </div>
                   </div>
-                  <div
-                    class="flex items-center justify-between text-xs font-bold bg-white/10 p-2.5 rounded-xl opacity-60">
-                    <span class="truncate">CCCD_MatTruoc.jpg</span>
-                    <Eye class="w-4 h-4 cursor-pointer" />
-                  </div>
+                  <div v-else class="py-4 text-center text-xs text-indigo-200 italic">Chưa có thiết bị nào</div>
                 </div>
+                <Laptop class="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 rotate-12" />
               </div>
             </div>
 

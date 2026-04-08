@@ -184,3 +184,14 @@ export const getTeamDashboardReport = async (params) => {
     const response = await axios.get(`${MANAGER_API}/reports/dashboard/team`, { params });
     return response.data;
 };
+
+/**
+ * Lấy danh sách nhân viên thuộc cấp quản lý (dựa trên Org Scope của Manager)
+ * @param {Object} [params] 
+ * @returns {Promise<Object>}
+ */
+export const getTeamMembers = async (params) => {
+    // API chung nhưng Backend sẽ scope lại theo Role/Manager
+    const response = await axios.get('/api/v1/admin/employees', { params });
+    return response.data;
+};

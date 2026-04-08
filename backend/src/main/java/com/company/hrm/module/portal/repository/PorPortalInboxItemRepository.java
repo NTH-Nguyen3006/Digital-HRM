@@ -14,6 +14,9 @@ public interface PorPortalInboxItemRepository extends JpaRepository<PorPortalInb
 
     List<PorPortalInboxItem> findAllByUserUserIdAndDeletedFalseOrderByCreatedAtDescPortalInboxItemIdDesc(UUID userId);
 
+    List<PorPortalInboxItem> findAllByUserUserIdAndDeletedFalseAndItemTypeOrderByCreatedAtDescPortalInboxItemIdDesc(UUID userId, PortalInboxItemType itemType);
+
+
     Optional<PorPortalInboxItem> findByPortalInboxItemIdAndDeletedFalse(Long portalInboxItemId);
 
     long countByUserUserIdAndDeletedFalseAndReadAtIsNullAndStatus(UUID userId, RecordStatus status);
