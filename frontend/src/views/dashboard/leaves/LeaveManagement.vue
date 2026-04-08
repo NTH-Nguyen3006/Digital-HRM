@@ -71,9 +71,9 @@ const filteredRequests = computed(() => {
 })
 
 const statusConfig = {
-  PENDING:  { label: 'Chờ duyệt', class: 'bg-amber-100 text-amber-700 border border-amber-200',   dot: 'bg-amber-400' },
-  APPROVED: { label: 'Đã duyệt',  class: 'bg-emerald-100 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
-  REJECTED: { label: 'Từ chối',   class: 'bg-rose-100 text-rose-700 border border-rose-200',     dot: 'bg-rose-400' },
+  PENDING: { label: 'Chờ duyệt', class: 'bg-amber-100 text-amber-700 border border-amber-200', dot: 'bg-amber-400' },
+  APPROVED: { label: 'Đã duyệt', class: 'bg-emerald-100 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
+  REJECTED: { label: 'Từ chối', class: 'bg-rose-100 text-rose-700 border border-rose-200', dot: 'bg-rose-400' },
 }
 
 const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500', 'bg-sky-500']
@@ -127,12 +127,14 @@ function getBalanceColor(remaining, total) {
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-1">
-            <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+            <div
+              class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
               <Calendar class="w-5 h-5 text-white" />
             </div>
             <h2 class="text-3xl font-black text-slate-900 tracking-tight">Quản lý nghỉ phép</h2>
           </div>
-          <p class="text-slate-500 font-medium ml-13 pl-[52px]">Duyệt đơn xin nghỉ và theo dõi quỹ phép năm toàn công ty</p>
+          <p class="text-slate-500 font-medium ml-13 pl-[52px]">Duyệt đơn xin nghỉ và theo dõi quỹ phép năm toàn công ty
+          </p>
         </div>
 
         <div class="flex items-center gap-3">
@@ -151,35 +153,28 @@ function getBalanceColor(remaining, total) {
 
       <!-- ===== STAT CARDS ===== -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard
-          v-for="stat in stats" :key="stat.title"
-          :title="stat.title" :value="stat.value"
-          :icon="stat.icon" :color="stat.color"
-          :trend="stat.trend" :trendLabel="stat.trendLabel"
-        />
+        <StatCard v-for="stat in stats" :key="stat.title" :title="stat.title" :value="stat.value" :icon="stat.icon"
+          :color="stat.color" :trend="stat.trend" :trendLabel="stat.trendLabel" />
       </div>
 
       <!-- ===== MAIN CONTENT ===== -->
-      <GlassCard :glass="false" padding="p-0" class="rounded-3xl border border-slate-100 shadow-sm overflow-hidden bg-white">
+      <GlassCard :glass="false" padding="p-0"
+        class="rounded-3xl border border-slate-100 shadow-sm overflow-hidden bg-white">
 
         <!-- Tabs + Toolbar -->
-        <div class="border-b border-slate-100 px-6 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div
+          class="border-b border-slate-100 px-6 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <!-- Tabs -->
           <div class="flex gap-1">
-            <button
-              v-for="tab in tabs" :key="tab.key"
-              @click="activeTab = tab.key"
+            <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
               class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl transition-all relative"
               :class="activeTab === tab.key
                 ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-            >
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'">
               <component :is="tab.icon" class="w-4 h-4" />
               {{ tab.label }}
-              <span
-                v-if="activeTab === tab.key"
-                class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t"
-              />
+              <span v-if="activeTab === tab.key"
+                class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
             </button>
           </div>
 
@@ -187,11 +182,8 @@ function getBalanceColor(remaining, total) {
           <div class="flex items-center gap-2 pb-3">
             <div class="relative">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                v-model="searchQuery"
-                type="text" placeholder="Tìm nhân viên, phòng ban..."
-                class="pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 w-56 transition-all"
-              />
+              <input v-model="searchQuery" type="text" placeholder="Tìm nhân viên, phòng ban..."
+                class="pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 w-56 transition-all" />
             </div>
             <select v-model="statusFilter"
               class="py-2 px-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 font-medium appearance-none cursor-pointer">
@@ -203,15 +195,13 @@ function getBalanceColor(remaining, total) {
         <!-- ===== TAB: LEAVE REQUESTS ===== -->
         <div v-if="activeTab === 'requests'" class="divide-y divide-slate-50">
           <TransitionGroup name="list">
-            <div
-              v-for="req in filteredRequests" :key="req.id"
-              class="group p-5 hover:bg-slate-50/70 transition-colors"
-            >
+            <div v-for="req in filteredRequests" :key="req.id" class="group p-5 hover:bg-slate-50/70 transition-colors">
               <div class="flex flex-col md:flex-row md:items-center gap-4">
 
                 <!-- Avatar + Info -->
                 <div class="flex items-start gap-4 flex-1 min-w-0">
-                  <div class="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-md"
+                  <div
+                    class="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-md"
                     :class="getAvatarColor(req.employee)">
                     {{ req.avatar }}
                   </div>
@@ -219,11 +209,10 @@ function getBalanceColor(remaining, total) {
                   <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-center gap-2 mb-2">
                       <h3 class="font-bold text-slate-900 text-base">{{ req.employee }}</h3>
-                      <span class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded-lg">{{ req.dept }}</span>
-                      <span
-                        class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
-                        :class="statusConfig[req.status]?.class"
-                      >
+                      <span class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded-lg">{{ req.dept
+                        }}</span>
+                      <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
+                        :class="statusConfig[req.status]?.class">
                         <span class="w-1.5 h-1.5 rounded-full" :class="statusConfig[req.status]?.dot"></span>
                         {{ statusConfig[req.status]?.label }}
                       </span>
@@ -260,19 +249,18 @@ function getBalanceColor(remaining, total) {
                 <!-- Actions -->
                 <div class="flex items-center gap-2 md:flex-shrink-0">
                   <template v-if="req.status === 'PENDING'">
-                    <button
-                      @click="approveRequest(req)"
+                    <button @click="approveRequest(req)"
                       class="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-500 hover:text-white rounded-xl font-bold text-sm transition-all border border-emerald-200 hover:border-emerald-500 shadow-sm">
                       <Check class="w-4 h-4" /> Duyệt
                     </button>
-                    <button
-                      @click="rejectRequest(req)"
+                    <button @click="rejectRequest(req)"
                       class="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-700 hover:bg-rose-500 hover:text-white rounded-xl font-bold text-sm transition-all border border-rose-200 hover:border-rose-500 shadow-sm">
                       <X class="w-4 h-4" /> Từ chối
                     </button>
                   </template>
                   <template v-else>
-                    <button class="flex items-center gap-1.5 px-3 py-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl text-sm font-semibold transition-all">
+                    <button
+                      class="flex items-center gap-1.5 px-3 py-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl text-sm font-semibold transition-all">
                       <Eye class="w-4 h-4" /> Chi tiết
                     </button>
                   </template>
@@ -297,7 +285,7 @@ function getBalanceColor(remaining, total) {
               <div class="flex items-center gap-3 w-56 flex-shrink-0">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-black shadow"
                   :class="getAvatarColor(bal.employee)">
-                  {{ bal.employee.split(' ').map(w=>w[0]).slice(-2).join('') }}
+                  {{bal.employee.split(' ').map(w => w[0]).slice(-2).join('')}}
                 </div>
                 <div>
                   <div class="font-bold text-slate-900 text-sm">{{ bal.employee }}</div>
@@ -312,11 +300,9 @@ function getBalanceColor(remaining, total) {
                   <span>Tổng: <span class="text-slate-700">{{ bal.total }} ngày</span></span>
                 </div>
                 <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    class="h-full rounded-full transition-all duration-700"
+                  <div class="h-full rounded-full transition-all duration-700"
                     :class="getBalanceColor(bal.remaining, bal.total)"
-                    :style="{ width: getBalanceWidth(bal.used, bal.total) + '%' }"
-                  />
+                    :style="{ width: getBalanceWidth(bal.used, bal.total) + '%' }" />
                 </div>
               </div>
 
@@ -356,6 +342,7 @@ function getBalanceColor(remaining, total) {
 .list-leave-active {
   transition: all 0.3s ease;
 }
+
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
