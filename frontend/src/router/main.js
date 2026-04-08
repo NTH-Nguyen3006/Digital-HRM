@@ -4,7 +4,7 @@ import { dashboardRoutes } from './dashboard'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    // ── Public / Portal ────────────────────────────────────────────
+    // ── Public / Portal
     {
       path: '/',
       name: 'portal',
@@ -30,7 +30,7 @@ const router = createRouter({
     },
 
     ...dashboardRoutes,
-    // ── Catch-all (404) ──────────────────────────────────────────
+    // ── Catch-all (404) 
     {
       path: '/:pathMatch(.*)*',
       component: () => import('@/views/errors/404.vue')
