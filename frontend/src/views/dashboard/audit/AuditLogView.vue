@@ -1,207 +1,296 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Search, Filter, Download, History, AlertCircle, Info } from 'lucide-vue-next'
+import { ref, onMounted, watch } from 'vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import { usePagination } from '@/composables/usePagination'
+import { useDebounce } from '@/composables/useDebounce'
+import { getAuditLogs } from '@/api/admin/auditLog'
+import {
+  History, Search, Filter, ChevronLeft, ChevronRight,
+  CheckCircle2, XCircle, User, Loader2
+} from 'lucide-vue-next'
 
-const searchQuery = ref('')
-const filterModule = ref('ALL')
-const filterResult = ref('ALL')
-const dateFrom = ref('')
-const dateTo = ref('')
+/* ─── STATE ─────────────────────────────────────────────────── */
+const logs = ref([])
+const loading = ref(false)
 
-const logs = ref([
-  {
-    id: 1, actor: 'admin', actorName: 'System Administrator', module: 'AUTH', action: 'LOGIN_SUCCESS',
-    target: 'User: hr.nguyen', result: 'SUCCESS', ip: '192.168.1.10',
-    device: 'Chrome on Windows 11', detail: 'Đăng nhập thành công',
-    timestamp: '01/04/2026 08:30:15', traceId: 'trace-abc-123'
-  },
-  {
-    id: 2, actor: 'admin', actorName: 'System Administrator', module: 'USER', action: 'USER_CREATED',
-    target: 'Username: hr.nguyen.2', result: 'SUCCESS', ip: '192.168.1.10',
-    device: 'Chrome on Windows 11', detail: 'Tạo tài khoản mới với role HR',
-    timestamp: '01/04/2026 09:15:22', traceId: 'trace-def-456'
-  },
-  {
-    id: 3, actor: 'hr.nguyen', actorName: 'Nguyễn Thị HR', module: 'EMPLOYEE', action: 'EMPLOYEE_UPDATED',
-    target: 'Employee: NV003 - Lê Văn C', result: 'SUCCESS', ip: '10.0.0.25',
-    device: 'Edge on Windows 10', detail: 'Cập nhật thông tin liên hệ',
-    timestamp: '01/04/2026 10:00:01', traceId: 'trace-ghi-789'
-  },
-  {
-    id: 4, actor: 'mgr.tran', actorName: 'Trần Văn Manager', module: 'AUTH', action: 'LOGIN_FAILED',
-    target: 'User: mgr.tran', result: 'FAILURE', ip: '172.16.5.30',
-    device: 'Safari on macOS', detail: 'Sai mật khẩu lần 3',
-    timestamp: '31/03/2026 17:45:10', traceId: 'trace-jkl-012'
-  },
-  {
-    id: 5, actor: 'admin', actorName: 'System Administrator', module: 'ROLE', action: 'ROLE_PERMISSION_UPDATED',
-    target: 'Role: HR', result: 'SUCCESS', ip: '192.168.1.10',
-    device: 'Chrome on Windows 11', detail: 'Cập nhật quyền cho vai trò HR',
-    timestamp: '31/03/2026 14:20:33', traceId: 'trace-mno-345'
-  },
-  {
-    id: 6, actor: 'hr.nguyen', actorName: 'Nguyễn Thị HR', module: 'CONTRACT', action: 'CONTRACT_SUBMITTED',
-    target: 'Contract: HD005', result: 'SUCCESS', ip: '10.0.0.25',
-    device: 'Edge on Windows 10', detail: 'Gửi hợp đồng chờ ký',
-    timestamp: '31/03/2026 11:05:44', traceId: 'trace-pqr-678'
-  },
-])
+const searchKeyword = ref('')
+const { debouncedValue: debouncedSearch } = useDebounce(searchKeyword, 400)
 
-const modules = ['ALL', 'AUTH', 'USER', 'ROLE', 'EMPLOYEE', 'CONTRACT', 'AUDIT']
+const filterModule = ref('')
+const filterAction = ref('')
+const filterResult = ref('')
+const filterFrom   = ref('')
+const filterTo     = ref('')
 
-const filteredLogs = computed(() => {
-  return logs.value.filter(l => {
-    const matchSearch = !searchQuery.value ||
-      l.actor.includes(searchQuery.value) ||
-      l.actorName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      l.action.includes(searchQuery.value) ||
-      l.target.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchModule = filterModule.value === 'ALL' || l.module === filterModule.value
-    const matchResult = filterResult.value === 'ALL' || l.result === filterResult.value
-    return matchSearch && matchModule && matchResult
+const {
+  currentPage, totalElements, totalPages, visiblePages,
+  setPage, resetPage, setMeta, isFirstPage, isLastPage
+} = usePagination({ initialSize: 20 })
+
+/* ─── CONFIG ─────────────────────────────────────────────────── */
+const MODULE_OPTIONS = [
+  { value: '', label: 'Tất cả module' },
+  { value: 'USER', label: 'Tài khoản' },
+  { value: 'EMPLOYEE', label: 'Nhân sự' },
+  { value: 'ROLE', label: 'Phân quyền' },
+  { value: 'CONTRACT', label: 'Hợp đồng' },
+  { value: 'LEAVE', label: 'Nghỉ phép' },
+  { value: 'ATTENDANCE', label: 'Chấm công' },
+  { value: 'PAYROLL', label: 'Lương' },
+  { value: 'ONBOARDING', label: 'Tiếp nhận' },
+  { value: 'OFFBOARDING', label: 'Thôi việc' },
+]
+
+const ACTION_OPTIONS = [
+  { value: '', label: 'Tất cả hành động' },
+  { value: 'CREATE', label: 'Tạo mới' },
+  { value: 'UPDATE', label: 'Cập nhật' },
+  { value: 'DELETE', label: 'Xóa' },
+  { value: 'LOGIN', label: 'Đăng nhập' },
+  { value: 'LOGOUT', label: 'Đăng xuất' },
+  { value: 'APPROVE', label: 'Phê duyệt' },
+  { value: 'REJECT', label: 'Từ chối' },
+]
+
+const moduleColorMap = {
+  USER: 'bg-indigo-100 text-indigo-700',
+  EMPLOYEE: 'bg-emerald-100 text-emerald-700',
+  ROLE: 'bg-violet-100 text-violet-700',
+  CONTRACT: 'bg-sky-100 text-sky-700',
+  LEAVE: 'bg-amber-100 text-amber-700',
+  ATTENDANCE: 'bg-cyan-100 text-cyan-700',
+  PAYROLL: 'bg-green-100 text-green-700',
+  ONBOARDING: 'bg-blue-100 text-blue-700',
+  OFFBOARDING: 'bg-rose-100 text-rose-700',
+}
+
+function getModuleColor(module) {
+  return moduleColorMap[module] || 'bg-slate-100 text-slate-600'
+}
+
+function formatDateTime(dt) {
+  if (!dt) return '—'
+  return new Date(dt).toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
   })
+}
+
+/* ─── API ────────────────────────────────────────────────────── */
+const fetchLogs = async () => {
+  loading.value = true
+  try {
+    const res = await getAuditLogs({
+      actorUsername: debouncedSearch.value || undefined,
+      moduleCode: filterModule.value || undefined,
+      actionCode: filterAction.value || undefined,
+      resultCode: filterResult.value || undefined,
+      from: filterFrom.value ? filterFrom.value + 'T00:00:00' : undefined,
+      to: filterTo.value ? filterTo.value + 'T23:59:59' : undefined,
+      page: currentPage.value,
+      size: 20,
+    })
+    logs.value = res.data?.content || res.data || []
+    setMeta({
+      totalElements: res.data?.totalElements ?? logs.value.length,
+      totalPages: res.data?.totalPages ?? 1,
+    })
+  } catch (e) {
+    console.error('fetchLogs failed:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchLogs)
+
+watch([debouncedSearch, filterModule, filterAction, filterResult, filterFrom, filterTo], () => {
+  resetPage()
+  fetchLogs()
 })
 
-const resultClass = (result) => {
-  return result === 'SUCCESS'
-    ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-    : 'bg-rose-50 text-rose-700 ring-rose-600/20'
-}
-
-const moduleColor = (module) => {
-  const map = {
-    AUTH: 'bg-purple-50 text-purple-700',
-    USER: 'bg-indigo-50 text-indigo-700',
-    ROLE: 'bg-sky-50 text-sky-700',
-    EMPLOYEE: 'bg-emerald-50 text-emerald-700',
-    CONTRACT: 'bg-amber-50 text-amber-700',
-    AUDIT: 'bg-slate-100 text-slate-600',
-  }
-  return map[module] || 'bg-slate-100 text-slate-600'
-}
+watch(currentPage, fetchLogs)
 </script>
 
 <template>
-  <MainLayout>
-    <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-3xl font-black text-slate-900 tracking-tight">Nhật ký hoạt động</h2>
-          <p class="text-slate-500 font-medium mt-1">Theo dõi mọi thao tác trên hệ thống theo thời gian thực</p>
+  
+    <div class="space-y-8 animate-fade-in">
+
+      <!-- HEADER -->
+      <PageHeader
+        title="Nhật ký Hoạt động"
+        subtitle="Theo dõi toàn bộ thao tác và sự kiện xảy ra trong hệ thống"
+        :icon="History"
+        iconColor="bg-slate-800"
+        iconShadow="shadow-slate-200"
+      />
+
+      <!-- FILTERS -->
+      <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+
+          <!-- Search -->
+          <div class="xl:col-span-2 relative group">
+            <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <input
+              v-model="searchKeyword"
+              type="text"
+              placeholder="Tìm theo username..."
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all"
+            />
+          </div>
+
+          <!-- Module filter -->
+          <select
+            v-model="filterModule"
+            class="py-2.5 px-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-medium text-slate-700 focus:bg-white focus:border-indigo-200 outline-none transition-all cursor-pointer"
+          >
+            <option v-for="opt in MODULE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+
+          <!-- Action filter -->
+          <select
+            v-model="filterAction"
+            class="py-2.5 px-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-medium text-slate-700 focus:bg-white focus:border-indigo-200 outline-none transition-all cursor-pointer"
+          >
+            <option v-for="opt in ACTION_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+
+          <!-- Result filter -->
+          <div class="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl">
+            <button
+              v-for="r in [{ v:'', l:'Tất cả' },{ v:'SUCCESS', l:'Thành công' },{ v:'FAILURE', l:'Thất bại' }]"
+              :key="r.v"
+              @click="filterResult = r.v"
+              class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+              :class="filterResult === r.v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
+            >
+              {{ r.l }}
+            </button>
+          </div>
         </div>
-        <button
-          class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center">
-          <Download class="w-5 h-5 mr-2 text-indigo-500" /> Xuất CSV
-        </button>
+
+        <!-- Date range -->
+        <div class="mt-4 flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Từ</span>
+            <input v-model="filterFrom" type="date"
+              class="py-2 px-3 bg-slate-50 border border-transparent rounded-xl text-sm font-medium focus:bg-white focus:border-indigo-200 outline-none transition-all cursor-pointer" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Đến</span>
+            <input v-model="filterTo" type="date"
+              class="py-2 px-3 bg-slate-50 border border-transparent rounded-xl text-sm font-medium focus:bg-white focus:border-indigo-200 outline-none transition-all cursor-pointer" />
+          </div>
+          <span v-if="totalElements" class="text-xs font-bold text-slate-400 ml-auto">
+            {{ totalElements }} bản ghi
+          </span>
+        </div>
       </div>
 
-      <!-- Stats bar -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-lg shadow-indigo-200">
-          <div class="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">Tổng hôm nay</div>
-          <div class="text-3xl font-black">{{ logs.length }}</div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Thành công</div>
-          <div class="text-3xl font-black text-emerald-600">{{logs.filter(l => l.result === 'SUCCESS').length}}</div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Thất bại</div>
-          <div class="text-3xl font-black text-rose-500">{{logs.filter(l => l.result === 'FAILURE').length}}</div>
-        </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Người hoạt động</div>
-          <div class="text-3xl font-black text-slate-900">{{new Set(logs.map(l => l.actor)).size}}</div>
-        </div>
-      </div>
+      <!-- LOG LIST -->
+      <div class="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm relative min-h-[400px]">
 
-      <!-- Filters -->
-      <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-3">
-        <div class="relative flex-1 min-w-50">
-          <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input v-model="searchQuery" placeholder="Tìm theo user, hành động, đối tượng..."
-            class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+        <!-- Loading -->
+        <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+          <Loader2 class="w-10 h-10 text-slate-700 animate-spin" />
         </div>
-        <select v-model="filterModule"
-          class="px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-          <option v-for="m in modules" :key="m" :value="m">{{ m === 'ALL' ? 'Tất cả module' : m }}</option>
-        </select>
-        <select v-model="filterResult"
-          class="px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-          <option value="ALL">Tất cả kết quả</option>
-          <option value="SUCCESS">Thành công</option>
-          <option value="FAILURE">Thất bại</option>
-        </select>
-        <div class="flex items-center gap-2 text-sm text-slate-500 font-medium">
-          <input type="date" v-model="dateFrom"
-            class="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-          <span>→</span>
-          <input type="date" v-model="dateTo"
-            class="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-        </div>
-      </div>
 
-      <!-- Log Feed -->
-      <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="divide-y divide-slate-100">
-          <div v-for="log in filteredLogs" :key="log.id" class="p-5 hover:bg-slate-50/50 transition-colors group">
-            <div class="flex items-start gap-4">
-              <!-- Result indicator -->
-              <div class="shrink-0 mt-0.5">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center"
-                  :class="log.result === 'SUCCESS' ? 'bg-emerald-100' : 'bg-rose-100'">
-                  <component :is="log.result === 'SUCCESS' ? History : AlertCircle" class="w-5 h-5"
-                    :class="log.result === 'SUCCESS' ? 'text-emerald-600' : 'text-rose-600'" />
-                </div>
+        <!-- Items -->
+        <div v-if="logs.length > 0" class="divide-y divide-slate-50">
+          <div
+            v-for="log in logs"
+            :key="log.auditLogId"
+            class="group px-8 py-5 hover:bg-slate-50/60 transition-all flex flex-col xl:flex-row xl:items-center gap-4"
+          >
+            <!-- Status icon -->
+            <div class="shrink-0">
+              <div
+                class="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm"
+                :class="log.resultCode === 'SUCCESS' ? 'bg-emerald-50' : 'bg-rose-50'"
+              >
+                <CheckCircle2 v-if="log.resultCode === 'SUCCESS'" class="w-5 h-5 text-emerald-500" />
+                <XCircle v-else class="w-5 h-5 text-rose-500" />
               </div>
+            </div>
 
-              <!-- Content -->
-              <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <span class="font-black text-slate-900">{{ log.actorName }}</span>
-                  <span class="text-slate-400 text-xs font-medium">(@{{ log.actor }})</span>
-                  <span class="px-2 py-0.5 rounded-md text-xs font-bold" :class="moduleColor(log.module)">
-                    {{ log.module }}
-                  </span>
-                  <span class="px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-slate-100 text-slate-600">
-                    {{ log.action }}
-                  </span>
-                  <span class="px-2.5 py-0.5 rounded-md text-xs font-bold ring-1 ring-inset ml-auto"
-                    :class="resultClass(log.result)">
-                    {{ log.result === 'SUCCESS' ? '✓ Thành công' : '✗ Thất bại' }}
-                  </span>
-                </div>
-                <div class="text-sm text-slate-600 font-medium mb-2">
-                  <span class="text-slate-400">→</span> {{ log.target }}
-                  <span class="text-slate-300 mx-2">•</span>
-                  <span class="text-slate-500 italic">{{ log.detail }}</span>
-                </div>
-                <div class="flex flex-wrap gap-4 text-xs text-slate-400 font-medium">
-                  <span>🕐 {{ log.timestamp }}</span>
-                  <span>🌐 {{ log.ip }}</span>
-                  <span>💻 {{ log.device }}</span>
-                  <span class="font-mono">🔍 {{ log.traceId }}</span>
-                </div>
+            <!-- Main info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-1">
+                <span class="text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider" :class="getModuleColor(log.moduleCode)">
+                  {{ log.moduleCode }}
+                </span>
+                <span class="text-xs font-black text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">
+                  {{ log.actionCode }}
+                </span>
+                <span v-if="log.entityName" class="text-xs text-slate-400 font-medium truncate">
+                  → {{ log.entityName }} #{{ log.entityId }}
+                </span>
               </div>
+              <p class="text-sm font-medium text-slate-600 truncate">{{ log.message || 'Không có mô tả' }}</p>
+            </div>
+
+            <!-- Actor + Meta -->
+            <div class="flex flex-wrap items-center gap-6 text-xs font-bold text-slate-500 shrink-0">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-[10px]">
+                  {{ (log.actorUsername || 'SYS')[0].toUpperCase() }}
+                </div>
+                <span>{{ log.actorUsername || 'System' }}</span>
+              </div>
+              <div class="text-slate-300">{{ log.ipAddress || '—' }}</div>
+              <div class="text-slate-400 whitespace-nowrap">{{ formatDateTime(log.actionAt) }}</div>
             </div>
           </div>
         </div>
 
+        <EmptyState
+          v-else-if="!loading"
+          title="Không có nhật ký nào"
+          description="Không tìm thấy bản ghi nào phù hợp với bộ lọc hiện tại."
+        />
+
         <!-- Pagination -->
-        <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <span class="text-sm text-slate-500 font-medium">{{ filteredLogs.length }} bản ghi</span>
+        <div v-if="totalPages > 1" class="border-t border-slate-50 px-8 py-4 flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-400">Trang {{ currentPage + 1 }} / {{ totalPages }}</span>
           <div class="flex items-center gap-2">
             <button
-              class="px-3 py-1.5 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">←
-              Trước</button>
-            <button class="px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-600 text-white">1</button>
+              :disabled="isFirstPage"
+              @click="setPage(currentPage - 1)"
+              class="w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30"
+              :class="isFirstPage ? 'text-slate-300' : 'hover:bg-slate-100 text-slate-600'"
+            >
+              <ChevronLeft class="w-4 h-4" />
+            </button>
+            <template v-for="p in visiblePages" :key="p">
+              <span v-if="p === '...'" class="text-slate-300 px-1 font-bold">...</span>
+              <button
+                v-else
+                @click="setPage(p)"
+                class="w-8 h-8 rounded-xl text-xs font-bold transition-all"
+                :class="currentPage === p ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'hover:bg-slate-100 text-slate-600'"
+              >
+                {{ p + 1 }}
+              </button>
+            </template>
             <button
-              class="px-3 py-1.5 rounded-lg text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Sau
-              →</button>
+              :disabled="isLastPage"
+              @click="setPage(currentPage + 1)"
+              class="w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30"
+              :class="isLastPage ? 'text-slate-300' : 'hover:bg-slate-100 text-slate-600'"
+            >
+              <ChevronRight class="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
+
     </div>
-  </MainLayout>
+  
 </template>
+
+<style scoped>
+.animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+</style>

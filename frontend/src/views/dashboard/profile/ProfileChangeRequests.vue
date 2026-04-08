@@ -102,7 +102,7 @@ const rejectRequest = (req) => {
 </script>
 
 <template>
-  <MainLayout>
+  
     <div class="space-y-6">
       <!-- Header -->
       <div>
@@ -232,5 +232,5 @@ const rejectRequest = (req) => {
         </div>
       </div>
     </div>
-  </MainLayout>
+  
 </template>

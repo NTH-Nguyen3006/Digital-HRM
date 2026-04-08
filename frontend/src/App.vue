@@ -2,16 +2,17 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
-import AuthLayout from '@/layouts/AuthLayout.vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
+import ToastNotification from '@/components/common/ToastNotification.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const route = useRoute()
 const layout = computed(() => {
   const isNotFound = route.matched.some(record => record.path.includes(':pathMatch'))
   if (isNotFound || route.meta.noLayout) return 'div'
 
-  if (route.name === 'login') return AuthLayout
+  if (route.name === 'login') return 'div'
   if (route.path === '/' || route.path.startsWith('/portal')) return PortalLayout
   return MainLayout
 })
@@ -22,11 +23,16 @@ const layout = computed(() => {
     <component :is="layout">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <component :is="Component" :key="route.path" />
+          <div :key="route.path">
+            <component :is="Component" />
+          </div>
         </transition>
       </router-view>
     </component>
   </ErrorBoundary>
+
+  <ToastNotification />
+  <ConfirmDialog />
 </template>
 
 <style>

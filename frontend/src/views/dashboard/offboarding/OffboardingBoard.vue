@@ -1,5 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import AvatarBox from '@/components/common/AvatarBox.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import {
@@ -7,7 +11,7 @@ import {
   ArrowRight, FileText, MonitorOff, Wallet, ShieldOff,
   Archive, Users, ChevronRight, Building2, CalendarDays,
   BadgeX, ListChecks, ClipboardCheck, Banknote, X,
-  CheckCheck, Eye, History
+  CheckCheck, Eye, History, Loader2, Phone, Mail, UserX
 } from 'lucide-vue-next'
 import {
   getOffboardings, getOffboardingDetail,
@@ -16,13 +20,7 @@ import {
   createAssetReturn, updateAssetReturn
 } from '@/api/admin/offboarding.js'
 
-// =================== WORKFLOW ===================
-// Backend OffboardingStatus flow:
-// REQUESTED → (Manager) MANAGER_APPROVED | MANAGER_REJECTED
-// MANAGER_APPROVED → (HR) HR_FINALIZED (chốt ngày nghỉ)
-// HR_FINALIZED → ACCESS_REVOKED (Thu hồi quyền truy cập) + SETTLEMENT_PREPARED (Chuẩn bị thanh toán) [song song]
-// ACCESS_REVOKED | SETTLEMENT_PREPARED → CLOSED (Đóng hồ sơ)
-// CLOSED: EmploymentStatus = RESIGNED, hợp đồng = TERMINATED
+/* ------------------ CONFIG ------------------ */
 
 const statusConfig = {
   REQUESTED:           { label: 'Chờ quản lý duyệt', badge: 'bg-amber-100 text-amber-700 border-amber-200',     dot: 'bg-amber-400' },
@@ -35,467 +33,451 @@ const statusConfig = {
   CANCELLED:           { label: 'Đã hủy',              badge: 'bg-rose-100 text-rose-600 border-rose-200',       dot: 'bg-rose-300' },
 }
 
-// =================== STATE ===================
+/* ------------------ STATE ------------------ */
+
+const records = ref([])
+const loading = ref(false)
 const searchQuery = ref('')
 const activeStatus = ref('ALL')
 const selectedRecord = ref(null)
 const showPanel = ref(false)
 
-const stats = [
-  { title: 'Chờ duyệt', value: '4', icon: Clock, color: 'amber', trend: 1, trendLabel: 'tuần này' },
-  { title: 'Đang xử lý', value: '7', icon: AlertTriangle, color: 'rose', trend: -1, trendLabel: 'so với tháng trước' },
-  { title: 'Đã đóng tháng này', value: '5', icon: CheckCircle2, color: 'emerald', trend: 2, trendLabel: 'so với tháng trước' },
-  { title: 'Nghỉ việc năm nay', value: '23', icon: UserMinus, color: 'indigo' },
-]
-
-const records = ref([
-  {
-    id: 1, code: 'OFF-ABC123XYZ456',
-    employeeId: 10, employeeCode: 'EMP-0041', name: 'Ngô Văn Minh',
-    dept: 'Operations', manager: 'Trần Thị Thu',
-    requestDate: '28/03/2026', requestedLastWorkingDate: '15/04/2026',
-    effectiveLastWorkingDate: '15/04/2026',
-    requestReason: 'Muốn chuyển sang hướng khác, xin nghỉ việc tự nguyện.',
-    status: 'HR_FINALIZED',
-    managerReviewNote: 'Đồng ý, nhân viên làm việc tốt.',
-    managerReviewedAt: '29/03/2026 09:00',
-    hrFinalizeNote: 'Đã chốt ngày 15/04/2026.',
-    hrFinalizedAt: '30/03/2026 14:00',
-    accessRevokedAt: null, settlementPreparedAt: null, closedAt: null,
-    checklistItems: [
-      { id: 1, name: 'Bàn giao tài liệu dự án', owner: 'EMPLOYEE', status: 'IN_PROGRESS', dueDate: '10/04/2026' },
-      { id: 2, name: 'Bàn giao máy tính MacBook', owner: 'EMPLOYEE', status: 'OPEN', dueDate: '14/04/2026' },
-      { id: 3, name: 'Xóa tài khoản GitHub', owner: 'MANAGER', status: 'OPEN', dueDate: '15/04/2026' },
-    ],
-    assetReturns: [
-      { id: 1, name: 'MacBook Pro 14"', code: 'ASSET-0012', status: 'PENDING', expectedReturnDate: '14/04/2026' },
-      { id: 2, name: 'Badge ID', code: 'ASSET-0087', status: 'PENDING', expectedReturnDate: '15/04/2026' },
-    ],
-    leaveSettlementUnits: null, leaveSettlementAmount: null,
-    histories: [
-      { from: null, to: 'REQUESTED', action: 'REQUEST_SUBMIT', note: 'Tự nguyện xin nghỉ.', changedBy: 'ngo.van.minh', changedAt: '28/03/2026 08:30' },
-      { from: 'REQUESTED', to: 'MANAGER_APPROVED', action: 'MANAGER_APPROVE', note: 'Đồng ý.', changedBy: 'tran.thi.thu', changedAt: '29/03/2026 09:00' },
-      { from: 'MANAGER_APPROVED', to: 'HR_FINALIZED', action: 'HR_FINALIZE', note: 'Chốt ngày 15/04.', changedBy: 'hr.admin', changedAt: '30/03/2026 14:00' },
-    ],
-  },
-  {
-    id: 2, code: 'OFF-DEF456GHI789',
-    employeeId: 22, employeeCode: 'EMP-0055', name: 'Lê Thị Phương Linh',
-    dept: 'Finance', manager: 'Nguyễn Văn Hùng',
-    requestDate: '01/04/2026', requestedLastWorkingDate: '30/04/2026',
-    effectiveLastWorkingDate: null,
-    requestReason: 'Nghỉ theo nguyện vọng cá nhân, chăm sóc gia đình.',
-    status: 'REQUESTED',
-    managerReviewNote: null, managerReviewedAt: null,
-    hrFinalizeNote: null, hrFinalizedAt: null,
-    accessRevokedAt: null, settlementPreparedAt: null, closedAt: null,
-    checklistItems: [], assetReturns: [], leaveSettlementUnits: null, leaveSettlementAmount: null,
-    histories: [
-      { from: null, to: 'REQUESTED', action: 'REQUEST_SUBMIT', note: 'Xin nghỉ vì việc gia đình.', changedBy: 'le.thi.phuong.linh', changedAt: '01/04/2026 10:00' },
-    ],
-  },
-  {
-    id: 3, code: 'OFF-XYZ999AAA000',
-    employeeId: 5, employeeCode: 'EMP-0012', name: 'Phạm Đức Tài',
-    dept: 'Marketing', manager: 'Võ Trà My',
-    requestDate: '10/03/2026', requestedLastWorkingDate: '31/03/2026',
-    effectiveLastWorkingDate: '31/03/2026',
-    requestReason: 'Nhận offer khác tốt hơn.',
-    status: 'CLOSED',
-    managerReviewNote: 'Tiếc nhưng chấp thuận.', managerReviewedAt: '11/03/2026 10:00',
-    hrFinalizeNote: 'OK', hrFinalizedAt: '12/03/2026 16:00',
-    accessRevokedAt: '31/03/2026 18:00', settlementPreparedAt: '28/03/2026 09:00',
-    closedAt: '01/04/2026 11:00',
-    checklistItems: [
-      { id: 1, name: 'Bàn giao task Marketing Q2', owner: 'EMPLOYEE', status: 'COMPLETED', dueDate: '30/03/2026' },
-    ],
-    assetReturns: [
-      { id: 1, name: 'Laptop Dell', code: 'ASSET-0031', status: 'RETURNED', expectedReturnDate: '31/03/2026' },
-    ],
-    leaveSettlementUnits: 3.5, leaveSettlementAmount: 3461539,
-    histories: [
-      { from: null, to: 'REQUESTED', action: 'REQUEST_SUBMIT', note: 'Nhận offer khác.', changedBy: 'pham.duc.tai', changedAt: '10/03/2026' },
-      { from: 'REQUESTED', to: 'MANAGER_APPROVED', action: 'MANAGER_APPROVE', note: 'OK.', changedBy: 'vo.tra.my', changedAt: '11/03/2026' },
-      { from: 'MANAGER_APPROVED', to: 'HR_FINALIZED', action: 'HR_FINALIZE', note: 'Chốt.', changedBy: 'hr.admin', changedAt: '12/03/2026' },
-      { from: 'HR_FINALIZED', to: 'SETTLEMENT_PREPARED', action: 'PREPARE_SETTLEMENT', note: 'Quyết toán phép.', changedBy: 'hr.admin', changedAt: '28/03/2026' },
-      { from: 'SETTLEMENT_PREPARED', to: 'ACCESS_REVOKED', action: 'REVOKE_ACCESS', note: 'Đã khóa TK.', changedBy: 'it.admin', changedAt: '31/03/2026' },
-      { from: 'ACCESS_REVOKED', to: 'CLOSED', action: 'CLOSE', note: 'Đóng hồ sơ.', changedBy: 'hr.admin', changedAt: '01/04/2026' },
-    ],
-  },
+const statsData = ref([
+  { title: 'Chờ duyệt', value: '0', icon: Clock, color: 'amber', trend: 0 },
+  { title: 'Đang xử lý', value: '0', icon: AlertTriangle, color: 'rose', trend: 0 },
+  { title: 'Đã đóng tháng này', value: '0', icon: CheckCircle2, color: 'emerald', trend: 0 },
+  { title: 'Nghỉ việc năm nay', value: '0', icon: UserMinus, color: 'indigo' },
 ])
 
-// =================== COMPUTED ===================
-const statusTabs = [
-  { key: 'ALL', label: 'Tất cả' },
-  { key: 'REQUESTED', label: 'Chờ duyệt' },
-  { key: 'MANAGER_APPROVED', label: 'Đã duyệt' },
-  { key: 'HR_FINALIZED', label: 'HR đã chốt' },
-  { key: 'CLOSED', label: 'Đã đóng' },
-]
+/* ------------------ API CALLS ------------------ */
 
-const actionsForStatus = {
-  MANAGER_APPROVED: [
-    { key: 'finalize', label: 'Chốt ngày nghỉ (HR Finalize)', icon: ClipboardCheck, class: 'bg-violet-600 text-white hover:bg-violet-700' },
-  ],
-  HR_FINALIZED: [
-    { key: 'revoke', label: 'Thu hồi quyền truy cập', icon: ShieldOff, class: 'bg-orange-500 text-white hover:bg-orange-600' },
-    { key: 'settlement', label: 'Chuẩn bị thanh toán cuối', icon: Banknote, class: 'bg-sky-500 text-white hover:bg-sky-600' },
-  ],
-  ACCESS_REVOKED: [
-    { key: 'close', label: 'Đóng hồ sơ hoàn tất', icon: Archive, class: 'bg-slate-700 text-white hover:bg-slate-800' },
-  ],
-  SETTLEMENT_PREPARED: [
-    { key: 'close', label: 'Đóng hồ sơ hoàn tất', icon: Archive, class: 'bg-slate-700 text-white hover:bg-slate-800' },
-  ],
-}
-
-const filtered = computed(() => {
-  return records.value.filter(r => {
-    const q = searchQuery.value.toLowerCase()
-    const matchQ = !q || r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || r.dept.toLowerCase().includes(q)
-    const matchS = activeStatus.value === 'ALL' || r.status === activeStatus.value
-    return matchQ && matchS
-  })
-})
-
-const avatarColors = ['bg-rose-500', 'bg-indigo-500', 'bg-amber-500', 'bg-violet-500', 'bg-sky-500', 'bg-emerald-500']
-function avatarColor(name) { return avatarColors[name.charCodeAt(0) % avatarColors.length] }
-function initials(name) { return name.split(' ').slice(-2).map(w => w[0]).join('') }
-
-function openPanel(rec) {
-  selectedRecord.value = rec
-  showPanel.value = true
-}
-
-function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' ₫' }
-
-const checklistStatusConfig = {
-  OPEN:        { label: 'Chưa làm', class: 'bg-slate-100 text-slate-500' },
-  IN_PROGRESS: { label: 'Đang làm', class: 'bg-amber-100 text-amber-700' },
-  COMPLETED:   { label: 'Hoàn tất', class: 'bg-emerald-100 text-emerald-700' },
-}
-const assetStatusConfig = {
-  PENDING:  { label: 'Chờ trả', class: 'bg-amber-100 text-amber-700' },
-  RETURNED: { label: 'Đã trả',  class: 'bg-emerald-100 text-emerald-700' },
-  WAIVED:   { label: 'Miễn thu', class: 'bg-slate-100 text-slate-500' },
-}
-
-async function handleAction(record, actionKey) {
+const fetchOffboardings = async () => {
+  loading.value = true
   try {
-    if (actionKey === 'finalize') {
-      await finalizeOffboarding(record.id, { effectiveLastWorkingDate: record.requestedLastWorkingDate, note: 'Chốt từ giao diện.' })
-      record.status = 'HR_FINALIZED'
-    } else if (actionKey === 'revoke') {
-      await revokeAccess(record.id, { note: 'Thu hồi từ giao diện.' })
-      record.status = 'ACCESS_REVOKED'
-      record.accessRevokedAt = new Date().toLocaleString('vi-VN')
-    } else if (actionKey === 'settlement') {
-      await processSettlement(record.id, { createPayrollDraftIfMissing: true, note: 'Chuẩn bị từ giao diện.' })
-      record.status = 'SETTLEMENT_PREPARED'
-      record.settlementPreparedAt = new Date().toLocaleString('vi-VN')
-    } else if (actionKey === 'close') {
-      await closeOffboarding(record.id)
-      record.status = 'CLOSED'
-      record.closedAt = new Date().toLocaleString('vi-VN')
+    const params = {
+      keyword: searchQuery.value,
+      status: activeStatus.value !== 'ALL' ? activeStatus.value : undefined
     }
-  } catch (_) {
-    // demo fallback already applied above
+    const response = await getOffboardings(params)
+    records.value = response.data || []
+    
+    // Quick stats calc
+    const requested = records.value.filter(r => r.offboardingStatus === 'REQUESTED').length
+    const inProcessing = records.value.filter(r => ['MANAGER_APPROVED', 'HR_FINALIZED', 'ACCESS_REVOKED', 'SETTLEMENT_PREPARED'].includes(r.offboardingStatus)).length
+    const closed = records.value.filter(r => r.offboardingStatus === 'CLOSED').length
+    
+    statsData.value[0].value = requested.toString()
+    statsData.value[1].value = inProcessing.toString()
+    statsData.value[2].value = closed.toString()
+    statsData.value[3].value = records.value.length.toString()
+  } catch (error) {
+    console.error('Failed to fetch offboardings:', error)
+  } finally {
+    loading.value = false
   }
 }
+
+onMounted(fetchOffboardings)
+
+watch([searchQuery, activeStatus], () => {
+  fetchOffboardings()
+})
+
+/* ------------------ ACTIONS ------------------ */
+
+const openPanel = async (rec) => {
+  loading.value = true
+  try {
+    const response = await getOffboardingDetail(rec.offboardingCaseId)
+    selectedRecord.value = response.data
+    showPanel.value = true
+  } catch (error) {
+    console.error('Failed to get detail:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleAction = async (record, actionKey) => {
+  try {
+    if (actionKey === 'finalize') {
+      await finalizeOffboarding(record.offboardingCaseId, { effectiveLastWorkingDate: record.requestedLastWorkingDate, note: 'Chốt từ UI Admin.' })
+    } else if (actionKey === 'revoke') {
+      await revokeAccess(record.offboardingCaseId, { note: 'Thu hồi quyền từ UI Admin.' })
+    } else if (actionKey === 'settlement') {
+      await processSettlement(record.offboardingCaseId, { createPayrollDraftIfMissing: true })
+    } else if (actionKey === 'close') {
+      await closeOffboarding(record.offboardingCaseId)
+    }
+    await fetchOffboardings()
+    showPanel.value = false
+  } catch (error) {
+    console.error(`Action ${actionKey} failed:`, error)
+  }
+}
+
+function fmt(n) { 
+  if (!n) return '0 ₫'
+  return new Intl.NumberFormat('vi-VN').format(n) + ' ₫' 
+}
+
+const initials = (name) => {
+  if (!name) return '??'
+  return name.split(' ').slice(-2).map(w => w[0]).join('')
+}
+
 </script>
 
 <template>
-  <MainLayout>
-    <div class="space-y-8">
+  
+    <div class="space-y-8 animate-fade-in">
 
-      <!-- ===== HEADER ===== -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <!-- HEADER -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <div class="flex items-center gap-3 mb-1">
-            <div class="w-10 h-10 rounded-2xl bg-rose-600 flex items-center justify-center shadow-lg shadow-rose-200">
-              <UserMinus class="w-5 h-5 text-white" />
+          <div class="flex items-center gap-4 mb-2">
+            <div class="w-12 h-12 rounded-[18px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-100">
+              <UserMinus class="w-6 h-6 text-white" />
             </div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tight">Thôi việc (Offboarding)</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tight">Thôi việc (Offboarding)</h2>
           </div>
-          <p class="text-slate-500 font-medium ml-[52px]">Quản lý quy trình nghỉ việc từ khi nhân viên nộp đơn đến khi đóng hồ sơ</p>
+          <p class="text-slate-500 font-medium ml-1">Lộ trình bàn giao và giải quyết thủ tục nghỉ việc</p>
         </div>
       </div>
 
-      <!-- ===== WORKFLOW DIAGRAM ===== -->
-      <GlassCard :glass="false" class="bg-white border border-slate-100 rounded-3xl">
-        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Quy trình nghiệp vụ</h3>
-        <div class="flex flex-wrap items-start gap-x-2 gap-y-4 overflow-x-auto pb-2">
-          <template v-for="(step, idx) in [
-            { label: 'EM nộp đơn',       sublabel: 'REQUESTED',           color: 'amber',  icon: FileText },
-            { label: 'Quản lý duyệt',    sublabel: 'MANAGER_APPROVED',   color: 'indigo', icon: ClipboardCheck },
-            { label: 'HR chốt ngày',     sublabel: 'HR_FINALIZED',       color: 'violet', icon: CalendarDays },
-            { label: 'Thu hồi TK',       sublabel: 'ACCESS_REVOKED',     color: 'orange', icon: ShieldOff },
-            { label: 'Thanh toán cuối',  sublabel: 'SETTLEMENT_PREPARED', color: 'sky',   icon: Banknote },
-            { label: 'Đóng hồ sơ',       sublabel: 'CLOSED',             color: 'slate',  icon: Archive },
-          ]" :key="step.sublabel">
-            <div class="flex flex-col items-center min-w-[100px]">
-              <div class="w-11 h-11 rounded-2xl flex items-center justify-center mb-1.5 shadow-sm"
-                :class="step.color === 'amber' ? 'bg-amber-100 text-amber-600' : step.color === 'indigo' ? 'bg-indigo-100 text-indigo-600' : step.color === 'violet' ? 'bg-violet-100 text-violet-600' : step.color === 'orange' ? 'bg-orange-100 text-orange-600' : step.color === 'sky' ? 'bg-sky-100 text-sky-600' : 'bg-slate-100 text-slate-500'">
-                <component :is="step.icon" class="w-5 h-5" />
+      <!-- WORKFLOW DIAGRAM -->
+      <GlassCard :glass="false" class="bg-white border border-slate-100 rounded-[32px] p-8">
+        <div class="flex flex-col xl:flex-row items-center gap-10">
+          <div class="xl:max-w-xs">
+            <h3 class="text-lg font-black text-slate-900 mb-2">Quy trình chuyên môn</h3>
+            <p class="text-xs text-slate-400 font-bold leading-relaxed">Áp dụng cho nhân viên nghỉ việc tự nguyện hoặc kết thúc hợp đồng.</p>
+          </div>
+          
+          <div class="flex-1 flex flex-wrap justify-center items-center gap-4">
+            <template v-for="(step, idx) in [
+              { label: 'EM Nộp đơn', sub: 'REQUESTED', icon: FileText, color: 'bg-amber-100 text-amber-600' },
+              { label: 'Phê duyệt', sub: 'MANAGER', icon: ClipboardCheck, color: 'bg-indigo-100 text-indigo-600' },
+              { label: 'HR Chốt', sub: 'FINALIZED', icon: CalendarDays, color: 'bg-violet-100 text-violet-600' },
+              { label: 'Xử lý', sub: 'TK & Settlement', icon: History, color: 'bg-orange-100 text-orange-600' },
+              { label: 'Đóng hồ sơ', sub: 'CLOSED', icon: Archive, color: 'bg-slate-100 text-slate-500' },
+            ]" :key="idx">
+              <div class="flex flex-col items-center gap-2 group cursor-help anim-bounce-subtle">
+                <div :class="['w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', step.color]">
+                  <component :is="step.icon" class="w-6 h-6" />
+                </div>
+                <div class="text-center">
+                  <p class="text-[11px] font-black uppercase tracking-wider text-slate-800">{{ step.label }}</p>
+                  <p class="text-[9px] text-slate-400 font-bold">{{ step.sub }}</p>
+                </div>
               </div>
-              <div class="text-xs font-bold text-slate-700 text-center">{{ step.label }}</div>
-              <div class="text-[10px] text-slate-400">{{ step.sublabel }}</div>
-            </div>
-            <div v-if="idx < 5" class="flex items-center mt-2.5">
-              <ArrowRight v-if="idx !== 2" class="w-4 h-4 text-slate-300" />
-              <!-- Step 3 branches into 2 parallel paths -->
-              <div v-if="idx === 2" class="flex flex-col gap-1 mx-1">
-                <ArrowRight class="w-4 h-4 text-orange-300" />
-                <ArrowRight class="w-4 h-4 text-sky-300" />
-              </div>
-            </div>
-          </template>
+              <ArrowRight v-if="idx < 4" class="w-5 h-5 text-slate-200" />
+            </template>
+          </div>
         </div>
-        <p class="text-xs text-slate-400 mt-3 border-t border-slate-100 pt-3">
-          ⚡ Bước 4 và 5 (Thu hồi TK + Thanh toán) có thể thực hiện song song sau khi HR_FINALIZED.
-          Đóng hồ sơ yêu cầu: đã thu hồi TK + tất cả checklist/tài sản hoàn tất + hợp đồng bị TERMINATED.
-        </p>
       </GlassCard>
 
-      <!-- ===== STAT CARDS ===== -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard v-for="s in stats" :key="s.title" :title="s.title" :value="s.value" :icon="s.icon" :color="s.color" :trend="s.trend" :trendLabel="s.trendLabel" />
+      <!-- STATS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard v-for="s in statsData" :key="s.title" 
+          :title="s.title" :value="s.value" :icon="s.icon" :color="s.color" :trend="s.trend" 
+          class="rounded-[32px]!"
+        />
       </div>
 
-      <!-- ===== LIST PANEL ===== -->
-      <GlassCard :glass="false" padding="p-0" class="bg-white border border-slate-100 rounded-3xl overflow-hidden">
+      <!-- LIST PANEL -->
+      <div class="bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm relative min-h-[500px]">
+        
+        <!-- Loading Overlay -->
+        <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+          <Loader2 class="w-10 h-10 text-rose-600 animate-spin" />
+        </div>
 
         <!-- Toolbar -->
-        <div class="px-6 pt-5 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div class="flex gap-1 overflow-x-auto">
-            <button v-for="tab in statusTabs" :key="tab.key"
-              @click="activeStatus = tab.key"
-              class="px-3 py-1.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap"
-              :class="activeStatus === tab.key ? 'bg-rose-600 text-white shadow' : 'text-slate-500 hover:bg-slate-100'"
-            >{{ tab.label }}</button>
+        <div class="px-8 py-6 border-b border-slate-50 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl">
+            <button 
+              v-for="tab in [
+                { id: 'ALL', label: 'Tất cả' },
+                { id: 'REQUESTED', label: 'Chờ duyệt' },
+                { id: 'HR_FINALIZED', label: 'HR đã chốt' },
+                { id: 'CLOSED', label: 'Đã đóng' }
+              ]" 
+              :key="tab.id"
+              @click="activeStatus = tab.id"
+              class="px-5 py-2 rounded-xl text-xs font-black transition-all"
+              :class="activeStatus === tab.id ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+            >
+              {{ tab.label }}
+            </button>
           </div>
-          <div class="relative ml-auto">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input v-model="searchQuery" type="text" placeholder="Tìm tên, mã, phòng ban..."
-              class="pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-rose-300 w-52" />
+
+          <div class="relative group">
+            <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-rose-500 transition-colors" />
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Tìm tên hoặc mã hồ sơ..."
+              class="w-72 pl-11 pr-4 py-3 bg-slate-50 border border-transparent rounded-2xl text-xs font-bold focus:bg-white focus:border-rose-100 focus:ring-4 focus:ring-rose-500/5 transition-all outline-none" 
+            />
           </div>
         </div>
 
-        <!-- Records -->
-        <div class="divide-y divide-slate-50">
-          <div v-for="rec in filtered" :key="rec.id"
-            class="group p-5 hover:bg-slate-50/60 transition-colors cursor-pointer"
-            @click="openPanel(rec)">
-            <div class="flex flex-col md:flex-row md:items-center gap-4">
-
-              <!-- Avatar + Info -->
-              <div class="flex items-start gap-4 flex-1 min-w-0">
-                <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow flex-shrink-0"
-                  :class="avatarColor(rec.name)">
-                  {{ initials(rec.name) }}
+        <!-- Content -->
+        <div v-if="records.length > 0" class="divide-y divide-slate-50">
+          <div 
+            v-for="rec in records" 
+            :key="rec.offboardingCaseId"
+            class="group px-8 py-6 hover:bg-slate-50/50 transition-all cursor-pointer flex flex-col xl:flex-row xl:items-center justify-between gap-6"
+            @click="openPanel(rec)"
+          >
+            <div class="flex items-start gap-5 min-w-[300px]">
+              <AvatarBox 
+                :name="rec.employeeFullName" 
+                size="lg" 
+                shape="rounded-[20px]" 
+                class="shadow-sm border border-slate-100"
+              />
+              <div>
+                <div class="flex items-center gap-2 mb-1.5 text-xs font-black">
+                  <span class="text-slate-400 group-hover:text-rose-600 transition-colors uppercase tracking-widest">{{ rec.offboardingCaseCode }}</span>
+                  <div class="w-1 h-1 rounded-full bg-slate-300"></div>
+                  <span class="text-slate-500">{{ rec.deptName }}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span class="font-bold text-slate-900">{{ rec.name }}</span>
-                    <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">{{ rec.code }}</span>
-                    <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border"
-                      :class="statusConfig[rec.status]?.badge">
-                      <span class="w-1.5 h-1.5 rounded-full" :class="statusConfig[rec.status]?.dot" />
-                      {{ statusConfig[rec.status]?.label }}
-                    </span>
-                  </div>
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-sm">
-                    <div class="flex items-center gap-1 text-slate-500"><Building2 class="w-3.5 h-3.5" /> {{ rec.dept }}</div>
-                    <div class="flex items-center gap-1 text-slate-500"><Users class="w-3.5 h-3.5" /> {{ rec.manager }}</div>
-                    <div class="flex items-center gap-1 text-slate-500">
-                      <CalendarDays class="w-3.5 h-3.5" />
-                      Ngày nộp: <strong class="text-slate-700 ml-1">{{ rec.requestDate }}</strong>
-                    </div>
-                    <div class="flex items-center gap-1 text-slate-500">
-                      <BadgeX class="w-3.5 h-3.5" />
-                      Ngày cuối: <strong class="text-rose-600 ml-1">{{ rec.effectiveLastWorkingDate || rec.requestedLastWorkingDate }}</strong>
-                    </div>
+                <h4 class="text-lg font-black text-slate-900 mb-2">{{ rec.employeeFullName }}</h4>
+                <div class="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-tighter">
+                  <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg">
+                    Quản lý: {{ rec.managerFullName || 'Chưa gán' }}
+                  </span>
+                  <div class="flex items-center gap-1.5 px-2 py-1 bg-rose-50 text-rose-700 rounded-lg">
+                    <BadgeX class="w-3 h-3" />
+                    Final day: {{ rec.effectiveLastWorkingDate || rec.requestedLastWorkingDate }}
                   </div>
                 </div>
-              </div>
-
-              <!-- Action quick badges -->
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <div v-if="rec.checklistItems.length > 0" class="text-xs text-slate-400 flex items-center gap-1">
-                  <ListChecks class="w-3.5 h-3.5" />
-                  {{ rec.checklistItems.filter(c=>c.status==='COMPLETED').length }}/{{ rec.checklistItems.length }}
-                </div>
-                <div v-if="rec.assetReturns.length > 0" class="text-xs text-slate-400 flex items-center gap-1">
-                  <MonitorOff class="w-3.5 h-3.5" />
-                  {{ rec.assetReturns.filter(a=>a.status==='RETURNED').length }}/{{ rec.assetReturns.length }}
-                </div>
-                <div v-if="rec.leaveSettlementUnits" class="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-lg">
-                  Phép: {{ rec.leaveSettlementUnits }}d
-                </div>
-                <button class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100">
-                  <ChevronRight class="w-4 h-4" />
-                </button>
               </div>
             </div>
-          </div>
 
-          <div v-if="filtered.length === 0" class="py-16 text-center">
-            <UserMinus class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p class="text-slate-500 font-medium">Không có hồ sơ nào phù hợp</p>
+            <!-- Side actions -->
+            <div class="flex items-center gap-8 justify-between xl:justify-end">
+              <div class="flex flex-col items-end gap-1">
+                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Trạng thái hồ sơ</p>
+                 <StatusBadge :status="rec.offboardingStatus" />
+              </div>
+              <button class="p-2 text-slate-200 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-xl transition-all">
+                <ChevronRight class="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="border-t border-slate-100 px-6 py-3 flex items-center justify-between text-sm text-slate-500">
-          <span>{{ filtered.length }} hồ sơ</span>
-          <div class="flex gap-1">
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium">←</button>
-            <button class="px-3 py-1 rounded-lg bg-rose-600 text-white font-bold">1</button>
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium">→</button>
-          </div>
-        </div>
-      </GlassCard>
+        <EmptyState 
+          v-else-if="!loading"
+          title="Không tìm thấy hồ sơ Offboarding"
+          description="Kỳ lạ thật, không có ai trong danh sách thôi việc hiện tại cả."
+          iconName="UserMinus"
+        />
+      </div>
+
     </div>
 
-    <!-- ===== DETAIL SIDE PANEL ===== -->
+    <!-- DETAIL PANEL -->
     <Teleport to="body">
-      <Transition name="slide">
-        <div v-if="showPanel && selectedRecord" class="fixed inset-0 z-50 flex justify-end">
-          <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showPanel = false" />
-          <div class="relative bg-white w-full max-w-xl h-full overflow-y-auto shadow-2xl flex flex-col">
-
+      <Transition name="slide-panel">
+        <div v-if="showPanel && selectedRecord" class="fixed inset-0 z-100 flex justify-end">
+          <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-md" @click="showPanel = false" />
+          
+          <div class="relative bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-slide-left">
+            
             <!-- Header -->
-            <div class="bg-gradient-to-r from-rose-600 to-rose-700 p-6 text-white flex-shrink-0">
-              <div class="flex items-center justify-between mb-4">
-                <span class="text-sm font-semibold text-rose-200">{{ selectedRecord.code }}</span>
-                <button @click="showPanel = false" class="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg font-bold">×</button>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-xl font-black">
-                  {{ initials(selectedRecord.name) }}
-                </div>
-                <div>
-                  <h3 class="text-xl font-black">{{ selectedRecord.name }}</h3>
-                  <p class="text-rose-200 text-sm">{{ selectedRecord.dept }} · {{ selectedRecord.employeeCode }}</p>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white border border-white/30">
-                      {{ statusConfig[selectedRecord.status]?.label }}
-                    </span>
+            <div class="p-10 border-b border-slate-100 shrink-0">
+              <div class="flex items-start justify-between mb-8">
+                <div class="flex items-center gap-5">
+                   <div class="w-16 h-16 rounded-[24px] bg-rose-50 text-rose-600 flex items-center justify-center font-black text-2xl shadow-inner border border-rose-100">
+                    {{ initials(selectedRecord.employeeFullName) }}
                   </div>
+                  <div>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 block">{{ selectedRecord.offboardingCaseCode }}</span>
+                    <h3 class="text-3xl font-black text-slate-900 tracking-tight">{{ selectedRecord.employeeFullName }}</h3>
+                  </div>
+                </div>
+                <button @click="showPanel = false" class="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center font-bold">×</button>
+              </div>
+
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-4 bg-slate-50 rounded-2xl">
+                   <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Mã NV</p>
+                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.employeeCode }}</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-2xl">
+                   <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Phòng ban</p>
+                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.deptName }}</p>
+                </div>
+                <div class="p-4 bg-rose-50 rounded-2xl">
+                   <p class="text-[9px] font-black text-rose-400 uppercase tracking-wider mb-1">Ngày làm cuối</p>
+                   <p class="text-xs font-bold text-rose-600">{{ selectedRecord.effectiveLastWorkingDate || 'Chưa chốt' }}</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-2xl">
+                   <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Manager</p>
+                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.managerFullName || 'N/A' }}</p>
                 </div>
               </div>
             </div>
 
             <!-- Body -->
-            <div class="flex-1 p-6 space-y-6 overflow-y-auto">
-
-              <!-- Reason -->
-              <div class="bg-rose-50 rounded-2xl p-4 border border-rose-100">
-                <div class="text-xs font-bold text-rose-600 uppercase mb-1">Lý do nghỉ việc</div>
-                <p class="text-sm text-slate-700 italic">{{ selectedRecord.requestReason }}</p>
-                <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-500">
-                  <div>Ngày nộp: <strong>{{ selectedRecord.requestDate }}</strong></div>
-                  <div>Ngày cuối mong muốn: <strong class="text-rose-600">{{ selectedRecord.requestedLastWorkingDate }}</strong></div>
-                </div>
-              </div>
-
-              <!-- Timeline -->
-              <div>
-                <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm">
-                  <History class="w-4 h-4 text-rose-600" /> Lịch sử xử lý
+            <div class="flex-1 overflow-y-auto p-10 space-y-10">
+              
+              <!-- Reason Section -->
+              <div class="p-6 bg-slate-50 rounded-[32px] border border-slate-100">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                   <FileText class="w-4 h-4" /> Lý do & Nguyện vọng
                 </h4>
-                <div class="space-y-2">
-                  <div v-for="(h, idx) in selectedRecord.histories" :key="idx"
-                    class="flex gap-3">
-                    <div class="flex flex-col items-center">
-                      <div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
-                        <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                      </div>
-                      <div v-if="idx < selectedRecord.histories.length - 1" class="w-0.5 h-full bg-slate-200 mt-1"></div>
-                    </div>
-                    <div class="pb-4">
-                      <div class="text-xs font-bold text-slate-700">{{ h.action.replace('_', ' ') }}</div>
-                      <div class="text-xs text-slate-400">{{ h.changedAt }} · {{ h.changedBy }}</div>
-                      <div v-if="h.note" class="text-xs text-slate-500 italic mt-0.5">{{ h.note }}</div>
-                    </div>
+                <p class="text-sm text-slate-700 leading-relaxed italic font-medium">"{{ selectedRecord.requestReason || 'Không cung cấp lý do chi tiết' }}"</p>
+                <div class="flex items-center gap-4 mt-6 pt-6 border-t border-slate-200/60">
+                   <div class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                    <CalendarDays class="w-3.5 h-3.5" /> Ngày nộp: {{ selectedRecord.requestDate }}
+                  </div>
+                  <div class="w-1 h-1 rounded-full bg-slate-300"></div>
+                  <div class="text-xs font-bold text-rose-600">
+                    Nguyện vọng: {{ selectedRecord.requestedLastWorkingDate }}
                   </div>
                 </div>
               </div>
 
-              <!-- Checklist -->
-              <div v-if="selectedRecord.checklistItems.length > 0">
-                <h4 class="font-bold text-slate-700 mb-2 flex items-center gap-2 text-sm">
-                  <ListChecks class="w-4 h-4 text-rose-600" /> Checklist bàn giao
-                </h4>
-                <div class="space-y-1.5">
-                  <div v-for="item in selectedRecord.checklistItems" :key="item.id"
-                    class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <div class="text-sm font-medium text-slate-700">{{ item.name }}</div>
-                      <div class="text-xs text-slate-400">Hạn: {{ item.dueDate }} · {{ item.owner }}</div>
+              <!-- Checklist / Settlement Row -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 <div class="space-y-4">
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <ListChecks class="w-4 h-4 text-rose-600" /> Bàn giao tài sản
+                    </h4>
+                    <div v-if="selectedRecord.assetReturns && selectedRecord.assetReturns.length > 0" class="space-y-3">
+                       <div v-for="asset in selectedRecord.assetReturns" :key="asset.assetReturnId"
+                        class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between">
+                          <div>
+                            <p class="text-xs font-black text-slate-800">{{ asset.assetName }}</p>
+                            <p class="text-[9px] font-bold text-slate-400">{{ asset.assetCode }}</p>
+                         </div>
+                         <span :class="['px-2 py-0.5 rounded-lg text-[9px] font-black', asset.isReturned ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600']">
+                           {{ asset.isReturned ? 'ĐÃ TRẢ' : 'CHỜ THU' }}
+                         </span>
+                       </div>
                     </div>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded-lg" :class="checklistStatusConfig[item.status]?.class">
-                      {{ checklistStatusConfig[item.status]?.label }}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                    <div v-else class="text-xs text-slate-400 italic">Không có tài sản cần thu hồi</div>
+                 </div>
 
-              <!-- Asset Returns -->
-              <div v-if="selectedRecord.assetReturns.length > 0">
-                <h4 class="font-bold text-slate-700 mb-2 flex items-center gap-2 text-sm">
-                  <MonitorOff class="w-4 h-4 text-rose-600" /> Thu hồi tài sản
-                </h4>
-                <div class="space-y-1.5">
-                  <div v-for="asset in selectedRecord.assetReturns" :key="asset.id"
-                    class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <div class="text-sm font-medium text-slate-700">{{ asset.name }}</div>
-                      <div class="text-xs text-slate-400">{{ asset.code }} · Hạn: {{ asset.expectedReturnDate }}</div>
+                 <div class="space-y-4">
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Wallet class="w-4 h-4 text-emerald-600" /> Quyết toán tài chính
+                    </h4>
+                    <div class="p-6 bg-emerald-600 rounded-[32px] text-white shadow-xl shadow-emerald-100/50">
+                       <p class="text-[10px] font-black text-emerald-200 uppercase tracking-widest mb-4">Dự kiến thanh toán phép</p>
+                       <div class="space-y-3">
+                          <div class="flex justify-between items-end border-b border-white/10 pb-3">
+                             <p class="text-xs font-bold opacity-80">Số ngày dư</p>
+                             <p class="text-lg font-black">{{ selectedRecord.leaveSettlementUnits || 0 }} ngày</p>
+                          </div>
+                          <div class="flex justify-between items-end">
+                             <p class="text-xs font-bold opacity-80">Tổng tiền</p>
+                             <p class="text-xl font-black">{{ fmt(selectedRecord.leaveSettlementAmount) }}</p>
+                          </div>
+                       </div>
                     </div>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded-lg" :class="assetStatusConfig[asset.status]?.class">
-                      {{ assetStatusConfig[asset.status]?.label }}
-                    </span>
+                 </div>
+              </div>
+
+              <!-- History Timeline -->
+               <div>
+                  <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <History class="w-4 h-4 text-indigo-600" /> Lịch sử phê duyệt
+                  </h4>
+                  <div class="space-y-6 ml-2 border-l-2 border-slate-100 pl-8">
+                     <div v-for="(h, idx) in selectedRecord.histories" :key="idx" class="relative">
+                        <div class="absolute -left-[41px] top-0 w-5 h-5 rounded-full bg-white border-4 border-indigo-500 shadow-sm"></div>
+                        <div class="p-5 bg-slate-50 rounded-[28px] border border-slate-100 shadow-sm">
+                           <div class="flex justify-between items-start mb-2">
+                              <span class="text-[10px] font-black text-indigo-600 uppercase">{{ h.action }}</span>
+                              <span class="text-[9px] font-bold text-slate-400">{{ h.changedAt }}</span>
+                           </div>
+                           <p class="text-xs text-slate-700 font-bold mb-1">{{ h.changedBy }}</p>
+                           <p class="text-xs text-slate-500 italic">{{ h.note || 'Không có ghi chú' }}</p>
+                        </div>
+                     </div>
                   </div>
-                </div>
-              </div>
+               </div>
+            </div>
 
-              <!-- Settlement info -->
-              <div v-if="selectedRecord.leaveSettlementUnits" class="bg-sky-50 rounded-2xl p-4 border border-sky-100">
-                <h4 class="font-bold text-sky-700 mb-2 text-sm flex items-center gap-2">
-                  <Wallet class="w-4 h-4" /> Thanh toán ngày phép dư
-                </h4>
-                <div class="grid grid-cols-2 gap-2 text-sm">
-                  <div class="text-slate-600">Số ngày phép còn lại:</div>
-                  <div class="font-bold text-slate-800">{{ selectedRecord.leaveSettlementUnits }} ngày</div>
-                  <div class="text-slate-600">Số tiền quy đổi:</div>
-                  <div class="font-bold text-sky-700">{{ fmt(selectedRecord.leaveSettlementAmount) }}</div>
-                </div>
-              </div>
+            <!-- Actions Footer -->
+            <div class="p-10 border-t border-slate-50 flex items-center gap-4 shrink-0 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+              
+              <!-- HR Finalize Action -->
+              <BaseButton 
+                v-if="selectedRecord.offboardingStatus === 'MANAGER_APPROVED'"
+                variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-violet-600 hover:bg-violet-700"
+                @click="handleAction(selectedRecord, 'finalize')"
+              >
+                <ClipboardCheck class="w-5 h-5 mr-2" /> HR Chốt ngày nghỉ
+              </BaseButton>
 
-              <!-- Actions -->
-              <div v-if="actionsForStatus[selectedRecord.status]" class="space-y-2 pt-2 border-t border-slate-100">
-                <button
-                  v-for="action in actionsForStatus[selectedRecord.status]"
-                  :key="action.key"
-                  @click.stop="handleAction(selectedRecord, action.key)"
-                  class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold transition text-sm"
-                  :class="action.class">
-                  <component :is="action.icon" class="w-4 h-4" />
-                  {{ action.label }}
-                </button>
-              </div>
-              <div v-if="selectedRecord.status === 'CLOSED'" class="flex items-center justify-center gap-2 py-3 bg-slate-50 rounded-xl text-sm text-slate-500 font-semibold border border-slate-200">
-                <Archive class="w-4 h-4" /> Hồ sơ đã đóng hoàn tất
+              <!-- IT / Access Actions -->
+              <BaseButton 
+                v-if="selectedRecord.offboardingStatus === 'HR_FINALIZED'"
+                variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-orange-500 hover:bg-orange-600"
+                @click="handleAction(selectedRecord, 'revoke')"
+              >
+                <ShieldOff class="w-5 h-5 mr-2" /> Thu hồi quyền truy cập
+              </BaseButton>
+
+              <!-- Settlement -->
+              <BaseButton 
+                v-if="['HR_FINALIZED', 'ACCESS_REVOKED'].includes(selectedRecord.offboardingStatus)"
+                variant="outline" size="lg" class="flex-1 rounded-2xl! font-bold h-14!"
+                @click="handleAction(selectedRecord, 'settlement')"
+              >
+                <Banknote class="w-5 h-5 mr-2 text-emerald-600" /> Quyết toán tài chính
+              </BaseButton>
+
+              <!-- Close case -->
+              <BaseButton 
+                v-if="['ACCESS_REVOKED', 'SETTLEMENT_PREPARED'].includes(selectedRecord.offboardingStatus)"
+                variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-slate-800 hover:bg-slate-900"
+                @click="handleAction(selectedRecord, 'close')"
+              >
+                <Archive class="w-5 h-5 mr-2" /> Đóng hồ sơ hoàn tất
+              </BaseButton>
+
+              <div v-if="selectedRecord.offboardingStatus === 'CLOSED'" class="w-full text-center py-5 bg-slate-100 text-slate-600 rounded-[28px] font-black uppercase text-xs tracking-[0.2em]">
+                Hồ sơ đã đóng • Lưu trữ kho nhân sự
               </div>
             </div>
+
           </div>
         </div>
       </Transition>
     </Teleport>
-  </MainLayout>
+  
 </template>
 
 <style scoped>
-.slide-enter-active, .slide-leave-active { transition: all 0.3s ease; }
-.slide-enter-from, .slide-leave-to { opacity: 0; }
+.animate-fade-in {
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-left {
+  animation: slideLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.slide-panel-enter-active, .slide-panel-leave-active { transition: opacity 0.4s ease; }
+.slide-panel-enter-from, .slide-panel-leave-to { opacity: 0; }
+
+.anim-bounce-subtle:hover {
+  transform: translateY(-5px);
+}
 </style>

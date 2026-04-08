@@ -86,7 +86,7 @@ const statusMap = {
 </script>
 
 <template>
-  <MainLayout>
+  
     <div class="space-y-6">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-2 text-sm font-medium">
@@ -451,5 +451,5 @@ const statusMap = {
         </div>
       </div>
     </div>
-  </MainLayout>
+  
 </template>

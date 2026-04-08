@@ -24,6 +24,18 @@ const router = createRouter({
       component: () => import('@/views/portal/MyAttendance.vue')
     },
     {
+      path: '/portal/leaves',
+      name: 'my-leaves',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyLeaves.vue')
+    },
+    {
+      path: '/portal/payslip',
+      name: 'my-payslip',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyPayslip.vue')
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/auth/LoginView.vue')

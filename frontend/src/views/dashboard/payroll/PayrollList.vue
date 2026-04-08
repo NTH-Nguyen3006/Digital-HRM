@@ -133,7 +133,7 @@ async function handlePitExport() {
 </script>
 
 <template>
-  <MainLayout>
+  
     <div class="space-y-8">
 
       <!-- ===== HEADER ===== -->
@@ -228,10 +228,10 @@ async function handlePitExport() {
                 <th class="py-3.5 px-5 font-bold text-slate-500 text-xs uppercase tracking-wider">Nhân viên</th>
                 <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Lương cơ bản</th>
                 <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày công</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider text-emerald-600">+ Phụ cấp</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider text-violet-600">+ Thưởng</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider text-rose-600">- BHXH</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider text-rose-600">- Thuế TNCN</th>
+                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-emerald-600">+ Phụ cấp</th>
+                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-violet-600">+ Thưởng</th>
+                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-rose-600">- BHXH</th>
+                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-rose-600">- Thuế TNCN</th>
                 <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Thực nhận</th>
                 <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Trạng thái</th>
                 <th class="py-3.5 px-4"></th>
@@ -244,7 +244,7 @@ async function handlePitExport() {
                 <!-- Employee -->
                 <td class="py-4 px-5">
                   <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm flex-shrink-0"
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0"
                       :class="getAvatarColor(pay.employee)">
                       {{ pay.avatar }}
                     </div>
@@ -398,7 +398,7 @@ async function handlePitExport() {
           <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showDetailModal = false"></div>
           <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
             <!-- Modal header -->
-            <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 text-white">
+            <div class="bg-linear-to-r from-indigo-600 to-indigo-700 p-6 text-white">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="font-black text-xl">Chi tiết phiếu lương</h3>
                 <button @click="showDetailModal = false" class="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors text-lg font-bold">×</button>
@@ -453,7 +453,7 @@ async function handlePitExport() {
         </div>
       </Transition>
     </Teleport>
-  </MainLayout>
+  
 </template>
 
 <style scoped>

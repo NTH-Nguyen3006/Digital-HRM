@@ -23,7 +23,7 @@ import {
   UserPlus,
   Users
 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -71,17 +71,71 @@ const hideTooltip = () => {
 
 const handleLogout = () => {
   hideTooltip()
-  authStore.logout();
-  router.push('/')
+  authStore.logout()
+  router.push('/login')
 }
 
-const user = ref({
-  name: 'Admin User',
-  role: 'Hệ thống Quản trị',
-  avatar: null
+// ── Dynamic user info from auth store ─────────────────────────
+const userName = computed(() =>
+  authStore.user?.fullName || authStore.user?.username || 'Admin User'
+)
+const userRoleLabel = computed(() => ({
+  ADMIN: 'Hệ thống Quản trị',
+  HR: 'Nhân sự (HR)',
+  MANAGER: 'Quản lý',
+  EMPLOYEE: 'Nhân viên',
+}[authStore.user?.roleCode] || 'Người dùng'))
+
+const userInitials = computed(() => {
+  const n = authStore.user?.fullName || authStore.user?.username || 'AD'
+  return n.split(' ').slice(-2).map(w => w[0]?.toUpperCase()).join('')
 })
 
-const menuGroups = [
+// ── Role-aware menu groups ─────────────────────────────────────
+const isManager = computed(() => authStore.isManager)
+const isHR = computed(() => authStore.isHR)
+const isAdmin = computed(() => authStore.isAdmin)
+
+const adminMenuGroups = [
+  {
+    label: 'TỔNG HỢP',
+    items: [
+      { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' }
+    ]
+  },
+  {
+    label: 'TỔ CHỨC',
+    items: [
+      { name: 'Cơ cấu tổ chức', icon: Network, path: '/org-units' },
+      { name: 'Chức danh', icon: Briefcase, path: '/job-titles' },
+    ]
+  },
+  {
+    label: 'NHÂN SỰ',
+    items: [
+      { name: 'Hợp đồng lao động', icon: FileSignature, path: '/contracts' },
+      { name: 'Phê duyệt hồ sơ', icon: FilePenLine, path: '/profile-change-requests' },
+    ]
+  },
+  {
+    label: 'VÒNG ĐỜI NHÂN SỰ',
+    items: [
+      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
+      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
+    ]
+  },
+  {
+    label: 'HỆ THỐNG',
+    items: [
+      { name: 'Tài khoản', icon: KeyRound, path: '/users' },
+      { name: 'Phân quyền', icon: ShieldCheck, path: '/roles' },
+      { name: 'Nhật ký hoạt động', icon: History, path: '/audit-logs' },
+      { name: 'Cài đặt chung', icon: Settings, path: '/settings' },
+    ]
+  },
+]
+
+const hrMenuGroups = [
   {
     label: 'TỔNG HỢP',
     items: [
@@ -128,6 +182,43 @@ const menuGroups = [
     ]
   },
 ]
+
+const managerMenuGroups = [
+  {
+    label: 'TỔNG HỢP',
+    items: [
+      { name: 'Dashboard Team', icon: LayoutDashboard, path: '/manager/dashboard' }
+    ]
+  },
+  {
+    label: 'QUẢN LÝ NHÂN SỰ',
+    items: [
+      { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
+    ]
+  },
+  {
+    label: 'PHÊ DUYỆT',
+    items: [
+      { name: 'Duyệt nghỉ phép', icon: CalendarOff, path: '/manager/leaves' },
+      { name: 'Duyệt chấm công', icon: Clock, path: '/manager/attendance' },
+      { name: 'Bảng lương Team', icon: Banknote, path: '/manager/payroll' },
+    ]
+  },
+  {
+    label: 'VÒNG ĐỜI',
+    items: [
+      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
+      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
+    ]
+  },
+]
+
+const menuGroups = computed(() => {
+  if (isAdmin.value) return adminMenuGroups
+  if (isHR.value) return hrMenuGroups
+  if (isManager.value) return managerMenuGroups
+  return []
+})
 </script>
 
 <template>
@@ -218,12 +309,12 @@ const menuGroups = [
           <div
             class="flex items-center space-x-3 p-1 pl-4 pr-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 hover:border-slate-200 transition-all">
             <div class="text-right hidden sm:block">
-              <p class="text-sm font-bold text-slate-900 leading-tight">{{ user.name }}</p>
-              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{{ user.role }}</p>
+              <p class="text-sm font-bold text-slate-900 leading-tight">{{ userName }}</p>
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{{ userRoleLabel }}</p>
             </div>
             <div
               class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200 border-2 border-white">
-              AD</div>
+              {{ userInitials }}</div>
             <ChevronDown class="w-4 h-4 text-slate-400" />
           </div>
         </div>
