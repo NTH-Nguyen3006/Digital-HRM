@@ -1,5 +1,4 @@
 export const dashboardRoutes = [
-    // ── Dashboard Overview ─────────────────────────────────────────
     {
         path: '/dashboard',
         name: 'dashboard',
@@ -8,7 +7,6 @@ export const dashboardRoutes = [
         component: () => import('@/views/dashboard/DashboardOverview.vue')
     },
 
-    // ── Sprint 1: Auth / User / Role / Audit ──────────────────────
     {
         path: '/users',
         name: 'users',
@@ -28,7 +26,6 @@ export const dashboardRoutes = [
         component: () => import('@/views/dashboard/audit/AuditLogView.vue')
     },
 
-    // ── Sprint 2: Org Unit / Employee ─────────────────────────────
     {
         path: '/org-units',
         name: 'org-units',
@@ -48,7 +45,6 @@ export const dashboardRoutes = [
         component: () => import('@/views/dashboard/employees/EmployeeDetail.vue')
     },
 
-    // ── Sprint 3: Contract ─────────────────────────────────────────
     {
         path: '/contracts',
         name: 'contracts',
@@ -69,7 +65,6 @@ export const dashboardRoutes = [
         component: () => import('@/views/dashboard/contracts/AddContract.vue')
     },
 
-    // ── Gap Fill: Profile Change Requests / Onboarding / Settings ─
     {
         path: '/profile-change-requests',
         name: 'profile-change-requests',
@@ -95,7 +90,6 @@ export const dashboardRoutes = [
         component: () => import('@/views/dashboard/settings/SystemSettings.vue')
     },
 
-    // ── Other Modules ──────────────────────────────────────────────
     {
         path: '/leaves',
         name: 'leaves',
@@ -114,8 +108,7 @@ export const dashboardRoutes = [
         meta: { roles: ['hr', 'employee', 'manager'] },
         component: () => import('@/views/dashboard/payroll/PayrollList.vue')
     },
-    
-    // ── Phase 3: Manager Views ──────────────────────────────────────
+
     {
         path: '/manager/dashboard',
         name: 'manager-dashboard',

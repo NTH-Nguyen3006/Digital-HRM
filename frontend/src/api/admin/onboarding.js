@@ -46,10 +46,11 @@ export const updateOnboarding = async (onboardingId, payload) => {
 /**
  * HR thẩm định đóng hồ sơ kết thúc quá trình Onboarding (Hoàn tất 100%)
  * @param {string|number} onboardingId 
+ * @param {Object} payload 
  * @returns {Promise<Object>}
  */
-export const completeOnboarding = async (onboardingId) => {
-    const response = await axios.patch(`${ONBOARDING_API}/${onboardingId}/complete`);
+export const completeOnboarding = async (onboardingId, payload) => {
+    const response = await axios.patch(`${ONBOARDING_API}/${onboardingId}/complete`, payload);
     return response.data;
 };
 
@@ -84,4 +85,34 @@ export const createUserForOnboarding = async (onboardingId, payload) => {
 export const createInitialContract = async (onboardingId, payload) => {
     const response = await axios.post(`${ONBOARDING_API}/${onboardingId}/initial-contract`, payload);
     return response.data;
+};
+
+/**
+ * Quản lý checklist nhập môn
+ */
+export const upsertOnboardingChecklist = async (onboardingId, checklistId, payload) => {
+    if (checklistId) {
+        return (await axios.put(`${ONBOARDING_API}/${onboardingId}/checklist/${checklistId}`, payload)).data;
+    }
+    return (await axios.post(`${ONBOARDING_API}/${onboardingId}/checklist`, payload)).data;
+};
+
+/**
+ * Quản lý hồ sơ đầu vào
+ */
+export const upsertOnboardingDocument = async (onboardingId, documentId, payload) => {
+    if (documentId) {
+        return (await axios.put(`${ONBOARDING_API}/${onboardingId}/documents/${documentId}`, payload)).data;
+    }
+    return (await axios.post(`${ONBOARDING_API}/${onboardingId}/documents`, payload)).data;
+};
+
+/**
+ * Quản lý cấp phát tài sản
+ */
+export const upsertOnboardingAsset = async (onboardingId, assetId, payload) => {
+    if (assetId) {
+        return (await axios.put(`${ONBOARDING_API}/${onboardingId}/assets/${assetId}`, payload)).data;
+    }
+    return (await axios.post(`${ONBOARDING_API}/${onboardingId}/assets`, payload)).data;
 };

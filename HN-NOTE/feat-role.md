@@ -77,7 +77,6 @@ Bao gồm Admin, HR, Manager, và Employee đều có quyền cơ bản để tr
 
 ---
 
-**📌 TỔNG KẾT VỀ MÔ HÌNH PHÂN QUYỀN NÀY:**
-Việc thiết kế tách bạch chức năng này phản ánh một quy trình **Compliance (tuân thủ)** rất sâu: 
+### Cuối cùng
 *   **Không gộp chung Admin và HR:** Để phòng ngừa rủi ro (Fraud), IT/Admin chỉ cấp quyền chứ không thấy số lương; HR thao tác số lương nhưng không được đụng chạm hệ thống mã nguồn/phân quyền lách luật.
 *   **Quy tắc Maker-Checker rõ ràng:** Luôn là Employee xin (Request) -> Manager Duyệt cấp quản lý (Approve) -> HR tính toán & Chốt hồ sơ (Execute). Trình tự đi qua đủ 3 rào chắn, cực kỳ rủi ro thấp cho công ty vận hành hệ thống này.

@@ -40,6 +40,36 @@ const fetchEmployees = async () => {
   }
 }
 
+const exportToCSV = () => {
+  if (employees.value.length === 0) return
+
+  const headers = ['Mã NV', 'Họ Tên', 'Email', 'SĐT', 'Phòng ban', 'Chức danh', 'Trạng thái']
+  const rows = employees.value.map(emp => [
+    emp.employeeCode,
+    emp.fullName,
+    emp.workEmail,
+    emp.workPhone || '',
+    emp.orgUnitName,
+    emp.jobTitleName,
+    emp.employmentStatus
+  ])
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell || ''}"`).join(','))
+  ].join('\n')
+
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `DS_NhanVien_${new Date().toISOString().split('T')[0]}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 onMounted(fetchEmployees)
 
 /* ------------------ WATCHERS & LOGIC ------------------ */
@@ -163,8 +193,8 @@ const deleteSelected = () => {
 
           <div class="mt-6 flex items-center justify-between">
             <StatusBadge :status="emp.employmentStatus" />
-            <button class="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">Hồ sơ
-              &rarr;</button>
+            <router-link :to="'/employees/' + emp.employeeId" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">Hồ sơ
+              &rarr;</router-link>
           </div>
         </div>
       </div>
@@ -215,7 +245,7 @@ const deleteSelected = () => {
         class="px-6 rounded-xl! bg-red-500! hover:bg-red-400! font-bold">
         Xóa hồ sơ
       </BaseButton>
-      <BaseButton variant="outline" size="sm"
+      <BaseButton variant="outline" size="sm" @click="exportToCSV"
         class="px-6 rounded-xl! border-slate-700! text-white! hover:bg-slate-800! font-bold">
         Xuất dữ liệu
       </BaseButton>

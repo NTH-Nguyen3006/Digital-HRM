@@ -22,7 +22,11 @@ USING (
         ('EMP002', 'dev_b', 'b.tran@digitalhrm.com'),
         ('EMP003', 'mgr_c', 'c.le@digitalhrm.com'),
         ('EMP004', 'acc_d', 'd.pham@digitalhrm.com'),
-        ('EMP005', 'dev_e', 'e.hoang@digitalhrm.com')
+        ('EMP005', 'dev_e', 'e.hoang@digitalhrm.com'),
+        ('EMP006', 'loi_nt', 'Lointts02286@gmail.com'),
+        ('EMP007', 'quynh_ndd', 'jiemukuin@gmail.com'),
+        ('EMP008', 'nguyen_ndb', 'nguyen2111vn@gmail.com'),
+        ('EMP009', 'ha_ln', 'ngochaln030608@gmail.com')
 ) AS SOURCE (employee_code, username, email)
 ON TARGET.employee_id = (SELECT employee_id FROM dbo.hr_employee WHERE employee_code = SOURCE.employee_code)
 WHEN MATCHED THEN
@@ -56,7 +60,11 @@ VALUES
     ('mgr_c', 'MANAGER', 1),
     ('dev_b', 'EMPLOYEE', 1),
     ('acc_d', 'EMPLOYEE', 1),
-    ('dev_e', 'EMPLOYEE', 1);
+    ('dev_e', 'EMPLOYEE', 1),
+    ('loi_nt', 'ADMIN', 1),
+    ('quynh_ndd', 'HR', 1),
+    ('nguyen_ndb', 'MANAGER', 1),
+    ('ha_ln', 'EMPLOYEE', 1);
 
 INSERT INTO dbo.sec_user_role (user_id, role_id, is_primary_role, status, created_at)
 SELECT u.user_id, r.role_id, s.is_primary, 'ACTIVE', SYSDATETIME()

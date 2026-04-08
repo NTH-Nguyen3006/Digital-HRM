@@ -1,13 +1,21 @@
 package com.company.hrm.module.portal.controller;
 
 import com.company.hrm.common.response.ApiResponse;
+import com.company.hrm.common.constant.PortalTaskStatus;
 import com.company.hrm.module.attendance.dto.AttendanceAdjustmentDetailResponse;
+import com.company.hrm.module.attendance.dto.AttendanceLogResponse;
 import com.company.hrm.module.attendance.dto.CreateAttendanceAdjustmentRequest;
+import com.company.hrm.module.attendance.dto.CreateAttendanceLogRequest;
+import com.company.hrm.module.attendance.dto.CreateOvertimeRequest;
+import com.company.hrm.module.attendance.dto.OvertimeListItemResponse;
 import com.company.hrm.module.audit.support.RequestTraceContext;
 import com.company.hrm.module.employee.dto.ProfileChangeRequestResponse;
 import com.company.hrm.module.employee.dto.SubmitProfileChangeRequest;
 import com.company.hrm.module.leave.dto.CreateLeaveRequestRequest;
 import com.company.hrm.module.leave.dto.LeaveRequestDetailResponse;
+import com.company.hrm.module.offboarding.dto.CreateOffboardingRequest;
+import com.company.hrm.module.offboarding.dto.OffboardingListItemResponse;
+import com.company.hrm.module.offboarding.dto.OffboardingDetailResponse;
 import com.company.hrm.module.payroll.dto.PayrollItemResponse;
 import com.company.hrm.module.portal.dto.*;
 import com.company.hrm.module.portal.service.PortalService;
@@ -131,5 +139,68 @@ public class SelfPortalController {
     public ApiResponse<PortalInboxItemResponse> markRead(@PathVariable Long portalInboxItemId) {
         return ApiResponse.success("PORTAL_INBOX_MARK_READ_SUCCESS", "Đánh dấu đã đọc thành công.",
                 portalService.markInboxRead(portalInboxItemId), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping("/tasks")
+    @PreAuthorize("hasAuthority('portal.tasks.view_self')")
+    public ApiResponse<List<PortalInboxItemResponse>> listTasks() {
+        return ApiResponse.success("PORTAL_TASK_LIST_SUCCESS", "Lấy danh sách nhiệm vụ cá nhân thành công.",
+                portalService.listMyTasks(), null, RequestTraceContext.getTraceId());
+    }
+
+    @PatchMapping("/tasks/{portalInboxItemId}/status")
+    @PreAuthorize("hasAuthority('portal.tasks.update_self')")
+    public ApiResponse<PortalInboxItemResponse> updateTaskStatus(@PathVariable Long portalInboxItemId, @RequestParam PortalTaskStatus status) {
+        return ApiResponse.success("PORTAL_TASK_UPDATE_SUCCESS", "Cập nhật trạng thái nhiệm vụ thành công.",
+                portalService.updateTaskStatus(portalInboxItemId, status), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping("/check-in/status")
+    @PreAuthorize("hasAuthority('portal.attendance.view_self')")
+    public ApiResponse<PortalCheckInStatusResponse> getCheckInStatus() {
+        return ApiResponse.success("PORTAL_CHECKIN_STATUS_SUCCESS", "Lấy trạng thái chấm công hiện tại thành công.",
+                portalService.getCheckInStatus(), null, RequestTraceContext.getTraceId());
+    }
+
+    @PostMapping("/check-in")
+    @PreAuthorize("hasAuthority('portal.attendance.checkin_self')")
+    public ApiResponse<AttendanceLogResponse> checkIn(@Valid @RequestBody CreateAttendanceLogRequest request) {
+        return ApiResponse.success("PORTAL_CHECKIN_SUCCESS", "Check-in thành công.",
+                portalService.checkIn(request), null, RequestTraceContext.getTraceId());
+    }
+
+    @PostMapping("/check-out")
+    @PreAuthorize("hasAuthority('portal.attendance.checkin_self')")
+    public ApiResponse<AttendanceLogResponse> checkOut(@Valid @RequestBody CreateAttendanceLogRequest request) {
+        return ApiResponse.success("PORTAL_CHECKOUT_SUCCESS", "Check-out thành công.",
+                portalService.checkOut(request), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping("/overtime-requests")
+    @PreAuthorize("hasAuthority('portal.attendance.view_self')")
+    public ApiResponse<List<OvertimeListItemResponse>> listMyOvertimeRequests() {
+        return ApiResponse.success("PORTAL_OT_LIST_SUCCESS", "Lấy danh sách yêu cầu OT cá nhân thành công.",
+                portalService.listMyOvertimeRequests(), null, RequestTraceContext.getTraceId());
+    }
+
+    @PostMapping("/overtime-requests")
+    @PreAuthorize("hasAuthority('portal.attendance.adjust_self')")
+    public ApiResponse<OvertimeListItemResponse> submitOvertimeRequest(@Valid @RequestBody CreateOvertimeRequest request) {
+        return ApiResponse.success("PORTAL_OT_CREATE_SUCCESS", "Gửi yêu cầu OT từ portal thành công.",
+                portalService.submitOvertimeRequest(request), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping("/resignation-requests")
+    @PreAuthorize("hasAuthority('portal.offboarding.view_self')")
+    public ApiResponse<List<OffboardingListItemResponse>> listMyResignationRequests() {
+        return ApiResponse.success("PORTAL_RESIGNATION_LIST_SUCCESS", "Lấy danh sách yêu cầu nghỉ việc thành công.",
+                portalService.listMyResignationRequests(), null, RequestTraceContext.getTraceId());
+    }
+
+    @PostMapping("/resignation-requests")
+    @PreAuthorize("hasAuthority('portal.offboarding.request_self')")
+    public ApiResponse<OffboardingDetailResponse> submitResignationRequest(@Valid @RequestBody CreateOffboardingRequest request) {
+        return ApiResponse.success("PORTAL_RESIGNATION_CREATE_SUCCESS", "Gửi yêu cầu nghỉ việc thành công.",
+                portalService.submitResignationRequest(request), null, RequestTraceContext.getTraceId());
     }
 }

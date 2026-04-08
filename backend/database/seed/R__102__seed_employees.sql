@@ -105,5 +105,66 @@ BEGIN
 END
 GO
 
+-- 6. Nguyễn Tấn Lợi - IT Senior (Admin Role)
+IF NOT EXISTS (SELECT 1 FROM dbo.hr_employee WHERE employee_code = 'EMP006')
+BEGIN
+    DECLARE @DeptItHnId3 BIGINT = (SELECT org_unit_id FROM dbo.hr_org_unit WHERE org_unit_code = 'DEPT_IT_HN');
+    DECLARE @TitleSrDevId2 BIGINT = (SELECT job_title_id FROM dbo.hr_job_title WHERE job_title_code = 'SDR_DEV');
+    
+    INSERT INTO dbo.hr_employee (employee_code, org_unit_id, job_title_id, full_name, work_email, work_phone, gender_code, date_of_birth, hire_date, employment_status, work_location)
+    VALUES ('EMP006', @DeptItHnId3, @TitleSrDevId2, N'Nguyễn Tấn Lợi', 'Lointts02286@gmail.com', '0906789012', 'MALE', '1995-01-01', '2024-01-01', 'ACTIVE', N'Hanoi Office');
+
+    DECLARE @EmpId6 BIGINT = SCOPE_IDENTITY();
+
+    INSERT INTO dbo.hr_employee_profile (employee_id, first_name, last_name, marital_status, nationality, ethnic_group, education_level, major)
+    VALUES (@EmpId6, N'Lợi', N'Nguyễn Tấn', 'SINGLE', N'Vietnam', N'Kinh', N'Bachelor', N'Information Technology');
+END
+
+-- 7. Nguyễn Đỗ Diễm Quỳnh - HR Manager (HR Role)
+IF NOT EXISTS (SELECT 1 FROM dbo.hr_employee WHERE employee_code = 'EMP007')
+BEGIN
+    DECLARE @DeptHrHnId2 BIGINT = (SELECT org_unit_id FROM dbo.hr_org_unit WHERE org_unit_code = 'DEPT_HR_HN');
+    DECLARE @TitleHrMgrId2 BIGINT = (SELECT job_title_id FROM dbo.hr_job_title WHERE job_title_code = 'MGR_HR');
+    
+    INSERT INTO dbo.hr_employee (employee_code, org_unit_id, job_title_id, full_name, work_email, gender_code, date_of_birth, hire_date, employment_status, work_location)
+    VALUES ('EMP007', @DeptHrHnId2, @TitleHrMgrId2, N'Nguyễn Đỗ Diễm Quỳnh', 'jiemukuin@gmail.com', 'FEMALE', '1996-02-02', '2024-01-01', 'ACTIVE', N'Hanoi Office');
+
+    DECLARE @EmpId7 BIGINT = SCOPE_IDENTITY();
+
+    INSERT INTO dbo.hr_employee_profile (employee_id, first_name, last_name, marital_status, nationality, ethnic_group, education_level, major)
+    VALUES (@EmpId7, N'Quỳnh', N'Nguyễn Đỗ Diễm', 'SINGLE', N'Vietnam', N'Kinh', N'Bachelor', N'Human Resources');
+END
+
+-- 8. Nguyễn Đình Bảo Nguyên - Sales Manager (Manager Role)
+IF NOT EXISTS (SELECT 1 FROM dbo.hr_employee WHERE employee_code = 'EMP008')
+BEGIN
+    DECLARE @DeptSalesHcmId2 BIGINT = (SELECT org_unit_id FROM dbo.hr_org_unit WHERE org_unit_code = 'DEPT_SALES_HCM');
+    DECLARE @TitleSalesMgrId2 BIGINT = (SELECT job_title_id FROM dbo.hr_job_title WHERE job_title_code = 'MGR_SALES');
+    
+    INSERT INTO dbo.hr_employee (employee_code, org_unit_id, job_title_id, full_name, work_email, gender_code, date_of_birth, hire_date, employment_status, work_location)
+    VALUES ('EMP008', @DeptSalesHcmId2, @TitleSalesMgrId2, N'Nguyễn Đình Bảo Nguyên', 'nguyen2111vn@gmail.com', 'MALE', '1997-03-03', '2024-01-01', 'ACTIVE', N'HCMC Office');
+
+    DECLARE @EmpId8 BIGINT = SCOPE_IDENTITY();
+
+    INSERT INTO dbo.hr_employee_profile (employee_id, first_name, last_name, marital_status, nationality, ethnic_group, education_level, major)
+    VALUES (@EmpId8, N'Nguyên', N'Nguyễn Đình Bảo', 'SINGLE', N'Vietnam', N'Kinh', N'Bachelor', N'Business Administration');
+END
+
+-- 9. Lê Ngọc Hà - Senior Accountant (Employee Role)
+IF NOT EXISTS (SELECT 1 FROM dbo.hr_employee WHERE employee_code = 'EMP009')
+BEGIN
+    DECLARE @DeptFinHcmId2 BIGINT = (SELECT org_unit_id FROM dbo.hr_org_unit WHERE org_unit_code = 'DEPT_FIN_HCM');
+    DECLARE @TitleSrAccId2 BIGINT = (SELECT job_title_id FROM dbo.hr_job_title WHERE job_title_code = 'SSR_ACC');
+    
+    INSERT INTO dbo.hr_employee (employee_code, org_unit_id, job_title_id, full_name, work_email, gender_code, date_of_birth, hire_date, employment_status, work_location)
+    VALUES ('EMP009', @DeptFinHcmId2, @TitleSrAccId2, N'Lê Ngọc Hà', 'ngochaln030608@gmail.com', 'FEMALE', '1998-04-04', '2024-01-01', 'ACTIVE', N'HCMC Office');
+
+    DECLARE @EmpId9 BIGINT = SCOPE_IDENTITY();
+
+    INSERT INTO dbo.hr_employee_profile (employee_id, first_name, last_name, marital_status, nationality, ethnic_group, education_level, major)
+    VALUES (@EmpId9, N'Hà', N'Lê Ngọc', 'SINGLE', N'Vietnam', N'Kinh', N'Bachelor', N'Accounting');
+END
+GO
+
 SET NOCOUNT OFF;
 GO

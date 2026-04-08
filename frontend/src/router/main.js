@@ -36,6 +36,48 @@ const router = createRouter({
       component: () => import('@/views/portal/MyPayslip.vue')
     },
     {
+      path: '/portal/attendance-adjustment',
+      name: 'my-attendance-adjustment',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyAttendanceAdjustment.vue')
+    },
+    {
+      path: '/portal/overtime',
+      name: 'my-overtime',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyOvertime.vue')
+    },
+    {
+      path: '/portal/contract',
+      name: 'my-contract',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyContract.vue')
+    },
+    {
+      path: '/portal/resignation',
+      name: 'my-resignation',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyResignation.vue')
+    },
+    {
+      path: '/portal/profile-change',
+      name: 'my-profile-change',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyProfileChange.vue')
+    },
+    {
+      path: '/portal/inbox',
+      name: 'my-inbox',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyInbox.vue')
+    },
+    {
+      path: '/portal/tasks',
+      name: 'my-tasks',
+      meta: { roles: ['employee'] },
+      component: () => import('@/views/portal/MyTasks.vue')
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/auth/LoginView.vue')
