@@ -67,7 +67,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—'
       </button>
     </div>
 
-    <div class="bg-white rounded-[24px] border border-slate-100 shadow-sm p-2 relative min-h-[300px]">
+    <div class="bg-white rounded-[24px] border border-slate-100 shadow-sm p-2 relative min-h-75">
       <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
         <Loader2 class="w-8 h-8 text-indigo-500 animate-spin" />
       </div>

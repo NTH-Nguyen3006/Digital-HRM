@@ -92,7 +92,7 @@ const deleteSelected = () => {
           <Filter class="w-5 h-5" />
         </button>
 
-        <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-[50px]! font-bold">
+        <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold">
           <Plus class="w-5 h-5 mr-2" />
           Thêm mới
         </BaseButton>
@@ -100,7 +100,7 @@ const deleteSelected = () => {
     </div>
 
     <!-- MAIN CONTENT AREA -->
-    <div class="relative min-h-[400px]">
+    <div class="relative min-h-100">
 
       <!-- Loading Overlay -->
       <div v-if="loading"
