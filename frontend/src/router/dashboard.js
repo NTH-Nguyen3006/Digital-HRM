@@ -114,4 +114,30 @@ export const dashboardRoutes = [
         meta: { roles: ['hr', 'employee', 'manager'] },
         component: () => import('@/views/dashboard/payroll/PayrollList.vue')
     },
+    
+    // ── Phase 3: Manager Views ──────────────────────────────────────
+    {
+        path: '/manager/dashboard',
+        name: 'manager-dashboard',
+        meta: { roles: ['manager'] },
+        component: () => import('@/views/dashboard/manager/ManagerDashboard.vue')
+    },
+    {
+        path: '/manager/leaves',
+        name: 'manager-leaves',
+        meta: { roles: ['manager'] },
+        component: () => import('@/views/dashboard/manager/TeamLeaveApproval.vue')
+    },
+    {
+        path: '/manager/attendance',
+        name: 'manager-attendance',
+        meta: { roles: ['manager'] },
+        component: () => import('@/views/dashboard/manager/TeamAttendance.vue')
+    },
+    {
+        path: '/manager/payroll',
+        name: 'manager-payroll',
+        meta: { roles: ['manager'] },
+        component: () => import('@/views/dashboard/manager/TeamPayroll.vue')
+    },
 ]

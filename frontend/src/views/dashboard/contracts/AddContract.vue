@@ -20,7 +20,7 @@ const form = ref({
 </script>
 
 <template>
-    <MainLayout>
+    
         <div class="max-w-6xl mx-auto space-y-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -174,7 +174,7 @@ const form = ref({
                 </button>
             </div>
         </div>
-    </MainLayout>
+    
 </template>
 
 <style scoped>

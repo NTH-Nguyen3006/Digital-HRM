@@ -1,12 +1,16 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import AvatarBox from '@/components/common/AvatarBox.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import {
   Plus, Check, X, Search, Filter, Download, RefreshCw,
   Calendar, Clock, Users, TrendingDown, ChevronDown,
   FileText, AlertCircle, CheckCircle2, XCircle, Timer,
-  SlidersHorizontal, Eye, MoreHorizontal
+  SlidersHorizontal, Eye, MoreHorizontal, Loader2, CalendarDays
 } from 'lucide-vue-next'
 import {
   getLeaveRequests,
@@ -15,337 +19,336 @@ import {
   exportLeaveReports
 } from '@/api/admin/leave.js'
 
-// =================== STATE ===================
+/* ------------------ STATE ------------------ */
+
 const activeTab = ref('requests')
 const searchQuery = ref('')
 const statusFilter = ref('ALL')
-const isLoading = ref(false)
-const showFilterPanel = ref(false)
+const loading = ref(false)
 
-// Mock data tổng hợp (will be replaced by API)
-const stats = [
-  { title: 'Chờ duyệt', value: '12', icon: Timer, color: 'amber', trend: 3, trendLabel: 'so với tuần trước' },
-  { title: 'Đã duyệt tháng này', value: '47', icon: CheckCircle2, color: 'emerald', trend: 8, trendLabel: 'so với tháng trước' },
-  { title: 'Từ chối', value: '5', icon: XCircle, color: 'rose', trend: -2, trendLabel: 'so với tháng trước' },
-  { title: 'Tổng nhân sự nghỉ hôm nay', value: '8', icon: Users, color: 'indigo' },
-]
+const requestsList = ref([])
+const balancesList = ref([])
 
-const requests = ref([
-  { id: 1, employee: 'Phạm Văn Khoa', avatar: 'PK', dept: 'Engineering', type: 'Nghỉ ốm (SL)', days: 2, from: '25/03/2026', to: '26/03/2026', reason: 'Sốt xuất huyết, có giấy nghỉ bệnh viện', status: 'PENDING', submittedAt: '24/03/2026 08:30' },
-  { id: 2, employee: 'Lê Thị Hương', avatar: 'LH', dept: 'Marketing', type: 'Nghỉ phép năm (AL)', days: 3, from: '01/04/2026', to: '03/04/2026', reason: 'Đám cưới anh họ ở Đà Nẵng', status: 'APPROVED', submittedAt: '20/03/2026 14:00' },
-  { id: 3, employee: 'Trần Minh Hoàng', avatar: 'TH', dept: 'Sales', type: 'Nghỉ không lương (UP)', days: 5, from: '10/04/2026', to: '14/04/2026', reason: 'Đi du lịch nước ngoài cùng gia đình', status: 'REJECTED', submittedAt: '15/03/2026 09:15' },
-  { id: 4, employee: 'Nguyễn Bảo Châu', avatar: 'NC', dept: 'Finance', type: 'Nghỉ thai sản (ML)', days: 180, from: '01/05/2026', to: '27/10/2026', reason: 'Thai sản theo quy định pháp luật', status: 'PENDING', submittedAt: '25/03/2026 11:45' },
-  { id: 5, employee: 'Võ Thanh Tuấn', avatar: 'VT', dept: 'HR', type: 'Nghỉ phép năm (AL)', days: 1, from: '07/04/2026', to: '07/04/2026', reason: 'Khám sức khỏe định kỳ', status: 'APPROVED', submittedAt: '05/04/2026 16:00' },
+const statsData = ref([
+  { title: 'Chờ duyệt', value: '0', icon: Timer, color: 'amber', trend: 0 },
+  { title: 'Đã duyệt tháng này', value: '0', icon: CheckCircle2, color: 'emerald', trend: 0 },
+  { title: 'Từ chối', value: '0', icon: XCircle, color: 'rose', trend: 0 },
+  { title: 'Hôm nay vắng mặt', value: '0', icon: Users, color: 'indigo' },
 ])
 
-const balances = ref([
-  { id: 1, employee: 'Phạm Văn Khoa', dept: 'Engineering', total: 12, used: 3, pending: 2, remaining: 7 },
-  { id: 2, employee: 'Lê Thị Hương', dept: 'Marketing', total: 12, used: 7, pending: 0, remaining: 5 },
-  { id: 3, employee: 'Trần Minh Hoàng', dept: 'Sales', total: 14, used: 10, pending: 1, remaining: 3 },
-  { id: 4, employee: 'Nguyễn Bảo Châu', dept: 'Finance', total: 12, used: 2, pending: 0, remaining: 10 },
-  { id: 5, employee: 'Võ Thanh Tuấn', dept: 'HR', total: 12, used: 4, pending: 1, remaining: 7 },
-])
+/* ------------------ API CALLS ------------------ */
 
-// =================== COMPUTED ===================
-const tabs = [
-  { key: 'requests', label: 'Đơn xin nghỉ', icon: FileText },
-  { key: 'balances', label: 'Quỹ phép nhân viên', icon: Calendar },
-]
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const params = {
+      keyword: searchQuery.value,
+      status: statusFilter.value !== 'ALL' ? statusFilter.value : undefined
+    }
+    
+    if (activeTab.value === 'requests') {
+      const response = await getLeaveRequests(params)
+      requestsList.value = response.data || []
+      
+      // Update statistics based on requests
+      const pendingCount = requestsList.value.filter(r => r.status === 'PENDING').length
+      const approvedCount = requestsList.value.filter(r => r.status === 'APPROVED').length
+      const rejectedCount = requestsList.value.filter(r => r.status === 'REJECTED').length
+      
+      statsData.value[0].value = pendingCount.toString()
+      statsData.value[1].value = approvedCount.toString()
+      statsData.value[2].value = rejectedCount.toString()
+      // Note: 'Hôm nay vắng mặt' would ideally come from attendance or a specific query, 
+      // here we just use the total approved for demo consistency if needed.
+      statsData.value[3].value = requestsList.value.filter(r => r.status === 'APPROVED').length.toString()
+      
+    } else {
+      const response = await getLeaveBalances({ keyword: searchQuery.value })
+      balancesList.value = response.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch leave data:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
-const statusOptions = [
-  { value: 'ALL', label: 'Tất cả trạng thái' },
-  { value: 'PENDING', label: 'Chờ duyệt' },
-  { value: 'APPROVED', label: 'Đã duyệt' },
-  { value: 'REJECTED', label: 'Từ chối' },
-]
+onMounted(fetchData)
 
-const filteredRequests = computed(() => {
-  return requests.value.filter(r => {
-    const matchSearch = !searchQuery.value ||
-      r.employee.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      r.dept.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      r.type.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchStatus = statusFilter.value === 'ALL' || r.status === statusFilter.value
-    return matchSearch && matchStatus
-  })
+watch([activeTab, searchQuery, statusFilter], () => {
+  fetchData()
 })
 
-const statusConfig = {
-  PENDING: { label: 'Chờ duyệt', class: 'bg-amber-100 text-amber-700 border border-amber-200', dot: 'bg-amber-400' },
-  APPROVED: { label: 'Đã duyệt', class: 'bg-emerald-100 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
-  REJECTED: { label: 'Từ chối', class: 'bg-rose-100 text-rose-700 border border-rose-200', dot: 'bg-rose-400' },
-}
+/* ------------------ ACTIONS ------------------ */
 
-const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500', 'bg-sky-500']
-
-// =================== METHODS ===================
-function getAvatarColor(name) {
-  const idx = name.charCodeAt(0) % avatarColors.length
-  return avatarColors[idx]
-}
-
-async function approveRequest(req) {
+const handleFinalize = async (req, status) => {
   try {
-    await finalizeLeaveRequest(req.id, { finalStatus: 'APPROVED', hrNote: 'Được duyệt.' })
-    req.status = 'APPROVED'
-  } catch (e) {
-    req.status = 'APPROVED' // fallback for demo
+    await finalizeLeaveRequest(req.leaveRequestId, { 
+      finalStatus: status, 
+      hrNote: status === 'APPROVED' ? 'Đã phê duyệt hồ sơ.' : 'Không được phê duyệt.' 
+    })
+    await fetchData()
+  } catch (error) {
+    console.error(`Failed to ${status} request:`, error)
   }
 }
 
-async function rejectRequest(req) {
+const handleExport = async () => {
   try {
-    await finalizeLeaveRequest(req.id, { finalStatus: 'REJECTED', hrNote: 'Không đủ điều kiện.' })
-    req.status = 'REJECTED'
-  } catch (e) {
-    req.status = 'REJECTED' // fallback for demo
+    const data = await exportLeaveReports({ status: statusFilter.value })
+    const url = window.URL.createObjectURL(new Blob([data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `bao-cao-nghi-phep-${new Date().getTime()}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error('Export failed:', error)
   }
 }
 
-async function handleExport() {
-  try {
-    await exportLeaveReports({ status: statusFilter.value })
-  } catch (_) { }
-}
+/* ------------------ UI HELPERS ------------------ */
+
+const tabs = [
+  { key: 'requests', label: 'Yêu cầu nghỉ phép', icon: FileText },
+  { key: 'balances', label: 'Quỹ phép nhân viên', icon: CalendarDays },
+]
 
 function getBalanceWidth(used, total) {
+  if (!total || total === 0) return 0
   return Math.min(100, Math.round((used / total) * 100))
 }
+
 function getBalanceColor(remaining, total) {
+  if (!total) return 'bg-slate-200'
   const pct = remaining / total
-  if (pct > 0.5) return 'bg-emerald-400'
-  if (pct > 0.25) return 'bg-amber-400'
-  return 'bg-rose-400'
+  if (pct > 0.5) return 'bg-emerald-500'
+  if (pct > 0.2) return 'bg-amber-500'
+  return 'bg-rose-500'
 }
+
 </script>
 
 <template>
-  <MainLayout>
-    <div class="space-y-8">
+  
+    <div class="space-y-8 animate-fade-in">
 
-      <!-- ===== HEADER ===== -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <!-- HEADER -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <div class="flex items-center gap-3 mb-1">
-            <div
-              class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-              <Calendar class="w-5 h-5 text-white" />
+          <div class="flex items-center gap-4 mb-2">
+            <div class="w-12 h-12 rounded-[18px] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100">
+              <Calendar class="w-6 h-6 text-white" />
             </div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tight">Quản lý nghỉ phép</h2>
+            <h2 class="text-4xl font-black text-slate-900 tracking-tight">Quản lý nghỉ phép</h2>
           </div>
-          <p class="text-slate-500 font-medium ml-13 pl-[52px]">Duyệt đơn xin nghỉ và theo dõi quỹ phép năm toàn công ty
-          </p>
+          <p class="text-slate-500 font-medium ml-1">Theo dõi và phê duyệt nguyện vọng nghỉ phép của nhân sự</p>
         </div>
 
         <div class="flex items-center gap-3">
-          <button @click="handleExport"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm text-sm">
-            <Download class="w-4 h-4" />
-            Xuất báo cáo
-          </button>
-          <button
-            class="flex items-center gap-2 bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 text-sm">
-            <Plus class="w-4 h-4" />
-            Tạo đơn nghỉ
-          </button>
+          <BaseButton variant="outline" @click="handleExport" class="rounded-2xl! font-bold">
+            <Download class="w-4 h-4 mr-2" /> Xuất báo cáo
+          </BaseButton>
+          <BaseButton variant="primary" shadow class="rounded-2xl! font-bold">
+            <Plus class="w-4 h-4 mr-2" /> Tạo đơn nghỉ
+          </BaseButton>
         </div>
       </div>
 
-      <!-- ===== STAT CARDS ===== -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard v-for="stat in stats" :key="stat.title" :title="stat.title" :value="stat.value" :icon="stat.icon"
-          :color="stat.color" :trend="stat.trend" :trendLabel="stat.trendLabel" />
+      <!-- STATS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard v-for="s in statsData" :key="s.title" 
+          :title="s.title" :value="s.value" :icon="s.icon" :color="s.color" :trend="s.trend" 
+          class="rounded-[32px]!"
+        />
       </div>
 
-      <!-- ===== MAIN CONTENT ===== -->
-      <GlassCard :glass="false" padding="p-0"
-        class="rounded-3xl border border-slate-100 shadow-sm overflow-hidden bg-white">
+      <!-- MAIN CONTENT -->
+      <div class="bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm relative min-h-[500px]">
+        
+        <!-- Loading Overlay -->
+        <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+          <Loader2 class="w-10 h-10 text-indigo-600 animate-spin" />
+        </div>
 
-        <!-- Tabs + Toolbar -->
-        <div
-          class="border-b border-slate-100 px-6 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <!-- Tabs -->
-          <div class="flex gap-1">
-            <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
-              class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl transition-all relative"
-              :class="activeTab === tab.key
-                ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'">
-              <component :is="tab.icon" class="w-4 h-4" />
-              {{ tab.label }}
-              <span v-if="activeTab === tab.key"
-                class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
+        <!-- Toolbar & Tabs -->
+        <div class="px-8 pt-8 border-b border-slate-50 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+          <div class="flex gap-2">
+             <button 
+              v-for="tab in tabs" 
+              :key="tab.key"
+              @click="activeTab = tab.key"
+              class="px-6 py-4 text-sm font-black transition-all relative"
+              :class="activeTab === tab.key ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'"
+            >
+              <div class="flex items-center gap-2">
+                <component :is="tab.icon" class="w-4 h-4" />
+                {{ tab.label }}
+              </div>
+              <div v-if="activeTab === tab.key" class="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-t-full shadow-[0_-4px_10px_rgba(79,70,229,0.3)]"></div>
             </button>
           </div>
 
-          <!-- Search & Filter -->
-          <div class="flex items-center gap-2 pb-3">
-            <div class="relative">
-              <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input v-model="searchQuery" type="text" placeholder="Tìm nhân viên, phòng ban..."
-                class="pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 w-56 transition-all" />
-            </div>
-            <select v-model="statusFilter"
-              class="py-2 px-3 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 font-medium appearance-none cursor-pointer">
-              <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
+          <div class="flex items-center gap-4 pb-4">
+             <div v-if="activeTab === 'requests'" class="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl">
+                <button 
+                  v-for="st in ['ALL', 'PENDING', 'APPROVED', 'REJECTED']"
+                  :key="st"
+                  @click="statusFilter = st"
+                  class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                  :class="statusFilter === st ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
+                >
+                  {{ st === 'ALL' ? 'Tất cả' : st }}
+                </button>
+             </div>
+
+             <div class="relative group">
+                <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                <input 
+                  v-model="searchQuery" 
+                  type="text" 
+                  placeholder="Tìm nhân viên..."
+                  class="w-64 pl-11 pr-4 py-3 bg-slate-50 border border-transparent rounded-2xl text-xs font-bold focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none" 
+                />
+              </div>
           </div>
         </div>
 
-        <!-- ===== TAB: LEAVE REQUESTS ===== -->
-        <div v-if="activeTab === 'requests'" class="divide-y divide-slate-50">
-          <TransitionGroup name="list">
-            <div v-for="req in filteredRequests" :key="req.id" class="group p-5 hover:bg-slate-50/70 transition-colors">
-              <div class="flex flex-col md:flex-row md:items-center gap-4">
-
-                <!-- Avatar + Info -->
-                <div class="flex items-start gap-4 flex-1 min-w-0">
-                  <div
-                    class="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-md"
-                    :class="getAvatarColor(req.employee)">
-                    {{ req.avatar }}
-                  </div>
-
-                  <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2 mb-2">
-                      <h3 class="font-bold text-slate-900 text-base">{{ req.employee }}</h3>
-                      <span class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded-lg">{{ req.dept
-                        }}</span>
-                      <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
-                        :class="statusConfig[req.status]?.class">
-                        <span class="w-1.5 h-1.5 rounded-full" :class="statusConfig[req.status]?.dot"></span>
-                        {{ statusConfig[req.status]?.label }}
-                      </span>
+        <!-- Content Area -->
+        <div class="min-h-[400px]">
+          
+          <!-- TAB: YÊU CẦU NGHỈ PHÉP -->
+          <div v-if="activeTab === 'requests'" class="divide-y divide-slate-50">
+            <template v-if="requestsList.length > 0">
+              <div 
+                v-for="req in requestsList" 
+                :key="req.leaveRequestId"
+                class="group px-8 py-6 hover:bg-slate-50/50 transition-all cursor-pointer flex flex-col xl:flex-row xl:items-center justify-between gap-6"
+              >
+                <div class="flex items-start gap-5 min-w-[350px]">
+                  <AvatarBox :name="req.employeeFullName" :image="req.avatarUrl" size="lg" shape="rounded-[20px]" shadow />
+                  <div>
+                    <h4 class="text-lg font-black text-slate-900 mb-1">{{ req.employeeFullName }}</h4>
+                    <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <span>{{ req.orgUnitName }}</span>
+                      <div class="w-1 h-1 rounded-full bg-slate-300"></div>
+                      <span class="text-indigo-600">{{ req.leaveTypeName }}</span>
                     </div>
-
-                    <!-- Detail grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1.5 text-sm">
-                      <div>
-                        <div class="text-xs text-slate-400 font-medium mb-0.5">Loại phép</div>
-                        <div class="font-semibold text-slate-700">{{ req.type }}</div>
-                      </div>
-                      <div>
-                        <div class="text-xs text-slate-400 font-medium mb-0.5">Số ngày</div>
-                        <div class="font-bold text-indigo-600">{{ req.days }} ngày</div>
-                      </div>
-                      <div>
-                        <div class="text-xs text-slate-400 font-medium mb-0.5">Khoảng thời gian</div>
-                        <div class="font-semibold text-slate-700">{{ req.from }} → {{ req.to }}</div>
-                      </div>
-                      <div>
-                        <div class="text-xs text-slate-400 font-medium mb-0.5">Ngày gửi</div>
-                        <div class="font-medium text-slate-500">{{ req.submittedAt }}</div>
-                      </div>
-                    </div>
-
-                    <!-- Reason -->
-                    <div class="mt-2 flex items-start gap-1.5">
-                      <AlertCircle class="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
-                      <p class="text-xs text-slate-500 italic">{{ req.reason }}</p>
-                    </div>
+                    <p class="text-xs text-slate-500 font-medium mt-2 line-clamp-1 italic">"{{ req.reason || 'Không có lý do chi tiết' }}"</p>
                   </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="flex items-center gap-2 md:flex-shrink-0">
-                  <template v-if="req.status === 'PENDING'">
-                    <button @click="approveRequest(req)"
-                      class="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-500 hover:text-white rounded-xl font-bold text-sm transition-all border border-emerald-200 hover:border-emerald-500 shadow-sm">
-                      <Check class="w-4 h-4" /> Duyệt
-                    </button>
-                    <button @click="rejectRequest(req)"
-                      class="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-700 hover:bg-rose-500 hover:text-white rounded-xl font-bold text-sm transition-all border border-rose-200 hover:border-rose-500 shadow-sm">
-                      <X class="w-4 h-4" /> Từ chối
-                    </button>
-                  </template>
-                  <template v-else>
-                    <button
-                      class="flex items-center gap-1.5 px-3 py-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl text-sm font-semibold transition-all">
-                      <Eye class="w-4 h-4" /> Chi tiết
-                    </button>
-                  </template>
+                <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-6 items-center">
+                  <div class="text-center xl:text-left">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Thời gian</p>
+                    <p class="text-xs font-bold text-slate-700">{{ req.fromDate }} → {{ req.toDate }}</p>
+                  </div>
+                  <div class="text-center xl:text-left">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Số lượng</p>
+                    <p class="text-xs font-black text-indigo-600">{{ req.totalDays }} ngày</p>
+                  </div>
+                  <div class="text-center xl:text-left">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ngày gửi</p>
+                    <p class="text-xs font-medium text-slate-500">{{ req.createdAt }}</p>
+                  </div>
+                  <div class="flex justify-center xl:justify-end">
+                    <StatusBadge :status="req.status" />
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 justify-end min-w-[180px]">
+                   <template v-if="req.status === 'PENDING'">
+                      <button @click="handleFinalize(req, 'APPROVED')" 
+                        class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center shadow-sm">
+                        <Check class="w-5 h-5" />
+                      </button>
+                      <button @click="handleFinalize(req, 'REJECTED')" 
+                        class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm">
+                        <X class="w-5 h-5" />
+                      </button>
+                   </template>
+                   <button class="p-2 text-slate-200 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 rounded-xl transition-all">
+                      <ChevronRight class="w-5 h-5" />
+                   </button>
                 </div>
               </div>
-            </div>
-          </TransitionGroup>
-
-          <!-- Empty state -->
-          <div v-if="filteredRequests.length === 0" class="py-16 text-center">
-            <FileText class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p class="text-slate-500 font-medium">Không có đơn nào phù hợp</p>
-            <p class="text-slate-400 text-sm mt-1">Thử thay đổi bộ lọc hoặc tìm kiếm</p>
+            </template>
+            <EmptyState v-else-if="!loading" title="Không có đơn xin nghỉ" description="Hiện tại không có đơn xin nghỉ nào cần bạn xử lý." iconName="CalendarX" />
           </div>
+
+          <!-- TAB: QUỸ PHÉP NHÂN VIÊN -->
+          <div v-if="activeTab === 'balances'" class="divide-y divide-slate-50">
+            <template v-if="balancesList.length > 0">
+               <div 
+                v-for="bal in balancesList" 
+                :key="bal.leaveBalanceId"
+                class="group px-8 py-6 hover:bg-slate-50/50 transition-all flex flex-col lg:flex-row lg:items-center gap-8"
+              >
+                <div class="flex items-center gap-4 w-64 shrink-0">
+                   <AvatarBox :name="bal.employeeFullName" size="md" shape="rounded-xl" />
+                   <div>
+                      <h4 class="text-sm font-bold text-slate-900 line-clamp-1">{{ bal.employeeFullName }}</h4>
+                      <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ bal.employeeCode }}</p>
+                   </div>
+                </div>
+
+                <div class="flex-1">
+                   <div class="flex justify-between items-end mb-2">
+                      <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tiến độ sử dụng phép năm</p>
+                      <p class="text-xs font-black text-slate-800">{{ bal.usedDays }} / {{ bal.totalEntitledDays }} <span class="text-slate-300 ml-1">ngày</span></p>
+                   </div>
+                   <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                      <div 
+                        class="h-full rounded-full transition-all duration-1000"
+                        :class="getBalanceColor(bal.remainingDays, bal.totalEntitledDays)"
+                        :style="{ width: getBalanceWidth(bal.usedDays, bal.totalEntitledDays) + '%' }"
+                      ></div>
+                   </div>
+                </div>
+
+                <div class="flex items-center gap-4 min-w-[200px] justify-between lg:justify-end">
+                   <div class="text-center px-4 py-2 bg-amber-50 rounded-2xl border border-amber-100/50">
+                      <p class="text-[9px] font-black text-amber-500 uppercase tracking-tighter mb-0.5">Đang chờ</p>
+                      <p class="text-sm font-black text-amber-700">{{ bal.pendingDays }}</p>
+                   </div>
+                   <div class="text-center px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100/50">
+                      <p class="text-[9px] font-black text-emerald-500 uppercase tracking-tighter mb-0.5">Còn lại</p>
+                      <p class="text-sm font-black text-emerald-700">{{ bal.remainingDays }}</p>
+                   </div>
+                   <button class="p-2 text-slate-100 group-hover:text-indigo-600 transition-colors">
+                      <MoreHorizontal class="w-5 h-5" />
+                   </button>
+                </div>
+               </div>
+            </template>
+            <EmptyState v-else-if="!loading" title="Không có dữ liệu quỹ phép" description="Chưa có dữ liệu quỹ phép năm nào được ghi nhận cho hệ thống." iconName="Calendar" />
+          </div>
+
         </div>
 
-        <!-- ===== TAB: LEAVE BALANCES ===== -->
-        <div v-if="activeTab === 'balances'" class="divide-y divide-slate-50">
-          <div v-for="bal in balances" :key="bal.id" class="p-5 hover:bg-slate-50/70 transition-colors group">
-            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-              <!-- Avatar + Info -->
-              <div class="flex items-center gap-3 w-56 flex-shrink-0">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-black shadow"
-                  :class="getAvatarColor(bal.employee)">
-                  {{bal.employee.split(' ').map(w => w[0]).slice(-2).join('')}}
-                </div>
-                <div>
-                  <div class="font-bold text-slate-900 text-sm">{{ bal.employee }}</div>
-                  <div class="text-xs text-slate-400">{{ bal.dept }}</div>
-                </div>
-              </div>
-
-              <!-- Progress bar -->
-              <div class="flex-1">
-                <div class="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
-                  <span>Đã dùng: <span class="text-slate-700">{{ bal.used }} ngày</span></span>
-                  <span>Tổng: <span class="text-slate-700">{{ bal.total }} ngày</span></span>
-                </div>
-                <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-700"
-                    :class="getBalanceColor(bal.remaining, bal.total)"
-                    :style="{ width: getBalanceWidth(bal.used, bal.total) + '%' }" />
-                </div>
-              </div>
-
-              <!-- Stats chips -->
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <div class="text-center px-3 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
-                  <div class="text-xs text-amber-600 font-medium">Chờ duyệt</div>
-                  <div class="text-lg font-black text-amber-700">{{ bal.pending }}</div>
-                </div>
-                <div class="text-center px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
-                  <div class="text-xs text-emerald-600 font-medium">Còn lại</div>
-                  <div class="text-lg font-black text-emerald-700">{{ bal.remaining }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Footer Pagination -->
+        <div class="border-t border-slate-50 px-8 py-5 flex items-center justify-between text-xs font-bold text-slate-400">
+           <span>Hiển thị {{ activeTab === 'requests' ? requestsList.length : balancesList.length }} bản ghi</span>
+           <div class="flex gap-2">
+              <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">←</button>
+              <button class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100">1</button>
+              <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">2</button>
+              <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">→</button>
+           </div>
         </div>
-
-        <!-- Pagination footer -->
-        <div class="border-t border-slate-100 px-6 py-3 flex items-center justify-between text-sm text-slate-500">
-          <span>Hiển thị {{ filteredRequests.length }} kết quả</span>
-          <div class="flex items-center gap-1">
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium transition-colors">←</button>
-            <button class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold">1</button>
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium transition-colors">2</button>
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium transition-colors">→</button>
-          </div>
-        </div>
-      </GlassCard>
-
+      </div>
     </div>
-  </MainLayout>
+  
 </template>
 
 <style scoped>
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.3s ease;
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.list-enter-from,
-.list-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

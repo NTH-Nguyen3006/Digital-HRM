@@ -11,6 +11,13 @@ defineProps({
 })
 
 const router = useRouter()
+import { useAuthStore } from '@/stores/auth'
+const auth = useAuthStore()
+
+const handleLogout = () => {
+    auth.logout()
+    router.push('/login')
+}
 </script>
 
 <template>
@@ -34,15 +41,30 @@ const router = useRouter()
 
       <!-- Portal Nav & Actions -->
       <template v-if="variant === 'portal'">
-        <nav class="hidden md:flex items-center space-x-10">
-          <a href="#features" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Tính
-            năng</a>
-          <a href="#services" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Dịch vụ
-          </a>
+        <nav v-if="!auth.isAuthenticated" class="hidden md:flex items-center space-x-10">
+          <a href="#features" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Tính năng</a>
+          <a href="#services" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">Dịch vụ</a>
         </nav>
+        <nav v-else class="hidden md:flex items-center space-x-6">
+          <router-link to="/portal/attendance" class="text-sm font-bold transition-colors" active-class="text-indigo-600" :class="$route.path === '/portal/attendance' ? '' : 'text-slate-600 hover:text-indigo-600'">Chấm công</router-link>
+          <router-link to="/portal/leaves" class="text-sm font-bold transition-colors" active-class="text-indigo-600" :class="$route.path === '/portal/leaves' ? '' : 'text-slate-600 hover:text-indigo-600'">Nghỉ phép</router-link>
+          <router-link to="/portal/payslip" class="text-sm font-bold transition-colors" active-class="text-indigo-600" :class="$route.path === '/portal/payslip' ? '' : 'text-slate-600 hover:text-indigo-600'">Phiếu lương</router-link>
+          <router-link to="/portal/profile" class="text-sm font-bold transition-colors" active-class="text-indigo-600" :class="$route.path === '/portal/profile' ? '' : 'text-slate-600 hover:text-indigo-600'">Hồ sơ</router-link>
+        </nav>
+        
         <div class="flex items-center space-x-4">
-          <BaseButton variant="ghost" class="hidden sm:flex" @click="router.push('/login')">Trợ giúp</BaseButton>
-          <BaseButton variant="primary" :icon="LogIn" @click="router.push('/login')">Đăng nhập</BaseButton>
+          <template v-if="!auth.isAuthenticated">
+            <BaseButton variant="ghost" class="hidden sm:flex" @click="router.push('/login')">Trợ giúp</BaseButton>
+            <BaseButton variant="primary" :icon="LogIn" @click="router.push('/login')">Đăng nhập</BaseButton>
+          </template>
+          <template v-else>
+            <button v-if="auth.isManager || auth.isAdmin || auth.isHR" @click="router.push('/dashboard')" class="text-sm font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-100 transition">
+              Vào Dashboard
+            </button>
+            <button @click="handleLogout" class="text-sm font-bold text-slate-500 hover:text-rose-600 px-4 py-2 hover:bg-rose-50 rounded-xl transition">
+              Đăng xuất
+            </button>
+          </template>
         </div>
       </template>
 

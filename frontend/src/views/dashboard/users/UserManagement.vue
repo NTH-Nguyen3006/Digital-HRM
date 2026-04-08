@@ -78,7 +78,7 @@ const stats = computed(() => ({
 </script>
 
 <template>
-  <MainLayout>
+  
     <div class="space-y-6">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -357,5 +357,5 @@ const stats = computed(() => ({
         </div>
       </div>
     </Teleport>
-  </MainLayout>
+  
 </template>

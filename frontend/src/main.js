@@ -6,7 +6,6 @@ import './assets/css/main.css'
 import '@/interceptors/axios'
 const app = createApp(App)
 
-// 1. Global Error Handler for Vue components
 app.config.errorHandler = (err, vm, info) => {
   console.error('[Global Error]:', err)
   console.error('[Component]:', vm)
