@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=DigitalHRM;encrypt=true;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:Password123}
+    password: ${DB_PASSWORD:123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
     hikari:
       connection-init-sql: SET NOCOUNT OFF
@@ -74,3 +74,12 @@ app:
   reporting:
     scheduler-enabled: ${APP_REPORTING_SCHEDULER_ENABLED:true}
     scheduler-fixed-delay-ms: ${APP_REPORTING_SCHEDULER_FIXED_DELAY_MS:300000}
+
+  ocr:
+    enabled: ${APP_OCR_ENABLED:false}
+    tesseract-binary: ${APP_OCR_TESSERACT_BINARY:tesseract}
+    language: ${APP_OCR_LANGUAGE:vie+eng}
+    page-seg-mode: ${APP_OCR_PAGE_SEG_MODE:6}
+    pdf-render-dpi: ${APP_OCR_PDF_RENDER_DPI:300}
+    max-pdf-pages: ${APP_OCR_MAX_PDF_PAGES:10}
+    process-timeout-seconds: ${APP_OCR_PROCESS_TIMEOUT_SECONDS:90}
