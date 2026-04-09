@@ -5,6 +5,14 @@ import { dashboardRoutes } from './dashboard'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/employee',
+      redirect: '/'
+    },
+    // {
+    //   path: '/employee/:pathMatch(.*)*',
+    //   redirect: '/'
+    // },
     // ── Public / Portal
     {
       path: '/',

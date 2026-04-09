@@ -1,23 +1,81 @@
-name: CI-CD Website_KhanhHoaTravel
+name: Deploy Digital HRM
 
 on:
   push:
-    branches: [production]
+    branches:
+      - main
+      - production
+  workflow_dispatch:
+
+concurrency:
+  group: digital-hrm-production
+  cancel-in-progress: false
 
 jobs:
-  build-and-push:
+  test-backend:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Lowercase repo owner name
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run backend tests
+        run: ./mvnw test
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+  build-and-push:
+    needs:
+      - test-backend
+      - test-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_image: ${{ steps.vars.outputs.backend_image }}
+      frontend_image: ${{ steps.vars.outputs.frontend_image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare image tags
+        id: vars
         run: |
-          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          OWNER_LC="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          SHORT_SHA="${GITHUB_SHA::12}"
+          echo "owner_lc=${OWNER_LC}" >> "${GITHUB_OUTPUT}"
+          echo "backend_image=ghcr.io/${OWNER_LC}/digital-hrm-backend:sha-${SHORT_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "frontend_image=ghcr.io/${OWNER_LC}/digital-hrm-frontend:sha-${SHORT_SHA}" >> "${GITHUB_OUTPUT}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -26,67 +84,104 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build & Push Backend
-      - name: Build and push Backend
+      - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
           context: ./backend
+          file: ./backend/Dockerfile
           push: true
-          # tags: ghcr.io/${{ github.repository_owner }}/flask-backend:latest
-          tags: ghcr.io/${{ env.REPO_OWNER }}/flask-backend:latest
+          tags: |
+            ${{ steps.vars.outputs.backend_image }}
+            ghcr.io/${{ steps.vars.outputs.owner_lc }}/digital-hrm-backend:latest
 
-      # Build & Push Frontend
-      - name: Build and push Frontend
+      - name: Build and push frontend image
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
-          tags: ghcr.io/${{ env.REPO_OWNER }}/react-frontend:latest
+          tags: |
+            ${{ steps.vars.outputs.frontend_image }}
+            ghcr.io/${{ steps.vars.outputs.owner_lc }}/digital-hrm-frontend:latest
 
   deploy:
-    needs: build-and-push
+    needs:
+      - build-and-push
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Lowercase repo owner name
-        run: |
-          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-      - name: Copy config files to server
-        uses: appleboy/scp-action@master
+      - name: Copy deployment bundle to server
+        uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_IP }}
+          host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          # Gửi file docker-compose và các file cấu hình nginx trong thư mục frontend
-          source: "docker-compose.yml,frontend/*.conf"
-          target: "/root/webapp"
+          port: ${{ secrets.SERVER_PORT }}
+          source: "docker-compose.prod.yml,.env.production.example,deploy"
+          target: ${{ secrets.DEPLOY_PATH }}
 
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@master
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SERVER_IP }}
+          host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
+          port: ${{ secrets.SERVER_PORT }}
+          script_stop: true
           script: |
-            mkdir -p /root/webapp
-            cd /root/webapp
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            cat <<EOF > .env
-            ${{ secrets.ENVIRONMENT }}
-            SERVER_IP=${{ secrets.SERVER_IP }}
-            REPO_OWNER=${{ env.REPO_OWNER }}
-            EOF
+            set -euo pipefail
 
-            docker compose down --remove-orphans
-            docker compose pull
-            docker compose up -d
-            docker image prune -af
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            cd "${DEPLOY_PATH}"
 
-            echo "Đang đợi database (postgesSQL-container) khởi chạy........"
-            sleep 10
-            docker compose exec -T backend flask db upgrade
+            if [ ! -f .env.production ]; then
+              echo ".env.production is missing in ${DEPLOY_PATH}" >&2
+              exit 1
+            fi
+
+            set -a
+            . ./.env.production
+            set +a
+
+            printf 'BACKEND_IMAGE=%s\nFRONTEND_IMAGE=%s\n' \
+              '${{ needs.build-and-push.outputs.backend_image }}' \
+              '${{ needs.build-and-push.outputs.frontend_image }}' \
+              > .env.images
+
+            echo '${{ secrets.GHCR_READ_TOKEN }}' | docker login ghcr.io -u '${{ secrets.GHCR_READ_USERNAME }}' --password-stdin
+
+            docker compose \
+              --env-file .env.production \
+              --env-file .env.images \
+              -f docker-compose.prod.yml \
+              pull
+
+            docker compose \
+              --env-file .env.production \
+              --env-file .env.images \
+              -f docker-compose.prod.yml \
+              up -d --remove-orphans
+
+            for attempt in $(seq 1 24); do
+              if curl -fsS "http://127.0.0.1:${FRONTEND_BIND_PORT:-8088}/" > /dev/null; then
+                echo "Frontend is reachable."
+                break
+              fi
+
+              if [ "${attempt}" -eq 24 ]; then
+                echo "Frontend health probe failed." >&2
+                docker compose \
+                  --env-file .env.production \
+                  --env-file .env.images \
+                  -f docker-compose.prod.yml \
+                  ps
+                exit 1
+              fi
+
+              sleep 5
+            done
+
+            docker image prune -f

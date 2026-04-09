@@ -1,8 +1,7 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import VueApexCharts from 'vue3-apexcharts'
-import { OrgChart as D3OrgChart } from 'd3-org-chart'
 import {
   BarChart3,
   Briefcase,
@@ -14,7 +13,6 @@ import {
   Download,
   FileWarning,
   Loader2,
-  Network,
   PieChart,
   TrendingUp,
   UserMinus,
@@ -80,11 +78,8 @@ const alertStatusMeta = computed(() => {
 const headcountBreakdown = ref([])
 const orgUnitCodeLookup = ref({})
 const organizationTree = ref([])
-const orgUnitHeadcountLookup = ref({})
 const selectedHeadcountFilters = ref([])
 const headcountFilterPanelOpen = ref(false)
-const chartContainer = ref(null)
-const chartInstance = ref(null)
 
 const trendSeries = ref([
   { name: 'Nhân viên vào', data: [] },
@@ -219,24 +214,6 @@ const headcountChartMinWidth = computed(() =>
   Math.max(560, filteredHeadcountBreakdown.value.length * 92),
 )
 
-const orgChartNodes = computed(() => [
-  {
-    id: 'company-root',
-    parentId: null,
-    orgUnitId: null,
-    orgUnitCode: 'COMPANY',
-    name: 'Digital HRM',
-    orgUnitType: 'COMPANY',
-    totalEmployeeCount: statsData.value[0]?.value || 0,
-    childCount: Array.isArray(organizationTree.value) ? organizationTree.value.length : 0,
-    managerName: 'Sơ đồ toàn công ty',
-    status: 'ACTIVE',
-  },
-  ...flattenOrgNodes(organizationTree.value),
-])
-
-const hasOrgChartData = computed(() => orgChartNodes.value.length > 1)
-
 const headcountOptions = computed(() => ({
   chart: {
     type: 'bar',
@@ -311,33 +288,6 @@ function flattenOrgTree(nodes = []) {
   return nodes.flatMap((node) => [node, ...flattenOrgTree(node.children || [])])
 }
 
-function countDirectEmployees(node) {
-  return Number(orgUnitHeadcountLookup.value[node?.orgUnitCode] || 0)
-}
-
-function countTotalEmployees(node) {
-  return countDirectEmployees(node) + (node.children || []).reduce((sum, child) => sum + countTotalEmployees(child), 0)
-}
-
-function flattenOrgNodes(nodes = [], parentId = 'company-root') {
-  return nodes.flatMap((node) => {
-    const chartNode = {
-      id: `unit-${node.orgUnitId}`,
-      parentId,
-      orgUnitId: node.orgUnitId,
-      orgUnitCode: node.orgUnitCode,
-      name: node.orgUnitName,
-      orgUnitType: node.orgUnitType,
-      totalEmployeeCount: countTotalEmployees(node),
-      childCount: Array.isArray(node.children) ? node.children.length : 0,
-      managerName: node.managerEmployeeName || 'Chưa gán quản lý',
-      status: node.status,
-    }
-
-    return [chartNode, ...flattenOrgNodes(node.children || [], chartNode.id)]
-  })
-}
-
 function getCurrentMonthMovement(monthlyMovement = []) {
   return monthlyMovement[monthlyMovement.length - 1] || null
 }
@@ -380,101 +330,6 @@ function openHeadcountOrgUnit(item) {
   })
 }
 
-function navigateToOrgUnit(node) {
-  if (!node?.orgUnitId) return
-
-  router.push({
-    path: '/employees',
-    query: {
-      orgUnitId: String(node.orgUnitId),
-      orgUnitName: node.name,
-      orgUnitCode: node.orgUnitCode,
-    },
-  })
-}
-
-function getOrgTypeLabel(type) {
-  const labels = {
-    COMPANY: 'Toàn công ty',
-    DIVISION: 'Khối',
-    DEPARTMENT: 'Phòng ban',
-    TEAM: 'Nhóm',
-    BRANCH: 'Chi nhánh',
-    UNIT: 'Đơn vị',
-  }
-  return labels[type] || type || 'Đơn vị'
-}
-
-function buildOrgNodeMarkup(node) {
-  const isRoot = node.id === 'company-root'
-  const tone = isRoot
-    ? {
-      bg: 'linear-gradient(135deg,#0f172a,#312e81 52%,#4f46e5)',
-      border: 'rgba(99,102,241,0.45)',
-      text: '#ffffff',
-      muted: 'rgba(224,231,255,0.82)',
-      badgeBg: 'rgba(255,255,255,0.14)',
-      badgeColor: '#e0e7ff',
-    }
-    : {
-      bg: 'linear-gradient(180deg,#ffffff,#f8fafc)',
-      border: node.status === 'ACTIVE' ? 'rgba(148,163,184,0.26)' : 'rgba(244,63,94,0.24)',
-      text: '#0f172a',
-      muted: '#64748b',
-      badgeBg: node.status === 'ACTIVE' ? 'rgba(79,70,229,0.08)' : 'rgba(244,63,94,0.08)',
-      badgeColor: node.status === 'ACTIVE' ? '#4338ca' : '#be123c',
-    }
-
-  return `
-    <div class="dashboard-org-chart-card" style="background:${tone.bg};border-color:${tone.border};color:${tone.text};">
-      <div class="dashboard-org-chart-card__eyebrow" style="color:${tone.muted};">${getOrgTypeLabel(node.orgUnitType)}</div>
-      <div class="dashboard-org-chart-card__title">${node.name}</div>
-      <div class="dashboard-org-chart-card__meta" style="color:${tone.muted};">${node.managerName}</div>
-      <div class="dashboard-org-chart-card__stats">
-        <span class="dashboard-org-chart-card__badge" style="background:${tone.badgeBg};color:${tone.badgeColor};">
-          ${formatNumber(node.totalEmployeeCount || 0)} nhân sự
-        </span>
-        <span class="dashboard-org-chart-card__meta" style="color:${tone.muted};">
-          ${node.childCount ? `${node.childCount} đơn vị con` : 'Bấm để mở danh sách'}
-        </span>
-      </div>
-    </div>
-  `
-}
-
-async function renderOrgChart() {
-  if (!chartContainer.value || !hasOrgChartData.value) return
-
-  await nextTick()
-
-  if (!chartInstance.value) {
-    chartInstance.value = new D3OrgChart()
-  }
-
-  chartContainer.value.innerHTML = ''
-
-  const chartNodeLookup = orgChartNodes.value.reduce((lookup, item) => {
-    lookup[item.id] = item
-    return lookup
-  }, {})
-
-  chartInstance.value
-    .container(chartContainer.value)
-    .data(orgChartNodes.value)
-    .nodeWidth(() => 300)
-    .nodeHeight(() => 160)
-    .childrenMargin(() => 56)
-    .siblingsMargin(() => 26)
-    .compact(false)
-    .initialZoom(0.78)
-    .nodeContent((entry) => buildOrgNodeMarkup(entry.data))
-    .onNodeClick((nodeId) => navigateToOrgUnit(chartNodeLookup[nodeId]))
-    .render()
-
-  chartInstance.value.collapseAll()
-  chartInstance.value.setExpanded('company-root', true)
-  chartInstance.value.render()
-}
 
 function escapeCsvCell(value) {
   const normalized = String(value ?? '')
@@ -584,11 +439,6 @@ async function fetchDashboard() {
       ...item,
       value: Number(item.value || 0),
     }))
-    orgUnitHeadcountLookup.value = headcountBreakdown.value.reduce((lookup, item) => {
-      lookup[item.key] = Number(item.value || 0)
-      return lookup
-    }, {})
-
     trendOptions.value.xaxis.categories = (dashboard.monthlyMovement || []).map((item) => item.periodLabel)
     trendSeries.value[0].data = (dashboard.monthlyMovement || []).map((item) => item.joinerCount || 0)
     trendSeries.value[1].data = (dashboard.monthlyMovement || []).map((item) => item.leaverCount || 0)
@@ -619,22 +469,10 @@ async function fetchDashboard() {
     console.error('Failed to load dashboard data:', error)
   } finally {
     loading.value = false
-    renderOrgChart()
   }
 }
 
-watch(orgChartNodes, () => {
-  renderOrgChart()
-})
-
 onMounted(fetchDashboard)
-
-onBeforeUnmount(() => {
-  if (chartContainer.value) {
-    chartContainer.value.innerHTML = ''
-  }
-  chartInstance.value = null
-})
 </script>
 
 <template>
@@ -752,37 +590,6 @@ onBeforeUnmount(() => {
         </div>
       </GlassCard>
     </div>
-
-    <GlassCard class="rounded-4xl border border-slate-100 bg-white p-0">
-      <div class="border-b border-slate-200 px-6 py-5 sm:px-8">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 class="text-xl font-black text-slate-900">Sơ đồ trực quan cơ cấu tổ chức</h3>
-            <p class="mt-1 text-sm font-medium text-slate-500">Bấm trực tiếp vào node để mở danh sách nhân sự theo đơn
-              vị.</p>
-          </div>
-          <div
-            class="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-indigo-700">
-            <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
-            Live data
-          </div>
-        </div>
-      </div>
-
-      <div class="dashboard-org-chart-shell">
-        <div v-if="hasOrgChartData" ref="chartContainer" class="min-h-130 min-w-245"></div>
-        <div v-else
-          class="flex min-h-80 flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center">
-          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
-            <Network class="h-6 w-6" />
-          </div>
-          <p class="text-base font-black text-slate-700">Chưa có dữ liệu cơ cấu tổ chức để hiển thị sơ đồ</p>
-          <p class="max-w-xl text-sm font-medium text-slate-500">
-            Hệ thống vẫn đang đồng bộ dữ liệu đơn vị. Khi có dữ liệu, sơ đồ sẽ hiển thị tự động tại đây.
-          </p>
-        </div>
-      </div>
-    </GlassCard>
 
     <div class="grid gap-8 lg:grid-cols-2">
       <GlassCard class="overflow-hidden rounded-4xl border border-slate-100 bg-white p-6 sm:p-8">
