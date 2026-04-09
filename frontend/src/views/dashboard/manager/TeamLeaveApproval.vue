@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -7,6 +7,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
 import { useUiStore } from '@/stores/ui'
 import { useDebounce } from '@/composables/useDebounce'
+import { useRouter } from 'vue-router'
 import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
@@ -20,6 +21,7 @@ import {
 /* ─── COMPOSABLES ────────────────────────────────────────────── */
 const toast = useToast()
 const ui    = useUiStore()
+const router = useRouter()
 
 /* ─── STATE ─────────────────────────────────────────────────── */
 const activeTab = ref('pending')
@@ -33,12 +35,39 @@ const { debouncedValue: debouncedSearch } = useDebounce(searchKeyword, 400)
 
 const calendarMonth = ref(new Date().toISOString().slice(0, 7)) // YYYY-MM
 
+const filteredRequests = computed(() => {
+  const keyword = debouncedSearch.value?.trim()?.toLowerCase()
+  if (!keyword) return requests.value
+  return requests.value.filter((item) =>
+    [item.employeeName, item.employeeCode, item.leaveTypeName, item.requestCode]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(keyword))
+  )
+})
+
+const groupedCalendar = computed(() => {
+  const groups = new Map()
+  for (const item of calendar.value) {
+    const key = item.employeeId
+    if (!groups.has(key)) {
+      groups.set(key, {
+        employeeId: item.employeeId,
+        employeeName: item.employeeName,
+        employeeCode: item.employeeCode,
+        leaves: [],
+      })
+    }
+    groups.get(key).leaves.push(item)
+  }
+  return Array.from(groups.values())
+})
+
 /* ─── API ────────────────────────────────────────────────────── */
 const fetchRequests = async () => {
   loading.value = true
   try {
-    const res = await getPendingLeaveRequests({ keyword: debouncedSearch.value || undefined })
-    requests.value = res.data?.content ?? res.data ?? []
+    const res = await getPendingLeaveRequests()
+    requests.value = res.data ?? []
   } catch (e) {
     toast.error('Không thể tải danh sách đơn phép')
   } finally {
@@ -49,7 +78,10 @@ const fetchRequests = async () => {
 const fetchCalendar = async () => {
   loading.value = true
   try {
-    const res = await getTeamLeaveCalendar({ month: calendarMonth.value })
+    const [year, month] = calendarMonth.value.split('-').map(Number)
+    const fromDate = `${calendarMonth.value}-01`
+    const toDate = new Date(year, month, 0).toISOString().slice(0, 10)
+    const res = await getTeamLeaveCalendar({ fromDate, toDate })
     calendar.value = res.data ?? []
   } catch (e) {
     toast.error('Không thể tải lịch phép đội nhóm')
@@ -60,7 +92,6 @@ const fetchCalendar = async () => {
 
 onMounted(fetchRequests)
 
-watch(debouncedSearch, fetchRequests)
 watch(activeTab, () => {
   if (activeTab.value === 'pending') fetchRequests()
   else fetchCalendar()
@@ -86,10 +117,10 @@ const handleReview = async (req, status) => {
   reviewLoading.value = req.leaveRequestId
   try {
     await reviewLeaveRequest(req.leaveRequestId, {
-      status,
+      approved: isApprove,
       note: isApprove ? 'Đã xem xét và phê duyệt.' : 'Không được phê duyệt bởi quản lý.',
     })
-    toast.success(isApprove ? `Đã phê duyệt đơn của ${req.employeeFullName}` : `Đã từ chối đơn của ${req.employeeFullName}`)
+    toast.success(isApprove ? `Đã phê duyệt đơn của ${req.employeeName}` : `Đã từ chối đơn của ${req.employeeName}`)
     requests.value = requests.value.filter(r => r.leaveRequestId !== req.leaveRequestId)
   } catch (e) {
     toast.error('Xử lý đơn thất bại. Vui lòng thử lại.')
@@ -184,25 +215,25 @@ function nextMonth() {
 
           <!-- PENDING REQUESTS LIST -->
           <div v-if="activeTab === 'pending'">
-            <div v-if="requests.length > 0" class="divide-y divide-slate-50">
+            <div v-if="filteredRequests.length > 0" class="divide-y divide-slate-50">
               <div
-                v-for="req in requests"
+                v-for="req in filteredRequests"
                 :key="req.leaveRequestId"
                 class="group px-8 py-6 hover:bg-slate-50/60 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-6"
               >
                 <!-- Employee info -->
                 <div class="flex items-start gap-4 min-w-[250px]">
-                  <AvatarBox :name="req.employeeFullName" :image="req.avatarUrl" size="lg" shape="rounded-[20px]" shadow />
+                  <AvatarBox :name="req.employeeName" size="lg" shape="rounded-[20px]" shadow />
                   <div>
                     <h4 class="text-base font-black text-slate-900 mb-1 group-hover:text-amber-600 transition-colors">
-                      {{ req.employeeFullName }}
+                      {{ req.employeeName }}
                     </h4>
                     <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      <span>{{ req.orgUnitName }}</span>
+                      <span>{{ req.employeeCode }}</span>
                       <span class="w-1 h-1 rounded-full bg-slate-300"></span>
                       <span class="text-amber-600">{{ req.leaveTypeName }}</span>
                     </div>
-                    <p class="text-xs text-slate-400 mt-1 italic line-clamp-1">"{{ req.reason || 'Không có lý do' }}"</p>
+                    <p class="text-xs text-slate-400 mt-1 italic line-clamp-1">Mã đơn: {{ req.requestCode }}</p>
                   </div>
                 </div>
 
@@ -210,15 +241,15 @@ function nextMonth() {
                 <div class="grid grid-cols-3 gap-6 flex-1">
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Từ ngày</p>
-                    <p class="text-sm font-bold text-slate-700">{{ fmtDate(req.fromDate) }}</p>
+                    <p class="text-sm font-bold text-slate-700">{{ fmtDate(req.startDate) }}</p>
                   </div>
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Đến ngày</p>
-                    <p class="text-sm font-bold text-slate-700">{{ fmtDate(req.toDate) }}</p>
+                    <p class="text-sm font-bold text-slate-700">{{ fmtDate(req.endDate) }}</p>
                   </div>
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Số ngày</p>
-                    <p class="text-sm font-black text-amber-600">{{ req.totalDays }} ngày</p>
+                    <p class="text-sm font-black text-amber-600">{{ req.requestedUnits }} ngày</p>
                   </div>
                 </div>
 
@@ -254,22 +285,23 @@ function nextMonth() {
           </div>
 
           <!-- TEAM CALENDAR VIEW -->
-          <div v-if="activeTab === 'calendar'" class="p-8">
-            <div v-if="calendar.length > 0" class="space-y-3">
+      <div v-if="activeTab === 'calendar'" class="p-8">
+            <div v-if="groupedCalendar.length > 0" class="space-y-3">
               <div
-                v-for="emp in calendar" :key="emp.employeeId"
-                class="flex items-center gap-4 bg-slate-50 rounded-2xl p-4"
+                v-for="emp in groupedCalendar" :key="emp.employeeId"
+                class="flex items-center gap-4 bg-slate-50 rounded-2xl p-4 cursor-pointer transition hover:bg-slate-100"
+                @click="router.push(`/employees/${emp.employeeId}`)"
               >
-                <AvatarBox :name="emp.employeeFullName" size="sm" shape="rounded-xl" />
+                <AvatarBox :name="emp.employeeName" size="sm" shape="rounded-xl" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-bold text-slate-900 truncate mb-2">{{ emp.employeeFullName }}</p>
+                  <p class="text-sm font-bold text-slate-900 truncate mb-2">{{ emp.employeeName }}</p>
                   <div class="flex flex-wrap gap-1">
                     <span
                       v-for="leave in emp.leaves" :key="leave.leaveRequestId"
                       class="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-100 text-amber-700"
                     >
-                      {{ fmtDate(leave.fromDate) }} – {{ fmtDate(leave.toDate) }}
-                      <span class="ml-1 opacity-60">({{ leave.totalDays }}ng)</span>
+                      {{ fmtDate(leave.startDate) }} – {{ fmtDate(leave.endDate) }}
+                      <span class="ml-1 opacity-60">({{ leave.requestedUnits }}ng)</span>
                     </span>
                   </div>
                 </div>

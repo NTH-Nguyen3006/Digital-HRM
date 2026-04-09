@@ -94,3 +94,20 @@ export const updateRole = async (roleId, payload) => {
         throw error;
     }
 };
+
+/**
+ * Cập nhật trạng thái role
+ *
+ * @param {string} roleId
+ * @param {{ status: 'ACTIVE' | 'INACTIVE', reason?: string }} payload
+ * @returns {Promise<ApiResponse<RoleDetailResponse>>}
+ */
+export const changeRoleStatus = async (roleId, payload) => {
+    try {
+        const response = await axios.patch(`${ROLE_API}/${roleId}/status`, payload);
+        return response.data;
+    } catch (error) {
+        console.error("changeRoleStatus failed:", error);
+        throw error;
+    }
+};

@@ -30,7 +30,9 @@ import com.company.hrm.module.employee.service.EmployeeService;
 import com.company.hrm.module.leave.dto.CreateLeaveRequestRequest;
 import com.company.hrm.module.leave.dto.LeaveBalanceResponse;
 import com.company.hrm.module.leave.dto.LeaveRequestDetailResponse;
+import com.company.hrm.module.leave.dto.LeaveTypeListItemResponse;
 import com.company.hrm.module.leave.service.LeaveService;
+import com.company.hrm.module.leave.service.LeaveTypeService;
 import com.company.hrm.module.offboarding.dto.CreateOffboardingRequest;
 import com.company.hrm.module.offboarding.dto.OffboardingListItemResponse;
 import com.company.hrm.module.offboarding.dto.OffboardingDetailResponse;
@@ -53,6 +55,7 @@ public class PortalService {
     private final LeaveService leaveService;
     private final AttendanceService attendanceService;
     private final PayrollService payrollService;
+    private final LeaveTypeService leaveTypeService;
     private final LaborContractService laborContractService;
     private final CtLaborContractRepository laborContractRepository;
     private final PorPortalInboxItemRepository portalInboxItemRepository;
@@ -65,6 +68,7 @@ public class PortalService {
             LeaveService leaveService,
             AttendanceService attendanceService,
             PayrollService payrollService,
+            LeaveTypeService leaveTypeService,
             LaborContractService laborContractService,
             CtLaborContractRepository laborContractRepository,
             PorPortalInboxItemRepository portalInboxItemRepository,
@@ -75,6 +79,7 @@ public class PortalService {
         this.leaveService = leaveService;
         this.attendanceService = attendanceService;
         this.payrollService = payrollService;
+        this.leaveTypeService = leaveTypeService;
         this.laborContractService = laborContractService;
         this.laborContractRepository = laborContractRepository;
         this.portalInboxItemRepository = portalInboxItemRepository;
@@ -160,6 +165,11 @@ public class PortalService {
         List<LeaveBalanceResponse> balances = leaveService.getMyBalances();
         List<LeaveRequestDetailResponse> recentRequests = leaveService.listMyRequests();
         return new PortalLeaveOverviewResponse(balances, recentRequests);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LeaveTypeListItemResponse> getMyLeaveTypes() {
+        return leaveTypeService.list(null, RecordStatus.ACTIVE);
     }
 
     @Transactional

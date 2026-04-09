@@ -58,10 +58,11 @@ onMounted(() => {
 
 /* ─── ACTIONS ────────────────────────────────────────────────── */
 const handleAdjustment = async (req, status) => {
+  const approved = status === 'APPROVED'
   if (status === 'REJECTED') {
     const ok = await ui.confirm({
       title: 'Từ chối điều chỉnh chấm công?',
-      message: `Từ chối yêu cầu của ${req.employeeFullName}.`,
+      message: `Từ chối yêu cầu của ${req.employeeName}.`,
       danger: true,
       confirmLabel: 'Từ chối',
     })
@@ -69,7 +70,10 @@ const handleAdjustment = async (req, status) => {
   }
   reviewLoading.value = req.adjustmentRequestId
   try {
-    await reviewAttendanceAdjustment(req.adjustmentRequestId, { status })
+    await reviewAttendanceAdjustment(req.adjustmentRequestId, {
+      approved,
+      note: approved ? 'Đã xác nhận điều chỉnh công.' : 'Từ chối điều chỉnh công.',
+    })
     toast.success(status === 'APPROVED' ? 'Đã chấp thuận điều chỉnh' : 'Đã từ chối điều chỉnh')
     adjustments.value = adjustments.value.filter(r => r.adjustmentRequestId !== req.adjustmentRequestId)
   } catch (e) {
@@ -80,10 +84,11 @@ const handleAdjustment = async (req, status) => {
 }
 
 const handleOT = async (req, status) => {
+  const approved = status === 'APPROVED'
   if (status === 'REJECTED') {
     const ok = await ui.confirm({
       title: 'Từ chối tăng ca?',
-      message: `Từ chối yêu cầu OT của ${req.employeeFullName}.`,
+      message: `Từ chối yêu cầu OT của ${req.employeeName}.`,
       danger: true,
       confirmLabel: 'Từ chối',
     })
@@ -91,7 +96,10 @@ const handleOT = async (req, status) => {
   }
   reviewLoading.value = req.overtimeRequestId
   try {
-    await reviewOvertimeRequest(req.overtimeRequestId, { status })
+    await reviewOvertimeRequest(req.overtimeRequestId, {
+      approved,
+      note: approved ? 'Đã phê duyệt tăng ca.' : 'Từ chối tăng ca.',
+    })
     toast.success(status === 'APPROVED' ? 'Đã phê duyệt tăng ca' : 'Đã từ chối tăng ca')
     overtimes.value = overtimes.value.filter(r => r.overtimeRequestId !== req.overtimeRequestId)
   } catch (e) {
@@ -106,7 +114,7 @@ function fmtDate(d) {
 }
 function fmtTime(t) {
   if (!t) return '—'
-  return t.length > 5 ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t
+  return new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
@@ -164,9 +172,9 @@ function fmtTime(t) {
                 class="group px-8 py-6 hover:bg-slate-50/60 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-6"
               >
                 <div class="flex items-start gap-4 min-w-[250px]">
-                  <AvatarBox :name="req.employeeFullName" size="lg" shape="rounded-[20px]" shadow />
+                  <AvatarBox :name="req.employeeName" size="lg" shape="rounded-[20px]" shadow />
                   <div>
-                    <h4 class="font-black text-slate-900 mb-1">{{ req.employeeFullName }}</h4>
+                    <h4 class="font-black text-slate-900 mb-1">{{ req.employeeName }}</h4>
                     <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       Ngày <span class="text-indigo-600 font-black">{{ fmtDate(req.attendanceDate) }}</span>
                     </div>
@@ -176,11 +184,11 @@ function fmtTime(t) {
                 <div class="flex-1 grid grid-cols-3 gap-6">
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Giờ đúng</p>
-                    <p class="text-sm font-bold text-slate-700">{{ fmtTime(req.adjustedCheckIn) }}</p>
+                    <p class="text-sm font-bold text-slate-700">{{ fmtTime(req.proposedCheckInAt) }}</p>
                   </div>
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Giờ ra</p>
-                    <p class="text-sm font-bold text-slate-700">{{ fmtTime(req.adjustedCheckOut) }}</p>
+                    <p class="text-sm font-bold text-slate-700">{{ fmtTime(req.proposedCheckOutAt) }}</p>
                   </div>
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Lý do</p>
@@ -220,11 +228,11 @@ function fmtTime(t) {
                 class="group px-8 py-6 hover:bg-slate-50/60 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-6"
               >
                 <div class="flex items-start gap-4 min-w-[250px]">
-                  <AvatarBox :name="req.employeeFullName" size="lg" shape="rounded-[20px]" shadow />
+                  <AvatarBox :name="req.employeeName" size="lg" shape="rounded-[20px]" shadow />
                   <div>
-                    <h4 class="font-black text-slate-900 mb-1">{{ req.employeeFullName }}</h4>
+                    <h4 class="font-black text-slate-900 mb-1">{{ req.employeeName }}</h4>
                     <div class="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      <Calendar class="w-3 h-3" /> {{ fmtDate(req.date) }}
+                      <Calendar class="w-3 h-3" /> {{ fmtDate(req.attendanceDate) }}
                     </div>
                   </div>
                 </div>
@@ -232,15 +240,17 @@ function fmtTime(t) {
                 <div class="flex-1 grid grid-cols-3 gap-6">
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Bắt đầu</p>
-                    <p class="text-sm font-bold text-violet-700">{{ req.startTime || '—' }}</p>
+                    <p class="text-sm font-bold text-violet-700">{{ fmtTime(req.overtimeStartAt) }}</p>
                   </div>
                   <div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Kết thúc</p>
-                    <p class="text-sm font-bold text-violet-700">{{ req.endTime || '—' }}</p>
+                    <p class="text-sm font-bold text-violet-700">{{ fmtTime(req.overtimeEndAt) }}</p>
                   </div>
                   <div>
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Lý do OT</p>
-                    <p class="text-xs font-medium text-slate-600 italic line-clamp-2">{{ req.reason || '—' }}</p>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Thời lượng</p>
+                    <p class="text-xs font-medium text-slate-600 italic line-clamp-2">
+                      {{ req.requestedMinutes ? `${req.requestedMinutes} phút` : req.reason || '—' }}
+                    </p>
                   </div>
                 </div>
 

@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import StatCard from '@/components/common/StatCard.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
 import { useToast } from '@/composables/useToast'
+import { unwrapData, unwrapPage } from '@/utils/api'
 import {
   getTeamDashboardReport,
   getPendingLeaveRequests,
@@ -38,6 +39,23 @@ const pendingAdjustments = ref([])
 const pendingOT = ref([])
 const teamMembers = ref([])
 const teamReport = ref(null)
+const pendingOffboardings = ref([])
+
+const attendanceRate = computed(() => {
+  const total = Number(teamReport.value?.teamHeadcount || 0)
+  const present = Number(teamReport.value?.presentTodayCount || 0)
+  if (!total) return 0
+  return Math.round((present / total) * 100)
+})
+
+const quickActions = [
+  { label: 'Phê duyệt nghỉ phép', sub: 'Xem tất cả đơn xin nghỉ', icon: CalendarOff, color: 'bg-amber-50 text-amber-600 hover:bg-amber-100', path: '/manager/leaves' },
+  { label: 'Duyệt chấm công & OT', sub: 'Điều chỉnh giờ công và tăng ca', icon: Clock, color: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100', path: '/manager/attendance' },
+  { label: 'Bảng lương đội nhóm', sub: 'Xác nhận phiếu lương tháng', icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100', path: '/manager/payroll' },
+  { label: 'Hồ sơ nhân sự', sub: 'Tra cứu thành viên trong đội', icon: Users, color: 'bg-slate-100 text-slate-700 hover:bg-slate-200', path: '/employees' },
+  { label: 'Tiếp nhận', sub: 'Theo dõi onboarding đang diễn ra', icon: Bell, color: 'bg-sky-50 text-sky-600 hover:bg-sky-100', path: '/onboarding' },
+  { label: 'Thôi việc', sub: 'Xử lý hồ sơ offboarding đang mở', icon: UserMinus, color: 'bg-rose-50 text-rose-600 hover:bg-rose-100', path: '/offboarding' },
+]
 
 /* ─── API ────────────────────────────────────────────────────── */
 const fetchAll = async () => {
@@ -52,22 +70,23 @@ const fetchAll = async () => {
       getTeamMembers({ size: 8 }).catch(() => null)
     ])
 
-    const leaves = leaveRes?.data || []
-    const adjusts = adjustRes?.data || []
-    const ots = otRes?.data || []
-    const offs = offRes?.data || []
+    const leaves = unwrapData(leaveRes) || []
+    const adjusts = unwrapData(adjustRes) || []
+    const ots = unwrapData(otRes) || []
+    const offs = unwrapData(offRes) || []
 
-    teamReport.value = reportRes?.data || null
-    teamMembers.value = membersRes?.data?.content || membersRes?.data || []
+    teamReport.value = unwrapData(reportRes)
+    teamMembers.value = unwrapPage(membersRes).items.slice(0, 8)
+    pendingOffboardings.value = Array.isArray(offs) ? offs.slice(0, 5) : []
 
-    pendingLeaves.value = Array.isArray(leaves) ? leaves.slice(0, 5) : leaves.content?.slice(0, 5) || []
-    pendingAdjustments.value = Array.isArray(adjusts) ? adjusts.slice(0, 5) : adjusts.content?.slice(0, 5) || []
-    pendingOT.value = Array.isArray(ots) ? ots.slice(0, 5) : ots.content?.slice(0, 5) || []
+    pendingLeaves.value = Array.isArray(leaves) ? leaves.slice(0, 5) : []
+    pendingAdjustments.value = Array.isArray(adjusts) ? adjusts.slice(0, 5) : []
+    pendingOT.value = Array.isArray(ots) ? ots.slice(0, 5) : []
 
-    statsData.value[0].value = String(Array.isArray(leaves) ? leaves.length : leaves.totalElements || 0)
-    statsData.value[1].value = String(Array.isArray(adjusts) ? adjusts.length : adjusts.totalElements || 0)
-    statsData.value[2].value = String(Array.isArray(ots) ? ots.length : ots.totalElements || 0)
-    statsData.value[3].value = String(Array.isArray(offs) ? offs.length : offs.totalElements || 0)
+    statsData.value[0].value = String(teamReport.value?.pendingLeaveApprovalCount ?? (Array.isArray(leaves) ? leaves.length : 0))
+    statsData.value[1].value = String(teamReport.value?.pendingAttendanceAdjustmentCount ?? (Array.isArray(adjusts) ? adjusts.length : 0))
+    statsData.value[2].value = String(teamReport.value?.pendingOvertimeCount ?? (Array.isArray(ots) ? ots.length : 0))
+    statsData.value[3].value = String(teamReport.value?.openOffboardingCount ?? (Array.isArray(offs) ? offs.length : 0))
   } catch (e) {
     toast.error('Không thể tải dữ liệu dashboard')
   } finally {
@@ -139,12 +158,11 @@ function fmtDate(d) {
               <div class="pt-2">
                 <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2">
                   <span>Tỷ lệ đi làm (%)</span>
-                  <span class="text-white">{{ Math.round((teamReport?.presentTodayCount / (teamReport?.teamHeadcount ||
-                    1)) * 100) || 0 }}%</span>
+                  <span class="text-white">{{ attendanceRate }}%</span>
                 </div>
                 <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                   <div class="h-full bg-emerald-500 rounded-full transition-all duration-1000"
-                    :style="{ width: `${(teamReport?.presentTodayCount / (teamReport?.teamHeadcount || 1)) * 100}%` }">
+                    :style="{ width: `${attendanceRate}%` }">
                   </div>
                 </div>
               </div>
@@ -181,14 +199,14 @@ function fmtDate(d) {
               <div v-for="req in pendingLeaves" :key="req.leaveRequestId"
                 class="px-8 py-4 hover:bg-slate-50/60 transition-all flex items-center gap-4 cursor-pointer"
                 @click="router.push('/manager/leaves')">
-                <AvatarBox :name="req.employeeFullName" size="md" shape="rounded-xl" />
+                <AvatarBox :name="req.employeeName" size="md" shape="rounded-xl" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-bold text-slate-900 truncate">{{ req.employeeFullName }}</p>
-                  <p class="text-xs text-slate-400 font-medium">{{ req.leaveTypeName }} · {{ req.totalDays }} ngày</p>
+                  <p class="text-sm font-bold text-slate-900 truncate">{{ req.employeeName }}</p>
+                  <p class="text-xs text-slate-400 font-medium">{{ req.leaveTypeName }} · {{ req.requestedUnits }} ngày</p>
                 </div>
                 <div class="text-right shrink-0">
-                  <p class="text-xs font-bold text-amber-600">{{ fmtDate(req.fromDate) }}</p>
-                  <p class="text-[10px] text-slate-400">→ {{ fmtDate(req.toDate) }}</p>
+                  <p class="text-xs font-bold text-amber-600">{{ fmtDate(req.startDate) }}</p>
+                  <p class="text-[10px] text-slate-400">→ {{ fmtDate(req.endDate) }}</p>
                 </div>
               </div>
             </div>
@@ -220,14 +238,18 @@ function fmtDate(d) {
               <div v-for="req in pendingOT" :key="req.overtimeRequestId"
                 class="px-8 py-4 hover:bg-slate-50/60 transition-all flex items-center gap-4 cursor-pointer"
                 @click="router.push('/manager/attendance')">
-                <AvatarBox :name="req.employeeFullName" size="md" shape="rounded-xl" />
+                <AvatarBox :name="req.employeeName" size="md" shape="rounded-xl" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-bold text-slate-900 truncate">{{ req.employeeFullName }}</p>
+                  <p class="text-sm font-bold text-slate-900 truncate">{{ req.employeeName }}</p>
                   <p class="text-xs text-slate-400 font-medium">{{ req.reason || 'Tăng ca' }}</p>
                 </div>
                 <div class="text-right shrink-0">
-                  <p class="text-xs font-bold text-violet-600">{{ fmtDate(req.date) }}</p>
-                  <p class="text-[10px] text-slate-400">{{ req.startTime }} – {{ req.endTime }}</p>
+                  <p class="text-xs font-bold text-violet-600">{{ fmtDate(req.attendanceDate) }}</p>
+                  <p class="text-[10px] text-slate-400">
+                    {{ req.overtimeStartAt ? new Date(req.overtimeStartAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—' }}
+                    –
+                    {{ req.overtimeEndAt ? new Date(req.overtimeEndAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—' }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -259,9 +281,9 @@ function fmtDate(d) {
               <div v-for="req in pendingAdjustments" :key="req.adjustmentRequestId"
                 class="px-8 py-4 hover:bg-slate-50/60 transition-all flex items-center gap-4 cursor-pointer"
                 @click="router.push('/manager/attendance')">
-                <AvatarBox :name="req.employeeFullName" size="md" shape="rounded-xl" />
+                <AvatarBox :name="req.employeeName" size="md" shape="rounded-xl" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-bold text-slate-900 truncate">{{ req.employeeFullName }}</p>
+                  <p class="text-sm font-bold text-slate-900 truncate">{{ req.employeeName }}</p>
                   <p class="text-xs text-slate-400 font-medium">{{ req.reason || 'Quên quẹt thẻ' }}</p>
                 </div>
                 <p class="text-xs font-bold text-indigo-600 shrink-0">{{ fmtDate(req.attendanceDate) }}</p>
@@ -318,11 +340,7 @@ function fmtDate(d) {
               <Bell class="w-4 h-4 text-violet-600" /> Truy cập nhanh
             </h3>
             <div class="space-y-3">
-              <button v-for="action in [
-                { label: 'Phê duyệt nghỉ phép', sub: 'Xem tất cả đơn xin nghỉ', icon: CalendarOff, color: 'bg-amber-50 text-amber-600 hover:bg-amber-100', path: '/manager/leaves' },
-                { label: 'Duyệt chấm công & OT', sub: 'Điều chỉnh giờ công và tăng ca', icon: Clock, color: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100', path: '/manager/attendance' },
-                { label: 'Bảng lương đội nhóm', sub: 'Xác nhận phiếu lương tháng', icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100', path: '/manager/payroll' },
-              ]" :key="action.label" @click="router.push(action.path)"
+              <button v-for="action in quickActions" :key="action.label" @click="router.push(action.path)"
                 class="w-full flex items-center gap-4 p-4 rounded-2xl transition-all group" :class="action.color">
                 <component :is="action.icon" class="w-5 h-5 shrink-0" />
                 <div class="text-left flex-1">

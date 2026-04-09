@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import EmployeeLayout from '@/components/EmployeeLayout.vue'
 import {
   Phone,
@@ -15,15 +16,21 @@ import {
   Building2,
   Briefcase,
   ChevronDown,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-vue-next'
 import BaseButton from '@/components/common/BaseButton.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
-import { getPortalProfile } from '@/api/me/portal'
+import { getPortalProfile, submitProfileChangeRequest } from '@/api/me/portal'
+import { useToast } from '@/composables/useToast'
 
 /* --- STATE --- */
+const router = useRouter()
+const toast = useToast()
 const activeTab = ref('general')
 const loading = ref(true)
+const submitting = ref(false)
+const activeEditor = ref('')
 
 const tabs = [
   { key: 'general', label: 'Tổng quan' },
@@ -34,6 +41,42 @@ const tabs = [
 ]
 
 const portalProfile = ref(null)
+const personalForm = reactive({
+  personalEmail: '',
+  mobilePhone: '',
+  maritalStatus: '',
+  nationality: '',
+  personalTaxId: '',
+  healthInsurance: '',
+  socialInsurance: '',
+  reason: '',
+})
+const addressForm = reactive({
+  primaryAddress: '',
+  country: '',
+  stateProvince: '',
+  city: '',
+  postCode: '',
+  reason: '',
+})
+
+const PERSONAL_FIELDS = [
+  { key: 'personalEmail', label: 'Email cá nhân', source: 'employee', type: 'email' },
+  { key: 'mobilePhone', label: 'Số điện thoại', source: 'employee', type: 'text' },
+  { key: 'maritalStatus', label: 'Tình trạng hôn nhân', source: 'profile', type: 'text' },
+  { key: 'nationality', label: 'Quốc tịch', source: 'profile', type: 'text' },
+  { key: 'personalTaxId', label: 'Mã số thuế', source: 'profile', type: 'text' },
+  { key: 'healthInsurance', label: 'Bảo hiểm y tế', source: 'profile', type: 'text' },
+  { key: 'socialInsurance', label: 'Bảo hiểm xã hội', source: 'profile', type: 'text' },
+]
+
+const ADDRESS_FIELDS = [
+  { key: 'primaryAddress', label: 'Địa chỉ chi tiết', type: 'text' },
+  { key: 'country', label: 'Quốc gia', type: 'text' },
+  { key: 'stateProvince', label: 'Tỉnh / Thành phố', type: 'text' },
+  { key: 'city', label: 'Quận / Huyện', type: 'text' },
+  { key: 'postCode', label: 'Mã bưu chính', type: 'text' },
+]
 
 const fetchProfile = async () => {
   loading.value = true
@@ -59,6 +102,10 @@ const proData = computed(() => portalProfile.value?.profile || {})
 const compData = computed(() => portalProfile.value?.compensation || {})
 const avatarLetter = computed(() => empData.value.fullName?.split(' ').pop()?.[0] || 'C')
 const profileStatusLabel = computed(() => empData.value.employmentStatus === 'ACTIVE' ? 'Đang làm việc' : 'Đã nghỉ')
+const isEditorOpen = computed(() => activeEditor.value === 'personal' || activeEditor.value === 'address')
+const editorTitle = computed(() => activeEditor.value === 'address' ? 'Cập nhật địa chỉ liên hệ' : 'Cập nhật thông tin cá nhân')
+const editorFields = computed(() => activeEditor.value === 'address' ? ADDRESS_FIELDS : PERSONAL_FIELDS)
+const activeForm = computed(() => activeEditor.value === 'address' ? addressForm : personalForm)
 
 /* --- METHODS --- */
 const formatDate = (value) => {
@@ -75,6 +122,79 @@ const formatCurrency = (value) => {
     style: 'currency',
     currency: 'VND'
   }).format(value || 0)
+}
+
+const syncFormsFromProfile = () => {
+  for (const field of PERSONAL_FIELDS) {
+    personalForm[field.key] = field.source === 'employee'
+      ? (empData.value?.[field.key] ?? '')
+      : (proData.value?.[field.key] ?? '')
+  }
+  personalForm.reason = ''
+
+  for (const field of ADDRESS_FIELDS) {
+    addressForm[field.key] = proData.value?.[field.key] ?? ''
+  }
+  addressForm.reason = ''
+}
+
+const openEditor = (type) => {
+  syncFormsFromProfile()
+  activeEditor.value = type
+}
+
+const closeEditor = () => {
+  activeEditor.value = ''
+}
+
+const buildPayload = (fields, form, source) => {
+  return fields.reduce((payload, field) => {
+    const currentValue = source(field.key)
+    const nextValue = (form[field.key] ?? '').toString().trim()
+    const normalizedCurrent = (currentValue ?? '').toString().trim()
+
+    if (nextValue !== normalizedCurrent) {
+      payload[field.key] = nextValue
+    }
+
+    return payload
+  }, {})
+}
+
+const submitEditor = async () => {
+  const reason = activeForm.value.reason?.trim()
+  if (!reason) {
+    toast.warning('Vui lòng nhập lý do cập nhật để HR dễ xử lý')
+    return
+  }
+
+  const payload = activeEditor.value === 'address'
+    ? buildPayload(ADDRESS_FIELDS, addressForm, (key) => proData.value?.[key])
+    : buildPayload(
+        PERSONAL_FIELDS,
+        personalForm,
+        (key) => (PERSONAL_FIELDS.find((item) => item.key === key)?.source === 'employee'
+          ? empData.value?.[key]
+          : proData.value?.[key])
+      )
+
+  if (!Object.keys(payload).length) {
+    toast.warning('Bạn chưa thay đổi trường nào để gửi cập nhật')
+    return
+  }
+
+  submitting.value = true
+  try {
+    await submitProfileChangeRequest({ payload, reason })
+    toast.success('Đã gửi yêu cầu cập nhật hồ sơ cho HR')
+    closeEditor()
+    await fetchProfile()
+  } catch (error) {
+    console.error('Failed to submit profile change request:', error)
+    toast.error('Không thể gửi yêu cầu cập nhật hồ sơ')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -201,7 +321,10 @@ const formatCurrency = (value) => {
                   <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Lý lịch trích ngang</p>
                   <h2 class="mt-2 text-xl font-black text-slate-900">Thông tin Cá nhân</h2>
                 </div>
-                <BaseButton variant="outline" size="sm" :icon="Edit2">Cập nhật</BaseButton>
+                <div class="flex items-center gap-3">
+                  <BaseButton variant="ghost" size="sm" @click="router.push('/portal/profile-change')">Lịch sử</BaseButton>
+                  <BaseButton variant="outline" size="sm" :icon="Edit2" @click="openEditor('personal')">Cập nhật</BaseButton>
+                </div>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
                 <div class="space-y-1 border-b border-slate-100 pb-3">
@@ -249,7 +372,7 @@ const formatCurrency = (value) => {
                   <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Chỗ ở hiện tại</p>
                   <h2 class="mt-2 text-xl font-black text-slate-900">Địa chỉ Liên hệ</h2>
                 </div>
-                <BaseButton variant="outline" size="sm" :icon="Edit2">Sửa địa chỉ</BaseButton>
+                <BaseButton variant="outline" size="sm" :icon="Edit2" @click="openEditor('address')">Sửa địa chỉ</BaseButton>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
                 <div class="space-y-1 md:col-span-2 border-b border-slate-100 pb-3">
@@ -466,6 +589,61 @@ const formatCurrency = (value) => {
           </section>
 
         </main>
+      </div>
+    </div>
+
+    <div v-if="isEditorOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" @click="closeEditor" />
+      <div class="relative z-10 w-full max-w-3xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_25px_90px_rgba(15,23,42,0.18)]">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 sm:px-8">
+          <div>
+            <p class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Profile Update Request</p>
+            <h3 class="mt-2 text-2xl font-black text-slate-900">{{ editorTitle }}</h3>
+            <p class="mt-2 text-sm font-medium text-slate-500">
+              Thay đổi sẽ được gửi cho HR duyệt trước khi cập nhật vào hồ sơ chính thức.
+            </p>
+          </div>
+          <button class="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" @click="closeEditor">
+            <X class="h-5 w-5" />
+          </button>
+        </div>
+
+        <div class="max-h-[70vh] overflow-y-auto px-6 py-6 sm:px-8">
+          <div class="grid gap-5 md:grid-cols-2">
+            <label
+              v-for="field in editorFields"
+              :key="field.key"
+              class="block"
+              :class="field.key === 'primaryAddress' ? 'md:col-span-2' : ''"
+            >
+              <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ field.label }}</span>
+              <input
+                v-model="activeForm[field.key]"
+                :type="field.type || 'text'"
+                class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+                :placeholder="`Nhập ${field.label.toLowerCase()}`"
+              >
+            </label>
+
+            <label class="block md:col-span-2">
+              <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Lý do cập nhật</span>
+              <textarea
+                v-model="activeForm.reason"
+                rows="4"
+                class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+                placeholder="Ví dụ: cần cập nhật thông tin liên hệ mới để HR đồng bộ hồ sơ"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-3 border-t border-slate-100 px-6 py-5 sm:px-8">
+          <BaseButton variant="outline" @click="closeEditor">Hủy</BaseButton>
+          <BaseButton variant="primary" :loading="submitting" @click="submitEditor">
+            <Loader2 v-if="submitting" class="mr-2 h-4 w-4 animate-spin" />
+            Gửi yêu cầu cập nhật
+          </BaseButton>
+        </div>
       </div>
     </div>
   </EmployeeLayout>

@@ -71,8 +71,8 @@ export const processSettlement = async (offboardingCaseId, payload) => {
  * @param {string|number} offboardingCaseId 
  * @returns {Promise<Object>}
  */
-export const closeOffboarding = async (offboardingCaseId) => {
-    const response = await axios.patch(`${OFFBOARDING_API}/${offboardingCaseId}/close`);
+export const closeOffboarding = async (offboardingCaseId, payload) => {
+    const response = await axios.patch(`${OFFBOARDING_API}/${offboardingCaseId}/close`, payload);
     return response.data;
 };
 

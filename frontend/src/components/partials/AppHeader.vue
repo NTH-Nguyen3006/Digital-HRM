@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import { LogIn, ArrowLeft } from 'lucide-vue-next'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { useUiStore } from '@/stores/ui'
 
 defineProps({
   variant: {
@@ -13,9 +14,19 @@ defineProps({
 const router = useRouter()
 import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
+const uiStore = useUiStore()
 
-const handleLogout = () => {
-    auth.logout()
+const handleLogout = async () => {
+    const confirmed = await uiStore.confirm({
+        title: 'Xác nhận đăng xuất',
+        message: 'Bạn có chắc muốn đăng xuất khỏi hệ thống không?',
+        confirmLabel: 'Đăng xuất',
+        danger: true,
+    })
+
+    if (!confirmed) return
+
+    await auth.logout()
     router.push('/login')
 }
 </script>

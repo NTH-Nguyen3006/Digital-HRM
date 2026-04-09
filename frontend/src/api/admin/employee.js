@@ -195,6 +195,58 @@ export const upsertEmployeeProfile = async (employeeId, payload) => {
 };
 
 // ─────────────────────────────────────────────
+// PROFILE CHANGE WORKFLOW
+// ─────────────────────────────────────────────
+
+/**
+ * Lấy danh sách yêu cầu thay đổi hồ sơ để HR phê duyệt
+ *
+ * @param {Object} params
+ * @param {string} [params.status]    - PENDING | APPROVED | REJECTED | CANCELLED
+ * @param {number} [params.employeeId]
+ * @param {number} [params.page=0]
+ * @param {number} [params.size=20]
+ * @returns {Promise<ApiResponse<PageResponse<ProfileChangeRequestResponse>>>}
+ */
+export const getProfileChangeRequests = async ({
+    status,
+    employeeId,
+    page = 0,
+    size = 20,
+} = {}) => {
+    try {
+        const params = { page, size };
+        if (status) params.status = status;
+        if (employeeId) params.employeeId = employeeId;
+
+        const response = await axios.get('/api/v1/admin/profile-change-requests', { params });
+        return response.data;
+    } catch (error) {
+        console.error("getProfileChangeRequests failed:", error);
+        throw error;
+    }
+};
+
+/**
+ * HR duyệt hoặc từ chối yêu cầu thay đổi hồ sơ
+ *
+ * @param {number} requestId
+ * @param {Object} payload
+ * @param {boolean} payload.approved
+ * @param {string} [payload.reviewNote]
+ * @returns {Promise<ApiResponse<ProfileChangeRequestResponse>>}
+ */
+export const reviewProfileChangeRequest = async (requestId, payload) => {
+    try {
+        const response = await axios.patch(`/api/v1/admin/profile-change-requests/${requestId}/review`, payload);
+        return response.data;
+    } catch (error) {
+        console.error("reviewProfileChangeRequest failed:", error);
+        throw error;
+    }
+};
+
+// ─────────────────────────────────────────────
 // ADDRESSES (địa chỉ)
 // ─────────────────────────────────────────────
 

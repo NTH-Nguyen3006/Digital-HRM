@@ -32,11 +32,16 @@ INNER JOIN (
         ('portal.leave.view_self', 'PORTAL_LEAVE', 'VIEW_SELF', N'Xem nghỉ phép cá nhân', N'Cho phép nhân viên xem số dư phép và lịch sử đơn nghỉ'),
         ('portal.leave.request_self', 'PORTAL_LEAVE', 'REQUEST_SELF', N'Tạo đơn nghỉ từ portal', N'Cho phép nhân viên tạo đơn nghỉ từ portal'),
         ('portal.attendance.view_self', 'PORTAL_ATTENDANCE', 'VIEW_SELF', N'Xem chấm công cá nhân', N'Cho phép nhân viên xem log công và lịch sử điều chỉnh'),
+        ('portal.attendance.checkin_self', 'PORTAL_ATTENDANCE', 'CHECKIN_SELF', N'Tự chấm công từ portal', N'Cho phép nhân viên check-in/check-out từ portal'),
         ('portal.attendance.adjust_self', 'PORTAL_ATTENDANCE', 'ADJUST_SELF', N'Tạo điều chỉnh công từ portal', N'Cho phép nhân viên gửi yêu cầu điều chỉnh công từ portal'),
         ('portal.contract.view_self', 'PORTAL_CONTRACT', 'VIEW_SELF', N'Xem hợp đồng cá nhân', N'Cho phép nhân viên xem hợp đồng của chính mình'),
         ('portal.payroll.view_self', 'PORTAL_PAYROLL', 'VIEW_SELF', N'Xem phiếu lương cá nhân từ portal', N'Cho phép nhân viên xem phiếu lương cá nhân từ portal'),
         ('portal.inbox.view_self', 'PORTAL_INBOX', 'VIEW_SELF', N'Xem thông báo và task cá nhân', N'Cho phép nhân viên xem inbox thông báo và task cá nhân'),
-        ('portal.inbox.mark_read', 'PORTAL_INBOX', 'MARK_READ', N'Đánh dấu đã đọc inbox', N'Cho phép nhân viên đánh dấu đã đọc thông báo trong portal')
+        ('portal.inbox.mark_read', 'PORTAL_INBOX', 'MARK_READ', N'Đánh dấu đã đọc inbox', N'Cho phép nhân viên đánh dấu đã đọc thông báo trong portal'),
+        ('portal.tasks.view_self', 'PORTAL_TASK', 'VIEW_SELF', N'Xem nhiệm vụ cá nhân', N'Cho phép nhân viên xem nhiệm vụ được giao trong portal'),
+        ('portal.tasks.update_self', 'PORTAL_TASK', 'UPDATE_SELF', N'Cập nhật nhiệm vụ cá nhân', N'Cho phép nhân viên cập nhật trạng thái nhiệm vụ của chính mình'),
+        ('portal.offboarding.view_self', 'PORTAL_OFFBOARDING', 'VIEW_SELF', N'Xem yêu cầu nghỉ việc cá nhân', N'Cho phép nhân viên xem yêu cầu nghỉ việc của chính mình'),
+        ('portal.offboarding.request_self', 'PORTAL_OFFBOARDING', 'REQUEST_SELF', N'Tạo yêu cầu nghỉ việc từ portal', N'Cho phép nhân viên gửi yêu cầu nghỉ việc từ portal')
 ) s(permission_code, module_code, action_code, permission_name, description)
 ON p.permission_code = s.permission_code
 WHERE p.is_deleted = 0;
@@ -63,11 +68,16 @@ FROM (
         ('portal.leave.view_self', 'PORTAL_LEAVE', 'VIEW_SELF', N'Xem nghỉ phép cá nhân', N'Cho phép nhân viên xem số dư phép và lịch sử đơn nghỉ'),
         ('portal.leave.request_self', 'PORTAL_LEAVE', 'REQUEST_SELF', N'Tạo đơn nghỉ từ portal', N'Cho phép nhân viên tạo đơn nghỉ từ portal'),
         ('portal.attendance.view_self', 'PORTAL_ATTENDANCE', 'VIEW_SELF', N'Xem chấm công cá nhân', N'Cho phép nhân viên xem log công và lịch sử điều chỉnh'),
+        ('portal.attendance.checkin_self', 'PORTAL_ATTENDANCE', 'CHECKIN_SELF', N'Tự chấm công từ portal', N'Cho phép nhân viên check-in/check-out từ portal'),
         ('portal.attendance.adjust_self', 'PORTAL_ATTENDANCE', 'ADJUST_SELF', N'Tạo điều chỉnh công từ portal', N'Cho phép nhân viên gửi yêu cầu điều chỉnh công từ portal'),
         ('portal.contract.view_self', 'PORTAL_CONTRACT', 'VIEW_SELF', N'Xem hợp đồng cá nhân', N'Cho phép nhân viên xem hợp đồng của chính mình'),
         ('portal.payroll.view_self', 'PORTAL_PAYROLL', 'VIEW_SELF', N'Xem phiếu lương cá nhân từ portal', N'Cho phép nhân viên xem phiếu lương cá nhân từ portal'),
         ('portal.inbox.view_self', 'PORTAL_INBOX', 'VIEW_SELF', N'Xem thông báo và task cá nhân', N'Cho phép nhân viên xem inbox thông báo và task cá nhân'),
-        ('portal.inbox.mark_read', 'PORTAL_INBOX', 'MARK_READ', N'Đánh dấu đã đọc inbox', N'Cho phép nhân viên đánh dấu đã đọc thông báo trong portal')
+        ('portal.inbox.mark_read', 'PORTAL_INBOX', 'MARK_READ', N'Đánh dấu đã đọc inbox', N'Cho phép nhân viên đánh dấu đã đọc thông báo trong portal'),
+        ('portal.tasks.view_self', 'PORTAL_TASK', 'VIEW_SELF', N'Xem nhiệm vụ cá nhân', N'Cho phép nhân viên xem nhiệm vụ được giao trong portal'),
+        ('portal.tasks.update_self', 'PORTAL_TASK', 'UPDATE_SELF', N'Cập nhật nhiệm vụ cá nhân', N'Cho phép nhân viên cập nhật trạng thái nhiệm vụ của chính mình'),
+        ('portal.offboarding.view_self', 'PORTAL_OFFBOARDING', 'VIEW_SELF', N'Xem yêu cầu nghỉ việc cá nhân', N'Cho phép nhân viên xem yêu cầu nghỉ việc của chính mình'),
+        ('portal.offboarding.request_self', 'PORTAL_OFFBOARDING', 'REQUEST_SELF', N'Tạo yêu cầu nghỉ việc từ portal', N'Cho phép nhân viên gửi yêu cầu nghỉ việc từ portal')
 ) s(permission_code, module_code, action_code, permission_name, description)
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.sec_permission p
@@ -93,11 +103,16 @@ WHERE NOT EXISTS (
         ('EMPLOYEE', 'portal.leave.view_self'),
         ('EMPLOYEE', 'portal.leave.request_self'),
         ('EMPLOYEE', 'portal.attendance.view_self'),
+        ('EMPLOYEE', 'portal.attendance.checkin_self'),
         ('EMPLOYEE', 'portal.attendance.adjust_self'),
         ('EMPLOYEE', 'portal.contract.view_self'),
         ('EMPLOYEE', 'portal.payroll.view_self'),
         ('EMPLOYEE', 'portal.inbox.view_self'),
-        ('EMPLOYEE', 'portal.inbox.mark_read')
+        ('EMPLOYEE', 'portal.inbox.mark_read'),
+        ('EMPLOYEE', 'portal.tasks.view_self'),
+        ('EMPLOYEE', 'portal.tasks.update_self'),
+        ('EMPLOYEE', 'portal.offboarding.view_self'),
+        ('EMPLOYEE', 'portal.offboarding.request_self')
     ) v(role_code, permission_code)
 )
 UPDATE rp
@@ -126,11 +141,16 @@ INNER JOIN role_permission_seed s ON s.role_code = r.role_code AND s.permission_
         ('EMPLOYEE', 'portal.leave.view_self'),
         ('EMPLOYEE', 'portal.leave.request_self'),
         ('EMPLOYEE', 'portal.attendance.view_self'),
+        ('EMPLOYEE', 'portal.attendance.checkin_self'),
         ('EMPLOYEE', 'portal.attendance.adjust_self'),
         ('EMPLOYEE', 'portal.contract.view_self'),
         ('EMPLOYEE', 'portal.payroll.view_self'),
         ('EMPLOYEE', 'portal.inbox.view_self'),
-        ('EMPLOYEE', 'portal.inbox.mark_read')
+        ('EMPLOYEE', 'portal.inbox.mark_read'),
+        ('EMPLOYEE', 'portal.tasks.view_self'),
+        ('EMPLOYEE', 'portal.tasks.update_self'),
+        ('EMPLOYEE', 'portal.offboarding.view_self'),
+        ('EMPLOYEE', 'portal.offboarding.request_self')
     ) v(role_code, permission_code)
 )
 INSERT INTO dbo.sec_role_permission (

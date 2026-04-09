@@ -7,6 +7,7 @@ import java.util.UUID;
 public record UserDetailResponse(
         UUID userId,
         Long employeeId,
+        String employeeCode,
         String username,
         String email,
         String phoneNumber,

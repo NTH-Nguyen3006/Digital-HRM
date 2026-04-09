@@ -13,6 +13,7 @@ import com.company.hrm.module.employee.dto.ProfileChangeRequestResponse;
 import com.company.hrm.module.employee.dto.SubmitProfileChangeRequest;
 import com.company.hrm.module.leave.dto.CreateLeaveRequestRequest;
 import com.company.hrm.module.leave.dto.LeaveRequestDetailResponse;
+import com.company.hrm.module.leave.dto.LeaveTypeListItemResponse;
 import com.company.hrm.module.offboarding.dto.CreateOffboardingRequest;
 import com.company.hrm.module.offboarding.dto.OffboardingListItemResponse;
 import com.company.hrm.module.offboarding.dto.OffboardingDetailResponse;
@@ -71,6 +72,13 @@ public class SelfPortalController {
     public ApiResponse<PortalLeaveOverviewResponse> getLeaveOverview() {
         return ApiResponse.success("PORTAL_LEAVE_OVERVIEW_SUCCESS", "Lấy tổng quan nghỉ phép cá nhân thành công.",
                 portalService.getLeaveOverview(), null, RequestTraceContext.getTraceId());
+    }
+
+    @GetMapping("/leave-types")
+    @PreAuthorize("hasAuthority('portal.leave.view_self')")
+    public ApiResponse<List<LeaveTypeListItemResponse>> getMyLeaveTypes() {
+        return ApiResponse.success("PORTAL_LEAVE_TYPE_LIST_SUCCESS", "Lấy danh sách loại nghỉ khả dụng thành công.",
+                portalService.getMyLeaveTypes(), null, RequestTraceContext.getTraceId());
     }
 
     @PostMapping("/leave-requests")

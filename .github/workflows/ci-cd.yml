@@ -1,0 +1,92 @@
+name: CI-CD Website_KhanhHoaTravel
+
+on:
+  push:
+    branches: [production]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lowercase repo owner name
+        run: |
+          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build & Push Backend
+      - name: Build and push Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          # tags: ghcr.io/${{ github.repository_owner }}/flask-backend:latest
+          tags: ghcr.io/${{ env.REPO_OWNER }}/flask-backend:latest
+
+      # Build & Push Frontend
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/${{ env.REPO_OWNER }}/react-frontend:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lowercase repo owner name
+        run: |
+          echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Copy config files to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          # Gửi file docker-compose và các file cấu hình nginx trong thư mục frontend
+          source: "docker-compose.yml,frontend/*.conf"
+          target: "/root/webapp"
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            mkdir -p /root/webapp
+            cd /root/webapp
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            cat <<EOF > .env
+            ${{ secrets.ENVIRONMENT }}
+            SERVER_IP=${{ secrets.SERVER_IP }}
+            REPO_OWNER=${{ env.REPO_OWNER }}
+            EOF
+
+            docker compose down --remove-orphans
+            docker compose pull
+            docker compose up -d
+            docker image prune -af
+
+            echo "Đang đợi database (postgesSQL-container) khởi chạy........"
+            sleep 10
+            docker compose exec -T backend flask db upgrade

@@ -12,7 +12,7 @@ const MANAGER_API = '/api/v1/manager';
  * @returns {Promise<Object>}
  */
 export const getPendingLeaveRequests = async (params) => {
-    const response = await axios.get(`${MANAGER_API}/leave/requests/pending`, { params });
+    const response = await axios.get(`${MANAGER_API}/leave-requests/pending`, { params });
     return response.data;
 };
 
@@ -23,7 +23,7 @@ export const getPendingLeaveRequests = async (params) => {
  * @returns {Promise<Object>}
  */
 export const reviewLeaveRequest = async (leaveRequestId, payload) => {
-    const response = await axios.patch(`${MANAGER_API}/leave/requests/${leaveRequestId}/review`, payload);
+    const response = await axios.patch(`${MANAGER_API}/leave-requests/${leaveRequestId}/review`, payload);
     return response.data;
 };
 
@@ -33,7 +33,7 @@ export const reviewLeaveRequest = async (leaveRequestId, payload) => {
  * @returns {Promise<Object>}
  */
 export const getTeamLeaveCalendar = async (params) => {
-    const response = await axios.get(`${MANAGER_API}/leave/calendar`, { params });
+    const response = await axios.get(`${MANAGER_API}/leave-calendar`, { params });
     return response.data;
 };
 
@@ -104,6 +104,15 @@ export const reviewOvertimeRequest = async (overtimeRequestId, payload) => {
 
 /**
  * Láy báo cáo KPI Lương để duyệt
+ * @returns {Promise<Object>}
+ */
+export const getTeamPayrollPeriods = async () => {
+    const response = await axios.get(`${MANAGER_API}/payroll/periods`);
+    return response.data;
+};
+
+/**
+ * Láy báo cáo KPI Lương để duyệt
  * @param {string|number} payrollPeriodId 
  * @param {Object} [params] 
  * @returns {Promise<Object>}
@@ -135,6 +144,11 @@ export const confirmPayrollItem = async (payrollItemId, payload) => {
  */
 export const getPendingOffboardings = async (params) => {
     const response = await axios.get(`${MANAGER_API}/offboarding/pending`, { params });
+    return response.data;
+};
+
+export const getPendingOffboardingDetail = async (offboardingCaseId) => {
+    const response = await axios.get(`${MANAGER_API}/offboarding/${offboardingCaseId}`);
     return response.data;
 };
 

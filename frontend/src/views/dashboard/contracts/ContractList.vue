@@ -1,81 +1,236 @@
 <script setup>
-import { FileSignature, MoreVertical, Plus, Search } from 'lucide-vue-next';
-import { ref } from 'vue';
-import router from '@/router/main';
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { CalendarRange, FileSignature, Plus, Search, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import PageHeader from '@/components/common/PageHeader.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
+import InsightCard from '@/components/hrm/InsightCard.vue'
+import SurfacePanel from '@/components/hrm/SurfacePanel.vue'
+import { getContracts, getExpiringContracts } from '@/api/admin/contract'
+import { useDebounce } from '@/composables/useDebounce'
+import { useToast } from '@/composables/useToast'
+import { unwrapPage } from '@/utils/api'
+import { formatDate, humanizeStatus } from '@/utils/format'
 
-const contracts = ref([
-  { id: 'HD001', employee: 'Nguyễn Văn A', type: 'Xác định thời hạn (12 tháng)', startDate: '01/01/2026', endDate: '31/12/2026', status: 'Đang hiệu lực' },
-  { id: 'HD002', employee: 'Trần Thị B', type: 'Thử việc (2 tháng)', startDate: '15/03/2026', endDate: '15/05/2026', status: 'Đang hiệu lực' },
-  { id: 'HD003', employee: 'Lê Văn C', type: 'Không xác định thời hạn', startDate: '01/01/2020', endDate: '-', status: 'Đang hiệu lực' },
-  { id: 'HD004', employee: 'Phạm Thị D', type: 'Thời vụ (3 tháng)', startDate: '01/10/2025', endDate: '31/12/2025', status: 'Đã hết hạn' },
-]);
+const router = useRouter()
+const toast = useToast()
+
+const loading = ref(false)
+const searchKeyword = ref('')
+const contracts = ref([])
+const expiringContracts = ref([])
+const pagination = ref({ totalElements: 0, totalPages: 0 })
+
+const { debouncedValue: debouncedKeyword } = useDebounce(searchKeyword, 400)
+
+const statCards = computed(() => {
+  const active = contracts.value.filter((item) => item.contractStatus === 'ACTIVE').length
+  const draft = contracts.value.filter((item) => item.contractStatus === 'DRAFT').length
+
+  return [
+    {
+      title: 'Tổng hợp đồng',
+      value: pagination.value.totalElements || contracts.value.length,
+      subtitle: 'Đang theo dõi trong hệ thống',
+      icon: FileSignature,
+      tone: 'indigo',
+    },
+    {
+      title: 'Đang hiệu lực',
+      value: active,
+      subtitle: 'Sẵn sàng phục vụ vận hành',
+      icon: ShieldCheck,
+      tone: 'emerald',
+    },
+    {
+      title: 'Bản nháp',
+      value: draft,
+      subtitle: 'Cần rà soát và phát hành',
+      icon: TimerReset,
+      tone: 'amber',
+    },
+    {
+      title: 'Sắp hết hạn',
+      value: expiringContracts.value.length,
+      subtitle: 'Cần gia hạn hoặc tái ký',
+      icon: CalendarRange,
+      tone: 'rose',
+    },
+  ]
+})
+
+const highlightedExpiring = computed(() => expiringContracts.value.slice(0, 3))
+
+async function fetchContracts() {
+  loading.value = true
+  try {
+    const [listResponse, expiringResponse] = await Promise.all([
+      getContracts({
+        keyword: debouncedKeyword.value?.trim() || undefined,
+        page: 0,
+        size: 24,
+      }),
+      getExpiringContracts(45),
+    ])
+
+    const page = unwrapPage(listResponse)
+    contracts.value = page.items
+    pagination.value = {
+      totalElements: page.totalElements,
+      totalPages: page.totalPages,
+    }
+    expiringContracts.value = Array.isArray(expiringResponse?.data) ? expiringResponse.data : []
+  } catch (error) {
+    console.error('Failed to fetch contracts:', error)
+    contracts.value = []
+    expiringContracts.value = []
+    pagination.value = { totalElements: 0, totalPages: 0 }
+    toast.error('Không thể tải danh sách hợp đồng')
+  } finally {
+    loading.value = false
+  }
+}
+
+function openDetail(contractId) {
+  router.push(`/contracts/${contractId}`)
+}
+
+onMounted(fetchContracts)
+watch(debouncedKeyword, fetchContracts)
 </script>
 
 <template>
-  
-    <div class="space-y-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-3xl font-black text-slate-900 tracking-tight">Hợp đồng lao động</h2>
-          <p class="text-slate-500 font-medium mt-1">Quản lý hiệu lực các loại hợp đồng</p>
+  <div class="space-y-8">
+    <PageHeader
+      title="Hợp đồng lao động"
+      subtitle="Theo dõi vòng đời hợp đồng, nháp gia hạn và các hồ sơ cần xử lý sớm."
+      :icon="FileSignature"
+    >
+      <template #actions>
+        <div class="relative">
+          <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="Tìm theo mã hợp đồng, nhân sự..."
+            class="w-72 rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium shadow-sm outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+          >
         </div>
-        <div class="flex items-center space-x-3">
-          <div class="relative">
-            <Search class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Tìm hợp đồng..."
-              class="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-64 shadow-sm" />
-          </div>
-          <button
-            class="bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center"
-            @click="router.push('/contracts/add')">
-            <Plus class="w-5 h-5 mr-2" /> Tạo hợp đồng
-          </button>
-        </div>
-      </div>
 
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50/50 border-b border-slate-100">
-                <th class="py-4 px-6 font-bold text-slate-500 text-xs uppercase tracking-wider">Mã HĐ</th>
-                <th class="py-4 px-6 font-bold text-slate-500 text-xs uppercase tracking-wider">Nhân viên</th>
-                <th class="py-4 px-6 font-bold text-slate-500 text-xs uppercase tracking-wider">Loại hợp đồng</th>
-                <th class="py-4 px-6 font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày hiệu lực</th>
-                <th class="py-4 px-6 font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày hết hạn</th>
-                <th class="py-4 px-6 font-bold text-slate-500 text-xs uppercase tracking-wider">Trạng thái</th>
-                <th class="py-4 px-6"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="contract in contracts" :key="contract.id" class="hover:bg-slate-50/50 transition-colors group">
-                <td class="py-4 px-6 font-bold text-indigo-600">{{ contract.id }}</td>
-                <td class="py-4 px-6 font-bold text-slate-900">{{ contract.employee }}</td>
-                <td class="py-4 px-6">
-                  <div class="flex items-center space-x-2 text-slate-700">
-                    <FileSignature class="w-4 h-4 text-slate-400" />
-                    <span class="font-medium">{{ contract.type }}</span>
-                  </div>
-                </td>
-                <td class="py-4 px-6 font-semibold text-slate-600">{{ contract.startDate }}</td>
-                <td class="py-4 px-6 font-semibold text-slate-600">{{ contract.endDate }}</td>
-                <td class="py-4 px-6">
-                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ring-inset"
-                    :class="contract.status === 'Đang hiệu lực' ? 'bg-sky-50 text-sky-700 ring-sky-600/20' : 'bg-rose-50 text-rose-700 ring-rose-600/20'">
-                    {{ contract.status }}
-                  </span>
-                </td>
-                <td class="py-4 px-6 text-right">
-                  <button
-                    class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
-                    <MoreVertical class="w-5 h-5" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <BaseButton variant="primary" size="md" @click="router.push('/contracts/add')">
+          <Plus class="mr-2 h-4 w-4" />
+          Tạo hợp đồng
+        </BaseButton>
+      </template>
+    </PageHeader>
+
+    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <InsightCard
+        v-for="item in statCards"
+        :key="item.title"
+        :title="item.title"
+        :value="item.value"
+        :subtitle="item.subtitle"
+        :icon="item.icon"
+        :tone="item.tone"
+      />
+    </div>
+
+    <div v-if="highlightedExpiring.length" class="grid gap-5 xl:grid-cols-[1.3fr_2fr]">
+      <SurfacePanel class="bg-[linear-gradient(135deg,#0f172a_0%,#1e1b4b_52%,#312e81_100%)] text-white">
+        <p class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-200">Renewal Radar</p>
+        <h3 class="mt-3 text-3xl font-black">Gia hạn trước khi gián đoạn vận hành</h3>
+        <p class="mt-3 max-w-md text-sm font-medium text-slate-300">
+          Danh sách bên phải đang ưu tiên các hồ sơ sắp hết hạn để HR và quản lý có thể chốt sớm.
+        </p>
+      </SurfacePanel>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <button
+          v-for="item in highlightedExpiring"
+          :key="item.laborContractId"
+          type="button"
+          class="rounded-[28px] border border-rose-100 bg-rose-50/70 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg"
+          @click="openDetail(item.laborContractId)"
+        >
+          <p class="text-[11px] font-black uppercase tracking-[0.18em] text-rose-500">{{ item.contractNumber }}</p>
+          <h4 class="mt-3 text-lg font-black text-slate-900">{{ item.employeeFullName }}</h4>
+          <p class="mt-1 text-sm font-medium text-slate-500">{{ item.contractTypeName || 'Chưa có loại hợp đồng' }}</p>
+          <div class="mt-4 flex items-center justify-between">
+            <StatusBadge :status="item.contractStatus" :label="humanizeStatus(item.contractStatus)" />
+            <span class="text-xs font-bold text-rose-600">Hết hạn {{ formatDate(item.endDate) }}</span>
+          </div>
+        </button>
       </div>
     </div>
-  
+
+    <SurfacePanel>
+      <div class="mb-5 flex items-center justify-between gap-4">
+        <div>
+          <h3 class="text-xl font-black text-slate-900">Danh sách hợp đồng</h3>
+          <p class="mt-1 text-sm font-medium text-slate-500">Thiết kế dạng card để đọc nhanh từng hồ sơ thay vì bảng dày đặc.</p>
+        </div>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+          {{ pagination.totalElements || contracts.length }} hồ sơ
+        </span>
+      </div>
+
+      <div v-if="loading" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div v-for="item in 6" :key="item" class="h-48 animate-pulse rounded-[28px] bg-slate-100" />
+      </div>
+
+      <div v-else-if="contracts.length" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <button
+          v-for="item in contracts"
+          :key="item.laborContractId"
+          type="button"
+          class="group rounded-[28px] border border-slate-200 bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_20px_50px_rgba(99,102,241,0.10)]"
+          @click="openDetail(item.laborContractId)"
+        >
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-[0.18em] text-indigo-500">{{ item.contractNumber }}</p>
+              <h4 class="mt-3 text-lg font-black text-slate-900 transition-colors group-hover:text-indigo-600">
+                {{ item.employeeFullName }}
+              </h4>
+              <p class="mt-1 text-sm font-medium text-slate-500">{{ item.employeeCode }} · {{ item.orgUnitName || 'Chưa gán đơn vị' }}</p>
+            </div>
+            <StatusBadge :status="item.contractStatus" :label="humanizeStatus(item.contractStatus)" />
+          </div>
+
+          <div class="mt-5 grid gap-4 rounded-[24px] bg-slate-50 p-4 md:grid-cols-2">
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Loại hợp đồng</p>
+              <p class="mt-2 text-sm font-bold text-slate-800">{{ item.contractTypeName || 'Chưa cập nhật' }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ngày hiệu lực</p>
+              <p class="mt-2 text-sm font-bold text-slate-800">{{ formatDate(item.effectiveDate) }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ngày hết hạn</p>
+              <p class="mt-2 text-sm font-bold text-slate-800">{{ formatDate(item.endDate) }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Mức lương cơ bản</p>
+              <p class="mt-2 text-sm font-bold text-slate-800">
+                {{ item.baseSalary ? new Intl.NumberFormat('vi-VN').format(item.baseSalary) + ' VND' : 'Chưa cập nhật' }}
+              </p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <EmptyState
+        v-else
+        iconName="FileSearch"
+        title="Không tìm thấy hợp đồng phù hợp"
+        description="Thử thay đổi từ khóa hoặc tạo hồ sơ hợp đồng mới cho nhân sự."
+        actionText="Tạo hợp đồng"
+        @action="router.push('/contracts/add')"
+      />
+    </SurfacePanel>
+  </div>
 </template>

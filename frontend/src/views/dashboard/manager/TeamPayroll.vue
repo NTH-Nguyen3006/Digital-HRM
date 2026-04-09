@@ -3,17 +3,19 @@ import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import {
   getTeamPayrollItems,
   confirmPayrollItem,
-  getTeamDashboardReport
+  getTeamPayrollPeriods
 } from '@/api/manager/manager'
 import {
-  Banknote, ChevronLeft, ChevronRight, CheckCircle2, Loader2, Info
+  Banknote, CheckCircle2, Loader2, Info
 } from 'lucide-vue-next'
 
 const toast = useToast()
+const router = useRouter()
 
 /* ─── STATE ─────────────────────────────────────────────────── */
 const items = ref([])
@@ -29,15 +31,14 @@ const periodsLoading = ref(true)
 const fetchPeriods = async () => {
   periodsLoading.value = true
   try {
-    // Try to get team dashboard which may include payroll periods
-    const res = await getTeamDashboardReport()
-    const reportPeriods = res.data?.payrollPeriods ?? res.data?.periods ?? []
-    if (reportPeriods.length) {
-      periods.value = reportPeriods
-      selectedPeriodId.value = reportPeriods[0].payrollPeriodId
+    const res = await getTeamPayrollPeriods()
+    const reportPeriods = res.data ?? []
+    periods.value = Array.isArray(reportPeriods) ? reportPeriods : []
+    if (periods.value.length) {
+      selectedPeriodId.value = periods.value[0].payrollPeriodId
     }
   } catch {
-    // Dashboard report may 404; silently skip
+    periods.value = []
   } finally {
     periodsLoading.value = false
   }
@@ -65,9 +66,10 @@ onMounted(async () => {
 const handleConfirm = async (item) => {
   confirmLoading.value = item.payrollItemId
   try {
-    await confirmPayrollItem(item.payrollItemId, { confirmed: true })
-    toast.success(`Đã xác nhận lương của ${item.employeeFullName}`)
-    item.confirmed = true
+    await confirmPayrollItem(item.payrollItemId, { note: 'Manager xác nhận dữ liệu payroll từ team workspace.' })
+    toast.success(`Đã xác nhận lương của ${item.employeeName}`)
+    item.managerConfirmedAt = new Date().toISOString()
+    item.itemStatus = 'MANAGER_CONFIRMED'
   } catch (e) {
     toast.error('Xác nhận thất bại')
   } finally {
@@ -80,7 +82,7 @@ const fmtCurrency = (n) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n)
 }
 
-const confirmedCount = () => items.value.filter(i => i.confirmed).length
+const confirmedCount = () => items.value.filter(i => i.managerConfirmedAt || i.itemStatus === 'MANAGER_CONFIRMED').length
 </script>
 
 <template>
@@ -125,7 +127,7 @@ const confirmedCount = () => items.value.filter(i => i.confirmed).length
                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
                 : 'bg-white border border-slate-100 text-slate-600 hover:border-emerald-200'"
             >
-              {{ p.periodName || `${p.month}/${p.year}` }}
+              {{ p.periodCode || `${p.periodMonth}/${p.periodYear}` }}
             </button>
           </div>
 
@@ -152,11 +154,11 @@ const confirmedCount = () => items.value.filter(i => i.confirmed).length
               >
                 <!-- Employee info -->
                 <div class="flex items-start gap-4 min-w-[260px]">
-                  <AvatarBox :name="item.employeeFullName" size="lg" shape="rounded-[20px]" shadow />
+                  <AvatarBox :name="item.employeeName" size="lg" shape="rounded-[20px]" shadow />
                   <div>
-                    <h4 class="font-black text-slate-900 text-base mb-1">{{ item.employeeFullName }}</h4>
+                    <h4 class="font-black text-slate-900 text-base mb-1">{{ item.employeeName }}</h4>
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ item.employeeCode }}</p>
-                    <p class="text-xs font-medium text-slate-400 mt-1">{{ item.positionName || item.orgUnitName }}</p>
+                    <p class="text-xs font-medium text-slate-400 mt-1">{{ item.orgUnitName }}</p>
                   </div>
                 </div>
 
@@ -164,25 +166,32 @@ const confirmedCount = () => items.value.filter(i => i.confirmed).length
                 <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-6">
                   <div class="bg-slate-50 rounded-2xl p-4 text-center">
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Lương cơ bản</p>
-                    <p class="text-sm font-black text-slate-800">{{ fmtCurrency(item.basicSalary) }}</p>
+                    <p class="text-sm font-black text-slate-800">{{ fmtCurrency(item.baseSalaryMonthly) }}</p>
                   </div>
                   <div class="bg-indigo-50 rounded-2xl p-4 text-center">
                     <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Phụ cấp</p>
-                    <p class="text-sm font-black text-indigo-700">{{ fmtCurrency(item.totalAllowance) }}</p>
+                    <p class="text-sm font-black text-indigo-700">{{ fmtCurrency(item.fixedEarningTotal) }}</p>
                   </div>
                   <div class="bg-rose-50 rounded-2xl p-4 text-center">
                     <p class="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Khấu trừ</p>
-                    <p class="text-sm font-black text-rose-700">{{ fmtCurrency(item.totalDeduction) }}</p>
+                    <p class="text-sm font-black text-rose-700">{{ fmtCurrency(item.fixedDeductionTotal) }}</p>
                   </div>
                   <div class="bg-emerald-50 rounded-2xl p-4 text-center border-2 border-emerald-100">
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Thực lĩnh</p>
-                    <p class="text-sm font-black text-emerald-700">{{ fmtCurrency(item.netSalary) }}</p>
+                    <p class="text-sm font-black text-emerald-700">{{ fmtCurrency(item.netPay) }}</p>
                   </div>
                 </div>
 
                 <!-- Action -->
                 <div class="shrink-0 flex items-center gap-3">
-                  <div v-if="item.confirmed" class="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 rounded-2xl">
+                  <button
+                    type="button"
+                    class="rounded-xl px-3 py-2 text-xs font-black text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600"
+                    @click="router.push(`/employees/${item.employeeId}`)"
+                  >
+                    Hồ sơ
+                  </button>
+                  <div v-if="item.managerConfirmedAt || item.itemStatus === 'MANAGER_CONFIRMED'" class="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 rounded-2xl">
                     <CheckCircle2 class="w-4 h-4 text-emerald-600" />
                     <span class="text-xs font-black text-emerald-700">Đã xác nhận</span>
                   </div>

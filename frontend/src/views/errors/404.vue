@@ -1,15 +1,17 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { Home, ArrowLeft, Ghost } from 'lucide-vue-next'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const goBack = () => {
   router.back()
 }
 
 const goHome = () => {
-  router.push('/dashboard')
+  router.push(authStore.isEmployee ? '/' : '/dashboard')
 }
 </script>
 

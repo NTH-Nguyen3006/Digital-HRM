@@ -6,6 +6,7 @@ import java.util.UUID;
 public record UserListItemResponse(
         UUID userId,
         Long employeeId,
+        String employeeCode,
         String username,
         String email,
         String phoneNumber,
