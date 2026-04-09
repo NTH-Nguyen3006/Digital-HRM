@@ -15,6 +15,7 @@ public class AppProperties {
     private RoleManagement roleManagement = new RoleManagement();
     private Storage storage = new Storage();
     private Reporting reporting = new Reporting();
+    private Ocr ocr = new Ocr();
 
     @Data
     public static class Auth {
@@ -71,6 +72,17 @@ public class AppProperties {
     public static class Reporting {
         private boolean schedulerEnabled = true;
         private long schedulerFixedDelayMs = 300000;
+    }
+
+    @Data
+    public static class Ocr {
+        private boolean enabled = false;
+        private String tesseractBinary = "tesseract";
+        private String language = "vie+eng";
+        private int pageSegMode = 6;
+        private int pdfRenderDpi = 300;
+        private int maxPdfPages = 10;
+        private int processTimeoutSeconds = 90;
     }
 
 }
