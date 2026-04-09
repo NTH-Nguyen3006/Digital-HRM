@@ -16,7 +16,7 @@ RUN ./mvnw -q -DskipTests package && cp target/*.jar /workspace/app.jar
 
 FROM eclipse-temurin:17-jre-jammy
 
-WORKDIR /app
+WORKDIR /appenv
 
 RUN groupadd --system spring \
     && useradd --system --gid spring --create-home spring \

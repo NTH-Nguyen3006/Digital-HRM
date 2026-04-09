@@ -253,34 +253,37 @@ onMounted(fetchAll)
 <template>
   <EmployeeLayout>
     <div class="relative mb-28 overflow-hidden">
-      <div class="absolute inset-x-0 top-0 h-[720px] bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.16),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#ffffff_72%)]"></div>
-      <div class="absolute left-[-120px] top-24 h-72 w-72 rounded-full bg-indigo-200/20 blur-3xl"></div>
-      <div class="absolute right-[-80px] top-40 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl"></div>
+      <div
+        class="absolute inset-x-0 top-0 h-[720px] bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.16),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#ffffff_72%)]">
+      </div>
+      <div class="absolute -left-30 top-24 h-72 w-72 rounded-full bg-indigo-200/20 blur-3xl"></div>
+      <div class="absolute -right-20 top-40 h-64 w-64 rounded-full bg-cyan-200/20 blur-3xl"></div>
 
-      <section class="relative max-w-[1440px] mx-auto px-8 pt-20 lg:px-10 lg:pt-28 xl:px-12">
+      <section class="relative max-w-360 mx-auto px-8 pt-20 lg:px-10 lg:pt-28 xl:px-12">
         <div class="space-y-10 xl:space-y-12">
           <div class="space-y-6">
-            <div class="inline-flex items-center gap-3 rounded-full border border-indigo-100 bg-white/80 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm backdrop-blur">
+            <div
+              class="inline-flex items-center gap-3 rounded-full border border-indigo-100 bg-white/80 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm backdrop-blur">
               <Star class="w-4 h-4" /> Cổng thông tin Nhân viên
             </div>
 
             <div class="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] xl:items-end">
               <div class="space-y-4">
-                <h1 class="max-w-5xl text-5xl font-black leading-[0.92] tracking-tight text-slate-900 lg:text-7xl 2xl:text-[5.25rem]">
-                  Chào mừng trở lại,
-                  <span class="block bg-[linear-gradient(135deg,#4338ca_0%,#6366f1_48%,#0f172a_100%)] bg-clip-text text-transparent">
-                    {{ dashboard?.fullName ?? 'Nhân viên' }}
-                  </span>
+                <h1
+                  class="max-w-4xl bg-[linear-gradient(135deg,#4338ca_0%,#6366f1_48%,#0f172a_100%)] bg-clip-text text-4xl font-black leading-tight tracking-tight text-transparent lg:text-5xl 2xl:text-6xl">
+                  {{ dashboard?.fullName ?? 'Nhân viên' }}
                 </h1>
                 <p class="max-w-3xl text-lg font-medium leading-relaxed text-slate-500">
                   Một nơi duy nhất để theo dõi ngày làm việc, tác vụ cần xử lý, hồ sơ và bảng lương cá nhân của bạn.
                 </p>
               </div>
 
-              <div class="rounded-[30px] border border-indigo-100/80 bg-white/85 p-6 shadow-[0_16px_50px_rgba(79,70,229,0.08)] backdrop-blur-sm">
+              <div
+                class="rounded-[30px] border border-indigo-100/80 bg-white/85 p-6 shadow-[0_16px_50px_rgba(79,70,229,0.08)] backdrop-blur-sm">
                 <p class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-400">Tổng quan nhanh</p>
                 <p class="mt-3 text-base font-semibold leading-relaxed text-slate-600">
-                  Từ đây bạn có thể xem thông báo mới, nhiệm vụ cần xử lý và trạng thái chấm công trong cùng một màn hình.
+                  Từ đây bạn có thể xem thông báo mới, nhiệm vụ cần xử lý và trạng thái chấm công trong cùng một màn
+                  hình.
                 </p>
               </div>
             </div>
@@ -288,7 +291,8 @@ onMounted(fetchAll)
 
           <div class="grid gap-8 xl:grid-cols-[minmax(0,1.7fr)_390px] 2xl:grid-cols-[minmax(0,1.8fr)_410px]">
             <div class="space-y-8">
-              <div class="rounded-[34px] border border-slate-200/80 bg-white/70 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-6">
+              <div
+                class="rounded-[34px] border border-slate-200/80 bg-white/70 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-6">
                 <div class="mb-5 flex items-center justify-between gap-4">
                   <div>
                     <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Chỉ số cá nhân</p>
@@ -297,13 +301,11 @@ onMounted(fetchAll)
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-                  <div
-                    v-for="item in stats"
-                    :key="item.label"
-                    class="group rounded-[28px] border border-slate-200/80 bg-white/90 p-5 2xl:p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_22px_60px_rgba(79,70,229,0.12)]"
-                  >
+                  <div v-for="item in stats" :key="item.label"
+                    class="group rounded-[28px] border border-slate-200/80 bg-white/90 p-5 2xl:p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_22px_60px_rgba(79,70,229,0.12)]">
                     <div class="mb-4 flex items-center justify-between">
-                      <div class="flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ring-inset ring-black/5" :class="item.color">
+                      <div class="flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ring-inset ring-black/5"
+                        :class="item.color">
                         <component :is="item.icon" class="w-5 h-5" />
                       </div>
                       <ArrowRight class="w-4 h-4 text-slate-300 transition-transform group-hover:translate-x-1" />
@@ -314,7 +316,8 @@ onMounted(fetchAll)
                 </div>
               </div>
 
-              <div class="rounded-[34px] border border-slate-200/80 bg-white/70 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-6">
+              <div
+                class="rounded-[34px] border border-slate-200/80 bg-white/70 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-6">
                 <div class="mb-5 flex items-center justify-between gap-4">
                   <div>
                     <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Trung tâm thao tác</p>
@@ -323,26 +326,24 @@ onMounted(fetchAll)
                 </div>
 
                 <div class="grid gap-5 xl:grid-cols-3">
-                  <div
-                    v-for="card in spotlightCards"
-                    :key="card.title"
+                  <div v-for="card in spotlightCards" :key="card.title"
                     class="rounded-[30px] border bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)]"
-                    :class="`${card.border} bg-gradient-to-br ${card.accent}`"
-                  >
+                    :class="`${card.border} bg-linear-to-br ${card.accent}`">
                     <div class="flex items-start justify-between gap-4">
                       <div>
-                        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ card.eyebrow }}</p>
+                        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ card.eyebrow }}
+                        </p>
                         <h3 class="mt-2 text-xl font-black text-slate-900">{{ card.title }}</h3>
                       </div>
-                      <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10">
+                      <div
+                        class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10">
                         <component :is="card.icon" class="w-5 h-5" />
                       </div>
                     </div>
                     <p class="mt-3 text-sm font-medium leading-relaxed text-slate-500">{{ card.description }}</p>
                     <button
                       class="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-600"
-                      @click="router.push(card.path)"
-                    >
+                      @click="router.push(card.path)">
                       {{ card.actionLabel }}
                       <ArrowRight class="w-4 h-4" />
                     </button>
@@ -352,61 +353,53 @@ onMounted(fetchAll)
             </div>
 
             <div class="xl:sticky xl:top-24">
-            <GlassCard class="h-full min-h-[620px] rounded-[34px] border border-slate-200/80 bg-[linear-gradient(180deg,#111827_0%,#1f2a44_100%)] p-8 text-white shadow-[0_25px_80px_rgba(15,23,42,0.2)] 2xl:p-9" dark>
-              <div class="flex h-full flex-col justify-between space-y-8">
-                <div>
-                  <div class="mb-6 flex items-center justify-between">
-                    <div class="flex items-center gap-3 text-indigo-300">
-                      <Clock class="w-5 h-5" />
-                      <p class="text-xs font-bold uppercase tracking-widest">Chấm công hành chính</p>
+              <GlassCard
+                class="h-full min-h-155 rounded-[34px] border border-slate-200/80 bg-[linear-gradient(180deg,#111827_0%,#1f2a44_100%)] p-8 text-white shadow-[0_25px_80px_rgba(15,23,42,0.2)] 2xl:p-9"
+                dark>
+                <div class="flex h-full flex-col justify-between space-y-8">
+                  <div>
+                    <div class="mb-6 flex items-center justify-between">
+                      <div class="flex items-center gap-3 text-indigo-300">
+                        <Clock class="w-5 h-5" />
+                        <p class="text-xs font-bold uppercase tracking-widest">Chấm công hành chính</p>
+                      </div>
+                      <div v-if="checkInStatus.lastEventType"
+                        class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
+                        :class="checkInStatus.lastEventType === 'CHECK_IN' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-slate-200'">
+                        {{ checkInStatus.lastEventType === 'CHECK_IN' ? 'Đang làm việc' : 'Đã check-out' }}
+                      </div>
                     </div>
-                    <div
-                      v-if="checkInStatus.lastEventType"
-                      class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
-                      :class="checkInStatus.lastEventType === 'CHECK_IN' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-slate-200'"
-                    >
-                      {{ checkInStatus.lastEventType === 'CHECK_IN' ? 'Đang làm việc' : 'Đã check-out' }}
+
+                    <div class="space-y-2">
+                      <p class="text-4xl font-black tracking-tight text-white">{{ fmtDateTime(new Date()) }}</p>
+                      <p class="flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                        <MapPin class="w-3.5 h-3.5" /> Văn phòng hiện tại
+                      </p>
+                    </div>
+
+                    <div class="mt-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
+                      <p class="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Ghi nhận cuối</p>
+                      <p class="font-bold text-white">{{ fmtDateTime(checkInStatus.lastEventTime) }}</p>
                     </div>
                   </div>
 
-                  <div class="space-y-2">
-                    <p class="text-4xl font-black tracking-tight text-white">{{ fmtDateTime(new Date()) }}</p>
-                    <p class="flex items-center gap-1.5 text-sm font-medium text-slate-300">
-                      <MapPin class="w-3.5 h-3.5" /> Văn phòng hiện tại
-                    </p>
-                  </div>
+                  <div class="space-y-3">
+                    <button v-if="checkInStatus.canCheckIn" @click="handleCheckIn" :disabled="attLoading"
+                      class="w-full flex items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#4f46e5_0%,#4338ca_100%)] px-6 py-4 font-black text-white shadow-[0_18px_45px_rgba(79,70,229,0.35)] transition hover:-translate-y-px hover:brightness-110 disabled:opacity-50">
+                      <Loader2 v-if="attLoading" class="w-5 h-5 animate-spin" />
+                      <LogIn v-else class="w-5 h-5" />
+                      Bắt đầu làm việc
+                    </button>
 
-                  <div class="mt-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
-                    <p class="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Ghi nhận cuối</p>
-                    <p class="font-bold text-white">{{ fmtDateTime(checkInStatus.lastEventTime) }}</p>
+                    <button v-if="checkInStatus.canCheckOut" @click="handleCheckOut" :disabled="attLoading"
+                      class="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-6 py-4 font-black text-white transition hover:bg-white/20 disabled:opacity-50">
+                      <Loader2 v-if="attLoading" class="w-5 h-5 animate-spin" />
+                      <LogOut v-else class="w-5 h-5" />
+                      Kết thúc ca làm
+                    </button>
                   </div>
                 </div>
-
-                <div class="space-y-3">
-                  <button
-                    v-if="checkInStatus.canCheckIn"
-                    @click="handleCheckIn"
-                    :disabled="attLoading"
-                    class="w-full flex items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#4f46e5_0%,#4338ca_100%)] px-6 py-4 font-black text-white shadow-[0_18px_45px_rgba(79,70,229,0.35)] transition hover:translate-y-[-1px] hover:brightness-110 disabled:opacity-50"
-                  >
-                    <Loader2 v-if="attLoading" class="w-5 h-5 animate-spin" />
-                    <LogIn v-else class="w-5 h-5" />
-                    Bắt đầu làm việc
-                  </button>
-
-                  <button
-                    v-if="checkInStatus.canCheckOut"
-                    @click="handleCheckOut"
-                    :disabled="attLoading"
-                    class="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-6 py-4 font-black text-white transition hover:bg-white/20 disabled:opacity-50"
-                  >
-                    <Loader2 v-if="attLoading" class="w-5 h-5 animate-spin" />
-                    <LogOut v-else class="w-5 h-5" />
-                    Kết thúc ca làm
-                  </button>
-                </div>
-              </div>
-            </GlassCard>
+              </GlassCard>
             </div>
           </div>
         </div>
@@ -414,7 +407,8 @@ onMounted(fetchAll)
 
       <section class="relative max-w-7xl mx-auto px-6 mt-10">
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_340px]">
-          <div class="rounded-[34px] border border-slate-200/80 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_48%,#312e81_100%)] p-8 shadow-[0_25px_80px_rgba(15,23,42,0.18)]">
+          <div
+            class="rounded-[34px] border border-slate-200/80 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_48%,#312e81_100%)] p-8 shadow-[0_25px_80px_rgba(15,23,42,0.18)]">
             <div class="space-y-8">
               <div class="flex items-center justify-between gap-4">
                 <div>
@@ -428,11 +422,8 @@ onMounted(fetchAll)
               </div>
 
               <div class="grid gap-5 md:grid-cols-2">
-                <div
-                  v-for="card in profileCards"
-                  :key="card.label"
-                  class="rounded-[26px] border border-white/10 bg-white/8 p-5 backdrop-blur-sm"
-                >
+                <div v-for="card in profileCards" :key="card.label"
+                  class="rounded-[26px] border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
                   <p class="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-100/70">{{ card.label }}</p>
                   <p class="mt-3 text-xl font-bold text-white">{{ card.value }}</p>
                 </div>
@@ -440,7 +431,8 @@ onMounted(fetchAll)
             </div>
           </div>
 
-          <div class="rounded-[34px] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-8 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+          <div
+            class="rounded-[34px] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-8 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
             <div class="flex h-full flex-col justify-between">
               <div class="space-y-6">
                 <div class="flex items-center gap-3 text-indigo-600">
@@ -449,11 +441,8 @@ onMounted(fetchAll)
                 </div>
 
                 <div class="space-y-4">
-                  <div
-                    v-for="panel in accountPanels"
-                    :key="panel.label"
-                    class="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
-                  >
+                  <div v-for="panel in accountPanels" :key="panel.label"
+                    class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
                     <p class="text-sm font-semibold text-slate-500">{{ panel.label }}</p>
                     <p class="mt-2 text-3xl font-black text-slate-900">{{ panel.value }}</p>
                     <p class="mt-1 text-xs font-bold uppercase tracking-wider text-slate-400">{{ panel.hint }}</p>
@@ -462,12 +451,8 @@ onMounted(fetchAll)
               </div>
 
               <div class="mt-8 border-t border-slate-200 pt-6">
-                <BaseButton
-                  @click="router.push('/portal/profile')"
-                  variant="secondary"
-                  size="sm"
-                  class="w-full rounded-full bg-slate-900 text-white hover:bg-indigo-600"
-                >
+                <BaseButton @click="router.push('/portal/profile')" variant="secondary" size="sm"
+                  class="w-full rounded-full bg-slate-900 text-white hover:bg-indigo-600">
                   Hồ sơ chi tiết
                 </BaseButton>
               </div>
@@ -483,20 +468,18 @@ onMounted(fetchAll)
             <h2 class="text-4xl font-black tracking-tight text-slate-900">Dịch vụ bạn dùng thường xuyên</h2>
           </div>
           <p class="max-w-xl text-sm font-medium leading-relaxed text-slate-500">
-            Truy cập nhanh các tác vụ hàng ngày thay vì phải tìm sâu trong menu. Mỗi thao tác đều dẫn thẳng tới màn hình xử lý thực tế.
+            Truy cập nhanh các tác vụ hàng ngày thay vì phải tìm sâu trong menu. Mỗi thao tác đều dẫn thẳng tới màn hình
+            xử lý thực tế.
           </p>
         </div>
 
         <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          <button
-            v-for="s in services"
-            :key="s.id"
-            @click="s.path !== '#' && router.push(s.path)"
+          <button v-for="s in services" :key="s.id" @click="s.path !== '#' && router.push(s.path)"
             class="group rounded-[30px] border border-slate-200 bg-white p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_25px_60px_rgba(99,102,241,0.12)]"
-            :class="s.path === '#' ? 'cursor-default opacity-70' : 'cursor-pointer'"
-          >
+            :class="s.path === '#' ? 'cursor-default opacity-70' : 'cursor-pointer'">
             <div class="flex items-start justify-between gap-4">
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition-all group-hover:bg-indigo-600 group-hover:text-white">
+              <div
+                class="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition-all group-hover:bg-indigo-600 group-hover:text-white">
                 <component :is="s.icon" class="w-6 h-6" />
               </div>
               <ArrowRight class="w-4 h-4 text-slate-300 transition-transform group-hover:translate-x-1" />
@@ -505,11 +488,11 @@ onMounted(fetchAll)
             <p class="mt-2 text-sm font-medium text-slate-500">
               {{
                 s.id === 1 ? 'Tạo đơn nghỉ, theo dõi phê duyệt và kiểm tra số dư phép.' :
-                s.id === 2 ? 'Xem phiếu lương đã phát hành và lịch sử các kỳ lương.' :
-                s.id === 3 ? 'Cập nhật thông tin cá nhân và tra cứu hồ sơ hiện tại.' :
-                s.id === 4 ? 'Theo dõi log vào ra, điều chỉnh công và overtime.' :
-                s.id === 5 ? 'Không gian dành cho sổ tay nội bộ và hướng dẫn nhân sự.' :
-                'Kênh liên hệ HR và các phản hồi cần hỗ trợ.'
+                  s.id === 2 ? 'Xem phiếu lương đã phát hành và lịch sử các kỳ lương.' :
+                    s.id === 3 ? 'Cập nhật thông tin cá nhân và tra cứu hồ sơ hiện tại.' :
+                      s.id === 4 ? 'Theo dõi log vào ra, điều chỉnh công và overtime.' :
+                        s.id === 5 ? 'Không gian dành cho sổ tay nội bộ và hướng dẫn nhân sự.' :
+                          'Kênh liên hệ HR và các phản hồi cần hỗ trợ.'
               }}
             </p>
           </button>
@@ -518,21 +501,21 @@ onMounted(fetchAll)
 
       <section class="relative max-w-7xl mx-auto px-6 mt-24">
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-          <div class="rounded-[36px] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+          <div
+            class="rounded-[36px] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
             <div class="mb-10 space-y-3">
               <p class="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Digital HRM</p>
-              <h2 class="text-4xl font-black tracking-tight text-slate-900">Hệ sinh thái hỗ trợ trải nghiệm nhân viên</h2>
+              <h2 class="text-4xl font-black tracking-tight text-slate-900">Hệ sinh thái hỗ trợ trải nghiệm nhân viên
+              </h2>
               <p class="max-w-2xl text-sm font-medium leading-relaxed text-slate-500">
-                Hệ thống được thiết kế để giảm thao tác lặp lại, tăng tính minh bạch và giúp bạn xử lý công việc hành chính nhanh hơn.
+                Hệ thống được thiết kế để giảm thao tác lặp lại, tăng tính minh bạch và giúp bạn xử lý công việc hành
+                chính nhanh hơn.
               </p>
             </div>
 
             <div class="grid gap-6 md:grid-cols-2">
-              <div
-                v-for="f in features"
-                :key="f.title"
-                class="group rounded-[28px] border border-slate-200 bg-white p-6 transition-all hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50"
-              >
+              <div v-for="f in features" :key="f.title"
+                class="group rounded-[28px] border border-slate-200 bg-white p-6 transition-all hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50">
                 <div :class="[f.color, 'mb-6 flex h-12 w-12 items-center justify-center rounded-2xl']">
                   <component :is="f.icon" class="w-6 h-6" />
                 </div>
@@ -554,17 +537,15 @@ onMounted(fetchAll)
             </div>
 
             <div class="space-y-4">
-              <div
-                v-for="branch in branches"
-                :key="branch.id"
-                class="rounded-[24px] border border-white/10 bg-white/5 p-5 transition-all hover:bg-white/8"
-              >
+              <div v-for="branch in branches" :key="branch.id"
+                class="rounded-[24px] border border-white/10 bg-white/5 p-5 transition-all hover:bg-white/8">
                 <div class="flex items-start justify-between gap-4">
                   <div>
                     <p class="text-lg font-black text-white">{{ branch.name }}</p>
                     <p class="mt-2 text-sm font-medium text-slate-400">{{ branch.address }}</p>
                   </div>
-                  <div class="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-300">
+                  <div
+                    class="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-300">
                     Online
                   </div>
                 </div>
