@@ -22,10 +22,10 @@ public interface AttOvertimeRequestRepository extends JpaRepository<AttOvertimeR
             select r from AttOvertimeRequest r
             where r.deleted = false
               and r.requestStatus = :requestStatus
-              and r.employee.orgUnit.pathCode like concat(:orgPathPrefix, '%')
+              and r.employee.managerEmployee.employeeId = :managerEmployeeId
             order by r.attendanceDate asc, r.overtimeRequestId asc
             """)
-    List<AttOvertimeRequest> findPendingByManagerScope(AttendanceOvertimeStatus requestStatus, String orgPathPrefix);
+    List<AttOvertimeRequest> findPendingByDirectManager(AttendanceOvertimeStatus requestStatus, Long managerEmployeeId);
 
     @Query("""
             select coalesce(sum(r.requestedMinutes), 0) from AttOvertimeRequest r

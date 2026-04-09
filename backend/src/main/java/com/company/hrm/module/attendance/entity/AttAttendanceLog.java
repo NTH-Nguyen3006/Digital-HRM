@@ -2,6 +2,7 @@ package com.company.hrm.module.attendance.entity;
 
 import com.company.hrm.common.constant.AttendanceLogEventType;
 import com.company.hrm.common.constant.AttendanceLogSourceType;
+import com.company.hrm.common.constant.AttendanceNetworkValidationStatus;
 import com.company.hrm.common.entity.SoftDeleteAuditableEntity;
 import com.company.hrm.module.employee.entity.HrEmployee;
 import jakarta.persistence.*;
@@ -59,6 +60,23 @@ public class AttAttendanceLog extends SoftDeleteAuditableEntity {
 
     @Column(name = "note", length = 500)
     private String note;
+
+    @Column(name = "client_ip", length = 64)
+    private String clientIp;
+
+    @Column(name = "forwarded_for_raw", length = 500)
+    private String forwardedForRaw;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "network_policy_id")
+    private AttNetworkPolicy networkPolicy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "network_validation_status", length = 20)
+    private AttendanceNetworkValidationStatus networkValidationStatus;
+
+    @Column(name = "network_validation_message", length = 500)
+    private String networkValidationMessage;
 
     @Column(name = "raw_payload_json", columnDefinition = "NVARCHAR(MAX)")
     private String rawPayloadJson;
