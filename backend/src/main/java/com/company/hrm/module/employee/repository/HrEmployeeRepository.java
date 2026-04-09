@@ -19,5 +19,9 @@ public interface HrEmployeeRepository extends JpaRepository<HrEmployee, Long>, J
 
     boolean existsByWorkEmailIgnoreCaseAndDeletedFalseAndEmployeeIdNot(String workEmail, Long employeeId);
 
+    Optional<HrEmployee> findByEmployeeCodeIgnoreCaseAndDeletedFalse(String employeeCode);
+
+    Optional<HrEmployee> findFirstByFullNameIgnoreCaseAndDeletedFalse(String fullName);
+
     List<HrEmployee> findAllByEmployeeIdInAndDeletedFalse(Collection<Long> employeeIds);
 }
