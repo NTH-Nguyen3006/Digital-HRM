@@ -1,0 +1,110 @@
+name: digital-hrm
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: digital-hrm-db
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_TCP_PORT: "1433"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - hrm-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: digital-hrm-db-init
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MSSQL_HOST: db
+      MSSQL_PORT: "1433"
+      MSSQL_DATABASE: ${MSSQL_DATABASE:-DigitalHRM}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    entrypoint: ["/bin/bash", "/scripts/init-db.sh"]
+    volumes:
+      - ./deploy/mssql/init-db.sh:/scripts/init-db.sh:ro
+      - ./deploy/mssql/create_database.sql:/scripts/create_database.sql:ro
+    networks:
+      - hrm-network
+
+  backend:
+    image: ${BACKEND_IMAGE}
+    container_name: digital-hrm-backend
+    restart: unless-stopped
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      SERVER_PORT: "8080"
+      DB_URL: jdbc:sqlserver://db:1433;databaseName=${MSSQL_DATABASE:-DigitalHRM};encrypt=true;trustServerCertificate=true
+      DB_USERNAME: sa
+      DB_PASSWORD: ${MSSQL_SA_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      APP_COOKIE_SECURE: "true"
+      APP_COOKIE_DOMAIN: ${APP_COOKIE_DOMAIN}
+      APP_MAIL_MOCK_ENABLED: ${APP_MAIL_MOCK_ENABLED:-true}
+      APP_MAIL_FROM_ADDRESS: ${APP_MAIL_FROM_ADDRESS}
+      APP_MAIL_RESET_URL_BASE: ${APP_MAIL_RESET_URL_BASE}
+      APP_BOOTSTRAP_SEED_DEFAULT_ADMIN: ${APP_BOOTSTRAP_SEED_DEFAULT_ADMIN:-true}
+      APP_BOOTSTRAP_ADMIN_USERNAME: ${APP_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD}
+      APP_BOOTSTRAP_ADMIN_PHONE_NUMBER: ${APP_BOOTSTRAP_ADMIN_PHONE_NUMBER:-0900000000}
+      APP_STORAGE_BASE_DIR: /app/storage
+      APP_STORAGE_AUTO_CREATE_BASE_DIR: "true"
+      APP_STORAGE_MAX_FILE_SIZE_MB: ${APP_STORAGE_MAX_FILE_SIZE_MB:-20}
+      APP_REPORTING_SCHEDULER_ENABLED: ${APP_REPORTING_SCHEDULER_ENABLED:-true}
+      APP_REPORTING_SCHEDULER_FIXED_DELAY_MS: ${APP_REPORTING_SCHEDULER_FIXED_DELAY_MS:-300000}
+    volumes:
+      - app_storage:/app/storage
+    expose:
+      - "8080"
+    networks:
+      - hrm-network
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    container_name: digital-hrm-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_BIND_PORT:-8088}:80"
+    volumes:
+      - app_storage:/var/www/uploads:ro
+    networks:
+      - hrm-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  sqlserver_data:
+  app_storage:
+
+networks:
+  hrm-network:
+    driver: bridge

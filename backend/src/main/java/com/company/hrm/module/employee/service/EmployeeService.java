@@ -122,8 +122,15 @@ public class EmployeeService {
                     .and((root, query, builder) -> builder.equal(root.get("employmentStatus"), employmentStatus));
         }
         if (orgUnitId != null) {
-            specification = specification
-                    .and((root, query, builder) -> builder.equal(root.get("orgUnit").get("orgUnitId"), orgUnitId));
+            HrOrgUnit orgUnit = getOrgUnit(orgUnitId);
+            if (orgUnit.getPathCode() != null && !orgUnit.getPathCode().isBlank()) {
+                String pathPrefix = orgUnit.getPathCode() + "%";
+                specification = specification.and((root, query, builder) ->
+                        builder.like(root.join("orgUnit").get("pathCode"), pathPrefix));
+            } else {
+                specification = specification
+                        .and((root, query, builder) -> builder.equal(root.get("orgUnit").get("orgUnitId"), orgUnitId));
+            }
         }
         if (jobTitleId != null) {
             specification = specification

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CalendarRange, FileSignature, Plus, Search, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import { CalendarRange, ChevronLeft, ChevronRight, FileSignature, Plus, Search, ShieldCheck, TimerReset } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -22,6 +22,8 @@ const searchKeyword = ref('')
 const contracts = ref([])
 const expiringContracts = ref([])
 const pagination = ref({ totalElements: 0, totalPages: 0 })
+const currentPage = ref(0)
+const pageSize = ref(9)
 
 const { debouncedValue: debouncedKeyword } = useDebounce(searchKeyword, 400)
 
@@ -61,7 +63,15 @@ const statCards = computed(() => {
   ]
 })
 
-const highlightedExpiring = computed(() => expiringContracts.value.slice(0, 3))
+const visiblePages = computed(() => {
+  const total = pagination.value.totalPages
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index)
+
+  const current = currentPage.value
+  if (current <= 3) return [0, 1, 2, 3, 4, '...', total - 1]
+  if (current >= total - 4) return [0, '...', total - 5, total - 4, total - 3, total - 2, total - 1]
+  return [0, '...', current - 1, current, current + 1, '...', total - 1]
+})
 
 async function fetchContracts() {
   loading.value = true
@@ -69,8 +79,8 @@ async function fetchContracts() {
     const [listResponse, expiringResponse] = await Promise.all([
       getContracts({
         keyword: debouncedKeyword.value?.trim() || undefined,
-        page: 0,
-        size: 24,
+        page: currentPage.value,
+        size: pageSize.value,
       }),
       getExpiringContracts(45),
     ])
@@ -93,12 +103,23 @@ async function fetchContracts() {
   }
 }
 
+function changePage(page) {
+  if (page < 0 || page >= pagination.value.totalPages || page === currentPage.value) return
+  currentPage.value = page
+  fetchContracts()
+}
+
 function openDetail(contractId) {
   router.push(`/contracts/${contractId}`)
 }
 
 onMounted(fetchContracts)
-watch(debouncedKeyword, fetchContracts)
+watch(debouncedKeyword, () => {
+  if (currentPage.value !== 0) {
+    currentPage.value = 0
+  }
+  fetchContracts()
+})
 </script>
 
 <template>
@@ -136,34 +157,6 @@ watch(debouncedKeyword, fetchContracts)
         :icon="item.icon"
         :tone="item.tone"
       />
-    </div>
-
-    <div v-if="highlightedExpiring.length" class="grid gap-5 xl:grid-cols-[1.3fr_2fr]">
-      <SurfacePanel class="bg-[linear-gradient(135deg,#0f172a_0%,#1e1b4b_52%,#312e81_100%)] text-white">
-        <p class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-200">Renewal Radar</p>
-        <h3 class="mt-3 text-3xl font-black">Gia hạn trước khi gián đoạn vận hành</h3>
-        <p class="mt-3 max-w-md text-sm font-medium text-slate-300">
-          Danh sách bên phải đang ưu tiên các hồ sơ sắp hết hạn để HR và quản lý có thể chốt sớm.
-        </p>
-      </SurfacePanel>
-
-      <div class="grid gap-4 md:grid-cols-3">
-        <button
-          v-for="item in highlightedExpiring"
-          :key="item.laborContractId"
-          type="button"
-          class="rounded-[28px] border border-rose-100 bg-rose-50/70 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg"
-          @click="openDetail(item.laborContractId)"
-        >
-          <p class="text-[11px] font-black uppercase tracking-[0.18em] text-rose-500">{{ item.contractNumber }}</p>
-          <h4 class="mt-3 text-lg font-black text-slate-900">{{ item.employeeFullName }}</h4>
-          <p class="mt-1 text-sm font-medium text-slate-500">{{ item.contractTypeName || 'Chưa có loại hợp đồng' }}</p>
-          <div class="mt-4 flex items-center justify-between">
-            <StatusBadge :status="item.contractStatus" :label="humanizeStatus(item.contractStatus)" />
-            <span class="text-xs font-bold text-rose-600">Hết hạn {{ formatDate(item.endDate) }}</span>
-          </div>
-        </button>
-      </div>
     </div>
 
     <SurfacePanel>
@@ -231,6 +224,31 @@ watch(debouncedKeyword, fetchContracts)
         actionText="Tạo hợp đồng"
         @action="router.push('/contracts/add')"
       />
+
+      <div v-if="pagination.totalPages > 1" class="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <BaseButton variant="outline" size="md" :disabled="currentPage === 0" class="w-12! rounded-2xl! p-0!"
+          @click="changePage(currentPage - 1)">
+          <ChevronLeft class="h-5 w-5" />
+        </BaseButton>
+
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <template v-for="page in visiblePages" :key="`contract-page-${page}`">
+            <button v-if="page !== '...'" type="button" class="h-10 w-10 rounded-2xl text-sm font-bold transition-all"
+              :class="currentPage === page
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                : 'border border-slate-100 bg-white text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'"
+              @click="changePage(page)">
+              {{ page + 1 }}
+            </button>
+            <span v-else class="px-1 font-bold text-slate-400">...</span>
+          </template>
+        </div>
+
+        <BaseButton variant="outline" size="md" :disabled="currentPage === pagination.totalPages - 1"
+          class="w-12! rounded-2xl! p-0!" @click="changePage(currentPage + 1)">
+          <ChevronRight class="h-5 w-5" />
+        </BaseButton>
+      </div>
     </SurfacePanel>
   </div>
 </template>

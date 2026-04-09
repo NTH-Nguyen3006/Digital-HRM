@@ -25,6 +25,20 @@ const forgotLoading = ref(false)
 const supportEmail = 'support@company.com'
 const supportHotline = '1900 123 456'
 
+function resolveHomeRoute(user) {
+  const roleCode = user?.roleCode?.toUpperCase?.() || ''
+
+  if (roleCode === 'EMPLOYEE') {
+    return '/'
+  }
+
+  if (user?.homeRoute) {
+    return user.homeRoute
+  }
+
+  return '/dashboard'
+}
+
 const handleLogin = async () => {
   if (!loginId.value || !password.value) return
 
@@ -33,14 +47,7 @@ const handleLogin = async () => {
 
   try {
     const user = await authStore.login(loginId.value, password.value)
-
-    if (user.homeRoute) {
-      router.push(user.homeRoute)
-    } else if (user.roleCode === 'EMPLOYEE') {
-      router.push('/')
-    } else {
-      router.push('/dashboard')
-    }
+    router.push(resolveHomeRoute(user))
   } catch (error) {
     console.error('Login Error:', error)
     errorMessage.value = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'

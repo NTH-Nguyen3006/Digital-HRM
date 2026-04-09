@@ -312,25 +312,27 @@ onMounted(async () => {
               viên</span>
           </span>
           <span v-if="activeOrgUnitLabel"
-            class="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-indigo-700">
-            Bộ lọc từ cơ cấu tổ chức
-            <span class="normal-case tracking-normal">{{ activeOrgUnitLabel }}</span>
+            class="inline-flex flex-wrap items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700">
+            <span class="font-black uppercase tracking-[0.16em] text-indigo-500">Bộ lọc từ cơ cấu tổ chức</span>
+            <span class="rounded-full bg-white px-2.5 py-0.5 text-sm font-bold normal-case tracking-normal text-indigo-700 shadow-sm shadow-indigo-100/70">
+              {{ activeOrgUnitLabel }}
+            </span>
           </span>
         </div>
       </div>
 
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div class="relative group">
+      <div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-end">
+        <div class="relative group min-w-0 flex-1 md:min-w-[16rem] md:max-w-72">
           <Search
             class="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
           <input v-model="searchKeyword" type="text" placeholder="Họ tên, mã NV hoặc email..."
-            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 lg:w-72">
+            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">
         </div>
 
-        <div class="relative">
-          <Filter class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <div class="relative min-w-0 flex-1 md:min-w-[16rem] md:max-w-72">
+          <Filter class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
           <select v-model="selectedOrgUnitId"
-            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-10 text-sm font-medium shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 lg:w-72">
+            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-10 text-sm font-medium shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">
             <option value="">Tất cả phòng ban</option>
             <option v-for="item in orgUnitOptions" :key="item.orgUnitId" :value="String(item.orgUnitId)">
               {{ item.orgUnitName }}
@@ -338,7 +340,7 @@ onMounted(async () => {
           </select>
         </div>
 
-        <div class="relative">
+        <div class="relative shrink-0 self-start md:self-auto">
           <button type="button"
             class="flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-slate-600 shadow-sm transition-all hover:border-indigo-200 hover:text-indigo-600"
             @click="pageActionMenuOpen = !pageActionMenuOpen">
@@ -362,7 +364,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <BaseButton v-if="canManage" variant="primary" size="lg" shadow class="h-12.5! rounded-2xl! px-6! font-bold">
+        <BaseButton v-if="canManage" variant="primary" size="lg" shadow
+          class="h-12.5! w-full shrink-0 whitespace-nowrap rounded-2xl! px-6! font-bold sm:w-auto">
           <Plus class="mr-2 h-5 w-5" />
           Thêm mới
         </BaseButton>
