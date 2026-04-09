@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AttAttendanceLogRepository extends JpaRepository<AttAttendanceLog, Long> {
 
+    boolean existsByEmployeeEmployeeIdAndAttendanceDateAndEventTypeAndDeletedFalse(Long employeeId, java.time.LocalDate attendanceDate, com.company.hrm.common.constant.AttendanceLogEventType eventType);
+
     List<AttAttendanceLog> findAllByEmployeeEmployeeIdAndAttendanceDateAndDeletedFalseOrderByEventTimeAscAttendanceLogIdAsc(Long employeeId, LocalDate attendanceDate);
 
     List<AttAttendanceLog> findAllByEmployeeEmployeeIdAndAttendanceDateBetweenAndDeletedFalseOrderByEventTimeDescAttendanceLogIdDesc(

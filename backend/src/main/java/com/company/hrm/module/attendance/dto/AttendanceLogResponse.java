@@ -18,6 +18,11 @@ public record AttendanceLogResponse(
         String deviceRef,
         String note,
         Long shiftAssignmentId,
-        Long adjustmentRequestId
+        Long adjustmentRequestId,
+        String clientIp,
+        Long networkPolicyId,
+        String networkPolicyCode,
+        String networkValidationStatus,
+        String networkValidationMessage
 ) {
 }

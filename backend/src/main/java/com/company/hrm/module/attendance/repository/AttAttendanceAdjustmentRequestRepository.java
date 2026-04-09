@@ -22,10 +22,10 @@ public interface AttAttendanceAdjustmentRequestRepository extends JpaRepository<
             select r from AttAttendanceAdjustmentRequest r
             where r.deleted = false
               and r.requestStatus = :requestStatus
-              and r.employee.orgUnit.pathCode like concat(:orgPathPrefix, '%')
+              and r.employee.managerEmployee.employeeId = :managerEmployeeId
             order by r.attendanceDate asc, r.adjustmentRequestId asc
             """)
-    List<AttAttendanceAdjustmentRequest> findPendingByManagerScope(AttendanceAdjustmentStatus requestStatus, String orgPathPrefix);
+    List<AttAttendanceAdjustmentRequest> findPendingByDirectManager(AttendanceAdjustmentStatus requestStatus, Long managerEmployeeId);
 
     @Query("""
             select count(r) from AttAttendanceAdjustmentRequest r

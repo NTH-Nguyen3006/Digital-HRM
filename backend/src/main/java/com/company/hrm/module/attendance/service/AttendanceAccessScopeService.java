@@ -51,18 +51,16 @@ public class AttendanceAccessScopeService {
             throw new ForbiddenException("MANAGER_SCOPE_REQUIRED", "Tài khoản hiện tại không thuộc vai trò quản lý.");
         }
         HrEmployee currentEmployee = getCurrentEmployeeRequired();
-        String currentPath = currentEmployee.getOrgUnit() == null ? null : currentEmployee.getOrgUnit().getPathCode();
-        String targetPath = targetEmployee.getOrgUnit() == null ? null : targetEmployee.getOrgUnit().getPathCode();
-        if (currentPath != null && targetPath != null && targetPath.startsWith(currentPath)) {
+        Long directManagerEmployeeId = targetEmployee.getManagerEmployee() == null ? null : targetEmployee.getManagerEmployee().getEmployeeId();
+        if (directManagerEmployeeId != null && directManagerEmployeeId.equals(currentEmployee.getEmployeeId())) {
             return;
         }
-        throw new ForbiddenException("ATTENDANCE_MANAGER_SCOPE_DENIED", "Bạn không có quyền xử lý dữ liệu chấm công của nhân sự này.");
+        throw new ForbiddenException("ATTENDANCE_MANAGER_SCOPE_DENIED", "Bạn không phải quản lý trực tiếp của nhân sự này.");
     }
 
-    public Optional<String> getManagerOrgPathPrefix() {
+    public Optional<Long> getCurrentManagerEmployeeId() {
         return SecurityUserContext.currentPrincipal()
                 .filter(principal -> principal.getRoleCode() == RoleCode.MANAGER)
-                .map(principal -> getCurrentEmployeeRequired())
-                .map(employee -> employee.getOrgUnit() == null ? null : employee.getOrgUnit().getPathCode());
+                .map(principal -> getCurrentEmployeeRequired().getEmployeeId());
     }
 }
