@@ -38,6 +38,9 @@ public class LeaLeaveRequest extends SoftDeleteAuditableEntity {
     @JoinColumn(name = "leave_type_rule_id", nullable = false)
     private LeaLeaveTypeRule leaveTypeRule;
 
+    @Column(name = "leave_year", nullable = false)
+    private Integer leaveYear;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_role_code", nullable = false, length = 20)
     private RoleCode approvalRoleCode;

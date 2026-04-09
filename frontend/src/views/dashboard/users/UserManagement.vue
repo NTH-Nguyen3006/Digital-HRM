@@ -345,10 +345,8 @@ watch(currentPage, fetchUsers)
         <h2 class="text-3xl font-black tracking-tight text-slate-900">Tài khoản hệ thống</h2>
         <p class="mt-1 font-medium text-slate-500">Quản lý user, role chính và trạng thái truy cập nền tảng</p>
       </div>
-      <button
-        @click="showCreateModal = true"
-        class="flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 font-bold text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700"
-      >
+      <button @click="showCreateModal = true"
+        class="flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 font-bold text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700">
         <Plus class="mr-2 h-5 w-5" /> Tạo tài khoản
       </button>
     </div>
@@ -375,39 +373,28 @@ watch(currentPage, fetchUsers)
     <div class="flex flex-col gap-3 lg:flex-row">
       <div class="relative flex-1">
         <Search class="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Tìm theo username, email, số điện thoại..."
-          class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-        />
+        <input v-model="searchQuery" type="text" placeholder="Tìm theo username, email, số điện thoại..."
+          class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
       </div>
-      <select
-        v-model="filterRole"
-        class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-      >
+      <select v-model="filterRole"
+        class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
         <option value="ALL">Tất cả role</option>
         <option v-for="role in roleOptions" :key="role.roleId" :value="role.roleCode">
           {{ role.roleName }}
         </option>
       </select>
       <div class="flex gap-2">
-        <button
-          v-for="status in ['ALL', 'ACTIVE', 'LOCKED', 'INACTIVE']"
-          :key="status"
-          @click="filterStatus = status"
-          class="rounded-xl px-4 py-2.5 text-sm font-bold transition-all"
-          :class="filterStatus === status
+        <button v-for="status in ['ALL', 'ACTIVE', 'LOCKED', 'INACTIVE']" :key="status" @click="filterStatus = status"
+          class="rounded-xl px-4 py-2.5 text-sm font-bold transition-all" :class="filterStatus === status
             ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
-        >
+            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'">
           {{ status === 'ALL' ? 'Tất cả' : status === 'ACTIVE' ? 'Hoạt động' : status === 'LOCKED' ? 'Bị khóa' : 'Vô hiệu' }}
         </button>
       </div>
     </div>
 
     <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-      <div v-if="loading" class="flex min-h-[280px] items-center justify-center">
+      <div v-if="loading" class="flex min-h-70 items-center justify-center">
         <Loader2 class="h-8 w-8 animate-spin text-indigo-600" />
       </div>
 
@@ -424,18 +411,13 @@ watch(currentPage, fetchUsers)
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr
-                v-for="user in users"
-                :key="user.userId"
-                class="cursor-pointer transition-colors hover:bg-slate-50/60"
-                @click="openUserDetail(user.userId)"
-              >
+              <tr v-for="user in users" :key="user.userId" class="cursor-pointer transition-colors hover:bg-slate-50/60"
+                @click="openUserDetail(user.userId)">
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-3">
                     <div
                       class="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
-                      :class="user.status === 'ACTIVE' ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600' : 'bg-slate-300'"
-                    >
+                      :class="user.status === 'ACTIVE' ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600' : 'bg-slate-300'">
                       {{ user.username?.[0]?.toUpperCase() || '?' }}
                     </div>
                     <div>
@@ -448,23 +430,17 @@ watch(currentPage, fetchUsers)
                   </div>
                 </td>
                 <td class="px-6 py-4">
-                  <span
-                    class="rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset"
-                    :class="roleColor(user.roleCode)"
-                  >
+                  <span class="rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset"
+                    :class="roleColor(user.roleCode)">
                     {{ user.roleName || user.roleCode || 'Chưa gán role' }}
                   </span>
                 </td>
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-2">
-                    <div
-                      class="h-2 w-2 rounded-full"
-                      :class="user.status === 'ACTIVE' ? 'bg-emerald-500' : user.status === 'LOCKED' ? 'bg-rose-500' : 'bg-slate-400'"
-                    />
-                    <span
-                      class="text-sm font-semibold"
-                      :class="user.status === 'ACTIVE' ? 'text-emerald-700' : user.status === 'LOCKED' ? 'text-rose-600' : 'text-slate-500'"
-                    >
+                    <div class="h-2 w-2 rounded-full"
+                      :class="user.status === 'ACTIVE' ? 'bg-emerald-500' : user.status === 'LOCKED' ? 'bg-rose-500' : 'bg-slate-400'" />
+                    <span class="text-sm font-semibold"
+                      :class="user.status === 'ACTIVE' ? 'text-emerald-700' : user.status === 'LOCKED' ? 'text-rose-600' : 'text-slate-500'">
                       {{ getStatusLabel(user.status) }}
                     </span>
                   </div>
@@ -472,16 +448,12 @@ watch(currentPage, fetchUsers)
                 <td class="px-6 py-4 text-sm font-medium text-slate-500">{{ formatDateTime(user.lastLoginAt) }}</td>
                 <td class="px-6 py-4">
                   <div class="flex flex-wrap gap-2">
-                    <span
-                      v-if="user.status === 'LOCKED'"
-                      class="flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
-                    >
+                    <span v-if="user.status === 'LOCKED'"
+                      class="flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200">
                       <Lock class="h-3 w-3" /> Khóa
                     </span>
-                    <span
-                      v-if="user.mustChangePassword"
-                      class="flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-600 ring-1 ring-amber-200"
-                    >
+                    <span v-if="user.mustChangePassword"
+                      class="flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-600 ring-1 ring-amber-200">
                       <Key class="h-3 w-3" /> Đổi MK
                     </span>
                   </div>
@@ -492,31 +464,22 @@ watch(currentPage, fetchUsers)
         </div>
 
         <div class="flex items-center justify-between border-t border-slate-100 px-6 py-4">
-          <span class="text-sm font-medium text-slate-500">Hiển thị {{ users.length }} / {{ totalElements }} tài khoản</span>
+          <span class="text-sm font-medium text-slate-500">Hiển thị {{ users.length }} / {{ totalElements }} tài
+            khoản</span>
           <div class="flex items-center gap-2">
-            <button
-              :disabled="isFirstPage"
-              @click="setPage(currentPage - 1)"
-              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
-            >
+            <button :disabled="isFirstPage" @click="setPage(currentPage - 1)"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40">
               ← Trước
             </button>
             <template v-for="page in visiblePages" :key="page">
               <span v-if="page === '...'" class="px-1 text-slate-300">...</span>
-              <button
-                v-else
-                @click="setPage(page)"
-                class="rounded-lg px-3 py-1.5 text-sm font-bold"
-                :class="currentPage === page ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
-              >
+              <button v-else @click="setPage(page)" class="rounded-lg px-3 py-1.5 text-sm font-bold"
+                :class="currentPage === page ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'">
                 {{ page + 1 }}
               </button>
             </template>
-            <button
-              :disabled="isLastPage || totalPages === 0"
-              @click="setPage(currentPage + 1)"
-              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
-            >
+            <button :disabled="isLastPage || totalPages === 0" @click="setPage(currentPage + 1)"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40">
               Sau →
             </button>
           </div>
@@ -535,47 +498,32 @@ watch(currentPage, fetchUsers)
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="mb-1.5 block text-sm font-bold text-slate-700">ID nhân sự liên kết</label>
-              <input
-                v-model="newUser.employeeId"
-                placeholder="VD: 1001"
-                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
+              <input v-model="newUser.employeeId" placeholder="VD: 1001"
+                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-bold text-slate-700">Username *</label>
-              <input
-                v-model="newUser.username"
-                placeholder="admin.user"
-                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
+              <input v-model="newUser.username" placeholder="admin.user"
+                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
           </div>
 
           <div>
             <label class="mb-1.5 block text-sm font-bold text-slate-700">Email</label>
-            <input
-              v-model="newUser.email"
-              type="email"
-              placeholder="user@company.local"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
+            <input v-model="newUser.email" type="email" placeholder="user@company.local"
+              class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="mb-1.5 block text-sm font-bold text-slate-700">Số điện thoại</label>
-              <input
-                v-model="newUser.phoneNumber"
-                placeholder="0901234567"
-                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
+              <input v-model="newUser.phoneNumber" placeholder="0901234567"
+                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-bold text-slate-700">Trạng thái</label>
-              <select
-                v-model="newUser.status"
-                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
+              <select v-model="newUser.status"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
                 <option value="ACTIVE">Hoạt động</option>
                 <option value="INACTIVE">Vô hiệu</option>
               </select>
@@ -584,10 +532,8 @@ watch(currentPage, fetchUsers)
 
           <div>
             <label class="mb-1.5 block text-sm font-bold text-slate-700">Role chính *</label>
-            <select
-              v-model="newUser.roleCode"
-              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
+            <select v-model="newUser.roleCode"
+              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
               <option v-for="role in roleOptions" :key="role.roleId" :value="role.roleCode">
                 {{ role.roleName }}
               </option>
@@ -603,27 +549,18 @@ watch(currentPage, fetchUsers)
 
           <div v-if="!newUser.sendSetupEmail">
             <label class="mb-1.5 block text-sm font-bold text-slate-700">Mật khẩu ban đầu *</label>
-            <input
-              v-model="newUser.initialPassword"
-              type="password"
-              placeholder="Nhập mật khẩu tạm thời"
-              class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
+            <input v-model="newUser.initialPassword" type="password" placeholder="Nhập mật khẩu tạm thời"
+              class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
           </div>
         </div>
 
         <div class="mt-8 flex gap-3">
-          <button
-            @click="showCreateModal = false"
-            class="flex-1 rounded-xl border border-slate-200 py-3 font-bold text-slate-600 transition-colors hover:bg-slate-50"
-          >
+          <button @click="showCreateModal = false"
+            class="flex-1 rounded-xl border border-slate-200 py-3 font-bold text-slate-600 transition-colors hover:bg-slate-50">
             Hủy
           </button>
-          <button
-            :disabled="createLoading"
-            @click="handleCreateUser"
-            class="flex flex-1 items-center justify-center rounded-xl bg-indigo-600 py-3 font-bold text-white shadow-lg shadow-indigo-200 transition-colors hover:bg-indigo-700 disabled:opacity-60"
-          >
+          <button :disabled="createLoading" @click="handleCreateUser"
+            class="flex flex-1 items-center justify-center rounded-xl bg-indigo-600 py-3 font-bold text-white shadow-lg shadow-indigo-200 transition-colors hover:bg-indigo-700 disabled:opacity-60">
             <Loader2 v-if="createLoading" class="mr-2 h-4 w-4 animate-spin" />
             Tạo tài khoản
           </button>
@@ -636,7 +573,7 @@ watch(currentPage, fetchUsers)
     <div v-if="showDetail" class="fixed inset-0 z-50 flex">
       <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showDetail = false" />
       <div class="relative z-10 ml-auto h-full w-full max-w-xl overflow-y-auto bg-white p-8 shadow-2xl">
-        <div v-if="detailLoading" class="flex h-full min-h-[320px] items-center justify-center">
+        <div v-if="detailLoading" class="flex h-full min-h-80 items-center justify-center">
           <Loader2 class="h-8 w-8 animate-spin text-indigo-600" />
         </div>
 
@@ -650,11 +587,13 @@ watch(currentPage, fetchUsers)
           </div>
 
           <div class="mb-8 flex flex-col items-center">
-            <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 text-2xl font-black text-white shadow-lg">
+            <div
+              class="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 text-2xl font-black text-white shadow-lg">
               {{ selectedUser.username?.[0]?.toUpperCase() || '?' }}
             </div>
             <h4 class="text-2xl font-black text-slate-900">@{{ selectedUser.username }}</h4>
-            <span class="mt-3 rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset" :class="roleColor(selectedUser.roleCode)">
+            <span class="mt-3 rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset"
+              :class="roleColor(selectedUser.roleCode)">
               {{ selectedUser.roleName }}
             </span>
           </div>
@@ -670,38 +609,42 @@ watch(currentPage, fetchUsers)
                   <div>
                     <label class="mb-1.5 block text-sm font-bold text-slate-700">Mã nhân viên</label>
                     <div
-                      class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700"
-                    >
+                      class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700">
                       {{ selectedUser.employeeCode || 'Chưa liên kết nhân sự' }}
                     </div>
                   </div>
                   <div>
                     <label class="mb-1.5 block text-sm font-bold text-slate-700">Username</label>
-                    <input v-model="editableUser.username" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <input v-model="editableUser.username"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
                   </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="mb-1.5 block text-sm font-bold text-slate-700">Email</label>
-                    <input v-model="editableUser.email" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <input v-model="editableUser.email"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
                   </div>
                   <div>
                     <label class="mb-1.5 block text-sm font-bold text-slate-700">Số điện thoại</label>
-                    <input v-model="editableUser.phoneNumber" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <input v-model="editableUser.phoneNumber"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
                   </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="mb-1.5 block text-sm font-bold text-slate-700">Trạng thái</label>
-                    <select v-model="editableUser.status" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    <select v-model="editableUser.status"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
                       <option value="ACTIVE">Hoạt động</option>
                       <option value="INACTIVE">Vô hiệu</option>
                     </select>
                   </div>
                   <label class="mt-7 flex items-center gap-3 text-sm font-bold text-slate-700">
-                    <input v-model="editableUser.mustChangePassword" type="checkbox" class="h-4 w-4 accent-indigo-600" />
+                    <input v-model="editableUser.mustChangePassword" type="checkbox"
+                      class="h-4 w-4 accent-indigo-600" />
                     Bắt đổi mật khẩu ở lần đăng nhập sau
                   </label>
                 </div>
@@ -713,19 +656,15 @@ watch(currentPage, fetchUsers)
                 <ShieldCheck class="h-4 w-4" /> Role chính
               </div>
               <div class="flex gap-3">
-                <select
-                  v-model="selectedRoleCode"
-                  class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
+                <select v-model="selectedRoleCode"
+                  class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
                   <option v-for="role in roleOptions" :key="role.roleId" :value="role.roleCode">
                     {{ role.roleName }}
                   </option>
                 </select>
-                <button
-                  :disabled="assigningRole || !selectedRoleCode || selectedRoleCode === selectedUser.roleCode"
+                <button :disabled="assigningRole || !selectedRoleCode || selectedRoleCode === selectedUser.roleCode"
                   @click="handleAssignRole"
-                  class="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
-                >
+                  class="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-violet-700 disabled:opacity-50">
                   <Loader2 v-if="assigningRole" class="h-4 w-4 animate-spin" />
                   <span v-else>Lưu role</span>
                 </button>
@@ -737,11 +676,15 @@ watch(currentPage, fetchUsers)
               <div class="space-y-3 text-sm">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                   <span class="text-slate-500">Email</span>
-                  <span class="flex items-center gap-2 font-semibold text-slate-900"><Mail class="h-4 w-4 text-slate-400" />{{ selectedUser.email || 'Chưa có' }}</span>
+                  <span class="flex items-center gap-2 font-semibold text-slate-900">
+                    <Mail class="h-4 w-4 text-slate-400" />{{ selectedUser.email || 'Chưa có' }}
+                  </span>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                   <span class="text-slate-500">Điện thoại</span>
-                  <span class="flex items-center gap-2 font-semibold text-slate-900"><Phone class="h-4 w-4 text-slate-400" />{{ selectedUser.phoneNumber || 'Chưa có' }}</span>
+                  <span class="flex items-center gap-2 font-semibold text-slate-900">
+                    <Phone class="h-4 w-4 text-slate-400" />{{ selectedUser.phoneNumber || 'Chưa có' }}
+                  </span>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                   <span class="text-slate-500">Đăng nhập cuối</span>
@@ -764,19 +707,13 @@ watch(currentPage, fetchUsers)
           </div>
 
           <div class="mt-8 grid grid-cols-2 gap-3">
-            <button
-              :disabled="actionLoading"
-              @click="handleToggleLock"
-              class="flex items-center justify-center gap-2 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-600 transition-colors hover:bg-amber-100 disabled:opacity-60"
-            >
+            <button :disabled="actionLoading" @click="handleToggleLock"
+              class="flex items-center justify-center gap-2 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-600 transition-colors hover:bg-amber-100 disabled:opacity-60">
               <Lock class="h-4 w-4" />
               {{ selectedUser.status === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản' }}
             </button>
-            <button
-              :disabled="savingUser"
-              @click="handleSaveUser"
-              class="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 p-3 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
-            >
+            <button :disabled="savingUser" @click="handleSaveUser"
+              class="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 p-3 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60">
               <RefreshCw v-if="savingUser" class="h-4 w-4 animate-spin" />
               <Edit v-else class="h-4 w-4" />
               Lưu thay đổi

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Banknote, CheckCircle2, Clock3, Download, Landmark, PlayCircle, Search, Send, Wallet } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -34,6 +34,7 @@ const periods = ref([])
 const items = ref([])
 const selectedPeriodId = ref(null)
 const selectedItem = ref(null)
+const detailPanelScrollRef = ref(null)
 
 const selectedPeriod = computed(() =>
   periods.value.find((item) => item.payrollPeriodId === selectedPeriodId.value) || null,
@@ -141,6 +142,27 @@ const selectedItemSummary = computed(() => {
   ]
 })
 
+function formatCompactCurrency(value) {
+  const amount = Number(value || 0)
+  const absoluteAmount = Math.abs(amount)
+
+  if (absoluteAmount >= 1_000_000_000) {
+    return `${new Intl.NumberFormat('vi-VN', {
+      minimumFractionDigits: absoluteAmount >= 10_000_000_000 ? 0 : 1,
+      maximumFractionDigits: 1,
+    }).format(amount / 1_000_000_000)} tỷ`
+  }
+
+  if (absoluteAmount >= 1_000_000) {
+    return `${new Intl.NumberFormat('vi-VN', {
+      minimumFractionDigits: absoluteAmount >= 10_000_000 ? 0 : 1,
+      maximumFractionDigits: 1,
+    }).format(amount / 1_000_000)} triệu`
+  }
+
+  return formatCurrency(amount)
+}
+
 function getPeriodProgress(period) {
   if (!period?.totalEmployeeCount) return 0
   return Math.min(100, Math.round(((period.managerConfirmedCount || 0) / period.totalEmployeeCount) * 100))
@@ -198,10 +220,18 @@ async function fetchAll() {
 async function openItem(payrollItemId) {
   if (!payrollItemId) return
 
+  if (detailPanelScrollRef.value) {
+    detailPanelScrollRef.value.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   detailLoading.value = true
   try {
     const response = await getPayrollItemDetail(payrollItemId)
     selectedItem.value = unwrapData(response)
+    await nextTick()
+    if (detailPanelScrollRef.value) {
+      detailPanelScrollRef.value.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   } catch (error) {
     console.error('Failed to fetch payroll item detail:', error)
     toast.error('Không thể tải chi tiết phiếu lương')
@@ -354,57 +384,34 @@ watch(searchQuery, fetchItems)
 
 <template>
   <div class="space-y-8">
-    <PageHeader
-      title="Bảng tính lương"
+    <PageHeader title="Bảng tính lương"
       subtitle="Kỳ lương, từng phiếu lương và trạng thái vận hành được gom về một workspace HR duy nhất."
-      :icon="Banknote"
-    >
+      :icon="Banknote">
       <template #actions>
-        <BaseButton
-          variant="outline"
-          :disabled="!payrollActionState.canExport"
+        <BaseButton variant="outline" :disabled="!payrollActionState.canExport"
           :title="payrollActionState.canExport ? 'Xuất file chuyển khoản ngân hàng' : 'Chỉ có thể xuất sau khi kỳ lương đã được duyệt'"
-          @click="handleExportBank"
-        >
+          @click="handleExportBank">
           <Download class="mr-2 h-4 w-4" />
           UNC ngân hàng
         </BaseButton>
-        <BaseButton
-          variant="outline"
-          :disabled="!payrollActionState.canExport"
+        <BaseButton variant="outline" :disabled="!payrollActionState.canExport"
           :title="payrollActionState.canExport ? 'Xuất báo cáo PIT' : 'Chỉ có thể xuất sau khi kỳ lương đã được duyệt'"
-          @click="handleExportPit"
-        >
+          @click="handleExportPit">
           <Download class="mr-2 h-4 w-4" />
           Báo cáo PIT
         </BaseButton>
-        <BaseButton
-          variant="outline"
-          :disabled="!payrollActionState.canGenerate"
-          :title="getActionTitle('generate')"
-          :loading="actionLoading === 'generate'"
-          @click="handleGenerateDraft"
-        >
+        <BaseButton variant="outline" :disabled="!payrollActionState.canGenerate" :title="getActionTitle('generate')"
+          :loading="actionLoading === 'generate'" @click="handleGenerateDraft">
           <PlayCircle class="mr-2 h-4 w-4" />
           Chạy nháp
         </BaseButton>
-        <BaseButton
-          variant="outline"
-          :disabled="!payrollActionState.canApprove"
-          :title="getActionTitle('approve')"
-          :loading="actionLoading === 'approve'"
-          @click="handleApprovePeriod"
-        >
+        <BaseButton variant="outline" :disabled="!payrollActionState.canApprove" :title="getActionTitle('approve')"
+          :loading="actionLoading === 'approve'" @click="handleApprovePeriod">
           <CheckCircle2 class="mr-2 h-4 w-4" />
           Duyệt kỳ
         </BaseButton>
-        <BaseButton
-          variant="primary"
-          :disabled="!payrollActionState.canPublish"
-          :title="getActionTitle('publish')"
-          :loading="actionLoading === 'publish'"
-          @click="handlePublishPeriod"
-        >
+        <BaseButton variant="primary" :disabled="!payrollActionState.canPublish" :title="getActionTitle('publish')"
+          :loading="actionLoading === 'publish'" @click="handlePublishPeriod">
           <Send class="mr-2 h-4 w-4" />
           Phát hành
         </BaseButton>
@@ -412,32 +419,24 @@ watch(searchQuery, fetchItems)
     </PageHeader>
 
     <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-      <InsightCard
-        v-for="item in stats"
-        :key="item.title"
-        :title="item.title"
-        :value="item.value"
-        :subtitle="item.subtitle"
-        :icon="item.icon"
-        :tone="item.tone"
-      />
+      <InsightCard v-for="item in stats" :key="item.title" :title="item.title" :value="item.value"
+        :subtitle="item.subtitle" :icon="item.icon" :tone="item.tone" />
     </div>
 
     <SurfacePanel>
       <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div class="flex flex-wrap gap-2">
-          <button
-            v-for="period in periods"
-            :key="period.payrollPeriodId"
-            type="button"
-            class="min-w-[190px] rounded-[24px] border px-4 py-4 text-left transition-all"
+          <button v-for="period in periods" :key="period.payrollPeriodId" type="button"
+            class="min-w-47.5 rounded-[24px] border px-4 py-4 text-left transition-all"
             :class="selectedPeriodId === period.payrollPeriodId ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
-            @click="selectedPeriodId = period.payrollPeriodId"
-          >
+            @click="selectedPeriodId = period.payrollPeriodId">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <p class="text-sm font-black">{{ formatMonthYear(period.periodYear, period.periodMonth, period.periodCode) }}</p>
-                <p class="mt-1 text-xs font-bold tracking-[0.08em] text-slate-400">{{ getPeriodStatusLabel(period.periodStatus) }}</p>
+                <p class="text-sm font-black">{{ formatMonthYear(period.periodYear, period.periodMonth,
+                  period.periodCode)
+                  }}</p>
+                <p class="mt-1 text-xs font-bold tracking-[0.08em] text-slate-400">{{
+                  getPeriodStatusLabel(period.periodStatus) }}</p>
               </div>
               <Clock3 class="h-4 w-4 text-slate-400" />
             </div>
@@ -450,12 +449,8 @@ watch(searchQuery, fetchItems)
 
         <div class="relative">
           <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Tìm nhân sự trong kỳ..."
-            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 md:w-72"
-          >
+          <input v-model="searchQuery" type="text" placeholder="Tìm nhân sự trong kỳ..."
+            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 md:w-72">
         </div>
       </div>
 
@@ -467,146 +462,229 @@ watch(searchQuery, fetchItems)
               {{ formatMonthYear(selectedPeriod.periodYear, selectedPeriod.periodMonth, selectedPeriod.periodCode) }}
             </h3>
             <p class="mt-1 text-sm font-medium text-slate-500">
-              Công thức {{ selectedPeriod.formulaCode || 'chưa gán' }} · attendance {{ selectedPeriod.attendancePeriodCode || 'chưa liên kết' }}
+              Công thức {{ selectedPeriod.formulaCode || 'chưa gán' }} · attendance {{
+                selectedPeriod.attendancePeriodCode
+                || 'chưa liên kết' }}
             </p>
             <p class="mt-3 text-sm font-medium text-slate-600">
               {{ workflowHint }}
             </p>
           </div>
           <div class="flex flex-col items-start gap-2 lg:items-end">
-            <StatusBadge :status="selectedPeriod.periodStatus || 'DRAFT'" :label="getPeriodStatusLabel(selectedPeriod.periodStatus)" />
+            <StatusBadge :status="selectedPeriod.periodStatus || 'DRAFT'"
+              :label="getPeriodStatusLabel(selectedPeriod.periodStatus)" />
             <p class="text-xs font-medium text-slate-500">
-              Generated {{ formatDateTime(selectedPeriod.generatedAt) }} · Approved {{ formatDateTime(selectedPeriod.approvedAt) }} · Published {{ formatDateTime(selectedPeriod.publishedAt) }}
+              Generated {{ formatDateTime(selectedPeriod.generatedAt) }} · Approved {{
+                formatDateTime(selectedPeriod.approvedAt) }} · Published {{ formatDateTime(selectedPeriod.publishedAt) }}
             </p>
           </div>
         </div>
       </div>
 
-      <div v-if="loading" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,460px)]">
-        <div class="h-[480px] animate-pulse rounded-[28px] bg-slate-100" />
-        <div class="h-[480px] animate-pulse rounded-[28px] bg-slate-100" />
+      <div v-if="loading" class="mt-6 grid gap-6 xl:items-start xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,520px)]">
+        <div class="h-120 animate-pulse rounded-[28px] bg-slate-100" />
+        <div class="h-120 animate-pulse rounded-[28px] bg-slate-100" />
       </div>
 
-      <div v-else-if="filteredItems.length" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,460px)]">
-        <div class="space-y-4 xl:max-h-[calc(100vh-18rem)] xl:overflow-y-auto xl:pr-2">
-          <article
-            v-for="item in filteredItems"
-            :key="item.payrollItemId"
-            class="rounded-[28px] border p-5 transition-all cursor-pointer"
-            :class="selectedItem?.payrollItemId === item.payrollItemId ? 'border-indigo-200 bg-indigo-50/60 shadow-lg' : 'border-slate-200 bg-white hover:border-indigo-200 hover:shadow-lg'"
-            @click="openItem(item.payrollItemId)"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <AvatarBox :name="item.employeeName" size="lg" shape="rounded-[20px]" />
-                <div>
-                  <h4 class="text-lg font-black text-slate-900">{{ item.employeeName }}</h4>
-                  <p class="mt-1 text-sm font-medium text-slate-500">{{ item.employeeCode }} · {{ item.orgUnitName || '—' }}</p>
-                </div>
-              </div>
-              <StatusBadge :status="item.itemStatus || 'DRAFT'" :label="getItemStatusLabel(item.itemStatus)" />
+      <div v-else-if="filteredItems.length"
+        class="mt-6 grid gap-6 xl:items-start xl:grid-cols-[minmax(0,1.02fr)_minmax(380px,520px)]">
+        <SurfacePanel class="min-h-0">
+          <div
+            class="flex flex-col gap-4 border-b border-slate-200/80 pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Danh sách phiếu lương</p>
+              <h3 class="mt-2 text-2xl font-black text-slate-900">{{ formatNumber(filteredItems.length) }} nhân sự trong
+                kỳ
+              </h3>
+              <p class="mt-2 text-sm font-medium text-slate-500">Chọn một nhân sự để xem breakdown chi tiết ở panel bên
+                phải.</p>
             </div>
-
-            <div class="mt-5 grid gap-4 rounded-[24px] bg-white/70 p-4 md:grid-cols-4">
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Gross</p>
-                <p class="mt-2 text-sm font-bold text-slate-800">{{ formatCurrency(item.grossIncome) }}</p>
-              </div>
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Net pay</p>
-                <p class="mt-2 text-sm font-bold text-emerald-700">{{ formatCurrency(item.netPay) }}</p>
-              </div>
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">PIT</p>
-                <p class="mt-2 text-sm font-bold text-slate-800">{{ formatCurrency(item.pitAmount) }}</p>
-              </div>
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ngày hiện diện</p>
-                <p class="mt-2 text-sm font-bold text-slate-800">{{ item.presentDayCount ?? 0 }}/{{ item.scheduledDayCount ?? 0 }}</p>
-              </div>
-            </div>
-
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-              <span>{{ item.approvedOtMinutes || 0 }} phút OT · {{ item.absentDayCount || 0 }} ngày vắng</span>
-              <span>{{ item.managerConfirmedAt ? 'Manager đã xác nhận' : 'Chưa manager xác nhận' }}</span>
-            </div>
-          </article>
-        </div>
-
-        <SurfacePanel class="h-fit xl:sticky xl:top-24">
-          <div v-if="detailLoading" class="h-80 animate-pulse rounded-[28px] bg-slate-100" />
-
-          <div v-else-if="selectedItem" class="space-y-5">
-            <div class="flex items-start gap-4">
-              <AvatarBox :name="selectedItem.employeeName" size="xl" shape="rounded-[24px]" />
-              <div>
-                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Phiếu lương</p>
-                <h3 class="mt-2 text-2xl font-black text-slate-900">{{ selectedItem.employeeName }}</h3>
-                <p class="mt-1 text-sm font-medium text-slate-500">{{ selectedItem.employeeCode }} · {{ selectedItem.orgUnitName || '—' }}</p>
-              </div>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-2">
-              <div
-                v-for="row in selectedItemSummary"
-                :key="row.label"
-                class="rounded-2xl bg-slate-50 p-4"
-              >
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{{ row.label }}</p>
-                <p class="mt-2 text-sm font-bold text-slate-800">{{ row.value }}</p>
-              </div>
-            </div>
-
-            <div class="overflow-hidden rounded-[24px] border border-slate-200">
-              <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4">
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Breakdown thành phần</p>
-                <StatusBadge :status="selectedItem.itemStatus || 'DRAFT'" :label="getItemStatusLabel(selectedItem.itemStatus)" />
-              </div>
-
-              <div v-if="selectedItemLines.length" class="max-h-[420px] space-y-3 overflow-y-auto bg-slate-50/80 p-4">
-                <div
-                  v-for="line in selectedItemLines"
-                  :key="line.payrollItemLineId"
-                  class="rounded-2xl bg-white p-4 shadow-sm"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <div>
-                      <p class="text-sm font-black text-slate-900">{{ line.componentName }}</p>
-                      <p class="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                        {{ line.componentCode }} · {{ line.componentCategory }} · {{ line.lineSourceType }}
-                      </p>
-                    </div>
-                    <p class="text-sm font-black text-slate-900">{{ formatCurrency(line.lineAmount) }}</p>
-                  </div>
-                  <p v-if="line.lineNote" class="mt-2 text-sm font-medium text-slate-500">{{ line.lineNote }}</p>
-                </div>
-              </div>
-              <p v-else class="p-4 text-sm font-medium text-slate-500">Phiếu lương này chưa có line chi tiết.</p>
-            </div>
-
-            <div class="rounded-[24px] bg-slate-50 p-4 text-sm font-medium text-slate-600">
-              <p>Manager confirmed: {{ formatDateTime(selectedItem.managerConfirmedAt) }}</p>
-              <p class="mt-2">HR approved: {{ formatDateTime(selectedItem.hrApprovedAt) }}</p>
-              <p class="mt-2">Published: {{ formatDateTime(selectedItem.publishedAt) }}</p>
-              <p v-if="selectedItem.adjustmentNote" class="mt-2">Adjustment note: {{ selectedItem.adjustmentNote }}</p>
+            <div
+              class="inline-flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+              <Wallet class="h-4 w-4 text-slate-400" />
+              Scan nhanh theo net pay và trạng thái
             </div>
           </div>
 
-          <EmptyState
-            v-else
-            iconName="Wallet"
-            title="Chọn một phiếu lương"
-            description="Bấm vào card nhân sự ở bên trái để xem breakdown lương chi tiết."
-          />
+          <div class="mt-5 space-y-4">
+            <article v-for="item in filteredItems" :key="item.payrollItemId"
+              class="cursor-pointer overflow-hidden rounded-[28px] border transition-all"
+              :class="selectedItem?.payrollItemId === item.payrollItemId ? 'border-indigo-200 bg-indigo-50/60 shadow-lg' : 'border-slate-200 bg-white hover:border-indigo-200 hover:shadow-lg'"
+              @click="openItem(item.payrollItemId)">
+              <div class="flex flex-col gap-4 p-5">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div class="flex min-w-0 items-start gap-4">
+                    <AvatarBox :name="item.employeeName" size="lg" shape="rounded-[20px]" />
+                    <div class="min-w-0 flex-1">
+                      <h4 class="text-lg font-black leading-tight text-slate-900">{{ item.employeeName }}</h4>
+                      <div class="mt-1 space-y-1 text-sm font-medium leading-6 text-slate-500">
+                        <p>{{ item.employeeCode }}</p>
+                        <p>{{ item.orgUnitName || '—' }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex shrink-0 flex-wrap items-center gap-2 xl:max-w-55 xl:justify-end">
+                    <StatusBadge :status="item.itemStatus || 'DRAFT'" :label="getItemStatusLabel(item.itemStatus)" />
+                    <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                      :class="item.managerConfirmedAt ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'">
+                      {{ item.managerConfirmedAt ? 'Manager đã xác nhận' : 'Chờ manager xác nhận' }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-[minmax(0,1.15fr)_repeat(2,minmax(0,0.85fr))]">
+                  <div class="rounded-[24px] p-4 text-white"
+                    :class="selectedItem?.payrollItemId === item.payrollItemId ? 'bg-slate-900' : 'bg-linear-to-br from-slate-900 via-slate-800 to-slate-700'">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-white/60">Net pay</p>
+                    <p class="mt-2 text-2xl font-black leading-none">{{ formatCompactCurrency(item.netPay) }}</p>
+                    <p class="mt-3 text-sm font-medium text-white/70">Gross {{ formatCompactCurrency(item.grossIncome)
+                      }}
+                    </p>
+                  </div>
+
+                  <div class="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ngày hiện diện</p>
+                    <p class="mt-2 text-lg font-black text-slate-900">{{ item.presentDayCount ?? 0 }}/{{
+                      item.scheduledDayCount ?? 0 }}</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-500">Đủ công trong kỳ</p>
+                  </div>
+
+                  <div class="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">OT / Vắng</p>
+                    <p class="mt-2 text-lg font-black text-slate-900">{{ item.approvedOtMinutes || 0 }} phút</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-500">{{ item.absentDayCount || 0 }} ngày vắng</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </SurfacePanel>
+
+        <SurfacePanel class="h-fit self-start pt-4 sm:pt-5 xl:sticky xl:top-0">
+          <div ref="detailPanelScrollRef" class="xl:max-h-[calc(100vh-6.5rem)] xl:overflow-y-auto xl:pr-1 xl:-mt-1">
+            <div v-if="detailLoading" class="h-80 animate-pulse rounded-[28px] bg-slate-100" />
+
+            <div v-else-if="selectedItem" class="space-y-5">
+              <div
+                class="overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)]">
+                <div class="border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-5">
+                  <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div class="flex min-w-0 items-start gap-3 sm:gap-4">
+                      <AvatarBox :name="selectedItem.employeeName" size="xl" shape="rounded-[24px]" />
+                      <div class="min-w-0 flex-1">
+                        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Phiếu lương</p>
+                        <h3 class="mt-2 text-xl font-black leading-tight text-slate-900 sm:text-2xl">
+                          {{ selectedItem.employeeName }}
+                        </h3>
+                        <div class="mt-1 space-y-1 text-sm font-medium leading-6 text-slate-500">
+                          <p>{{ selectedItem.employeeCode }}</p>
+                          <p>{{ selectedItem.orgUnitName || '—' }}</p>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap gap-2">
+                          <span
+                            class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                            Kỳ {{ formatMonthYear(selectedPeriod?.periodYear, selectedPeriod?.periodMonth,
+                              selectedPeriod?.periodCode) }}
+                          </span>
+                          <span
+                            class="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+                            {{ selectedItem.presentDayCount ?? 0 }}/{{ selectedItem.scheduledDayCount ?? 0 }} ngày hiện
+                            diện
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex shrink-0 flex-wrap items-center gap-2 xl:max-w-55 xl:justify-end">
+                      <StatusBadge :status="selectedItem.itemStatus || 'DRAFT'"
+                        :label="getItemStatusLabel(selectedItem.itemStatus)" />
+                      <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                        :class="selectedItem.managerConfirmedAt ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'">
+                        {{ selectedItem.managerConfirmedAt ? 'Manager đã xác nhận' : 'Chờ manager xác nhận' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid gap-3 px-4 py-4 sm:grid-cols-2 sm:px-5">
+                  <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Gross</p>
+                    <p class="mt-2 text-lg font-black leading-snug text-slate-900 break-all sm:break-normal">{{
+                      formatCurrency(selectedItem.grossIncome) }}</p>
+                  </div>
+                  <div class="rounded-2xl bg-emerald-50/70 p-4 shadow-sm ring-1 ring-emerald-100">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Net pay</p>
+                    <p class="mt-2 text-lg font-black leading-snug text-emerald-700 break-all sm:break-normal">{{
+                      formatCurrency(selectedItem.netPay) }}</p>
+                  </div>
+                  <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">PIT</p>
+                    <p class="mt-2 text-lg font-black leading-snug text-slate-900 break-all sm:break-normal">{{
+                      formatCurrency(selectedItem.pitAmount) }}</p>
+                  </div>
+                  <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">OT / Vắng</p>
+                    <p class="mt-2 text-lg font-black leading-snug text-slate-900">{{ selectedItem.approvedOtMinutes ||
+                      0 }}
+                      phút</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-500">{{ selectedItem.absentDayCount || 0 }} ngày
+                      vắng
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-2">
+                <div v-for="row in selectedItemSummary" :key="row.label" class="rounded-2xl bg-slate-50 p-4">
+                  <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{{ row.label }}</p>
+                  <p class="mt-2 text-sm font-bold text-slate-800">{{ row.value }}</p>
+                </div>
+              </div>
+
+              <div class="overflow-hidden rounded-[24px] border border-slate-200">
+                <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4">
+                  <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Breakdown thành phần</p>
+                  <StatusBadge :status="selectedItem.itemStatus || 'DRAFT'"
+                    :label="getItemStatusLabel(selectedItem.itemStatus)" />
+                </div>
+
+                <div v-if="selectedItemLines.length" class="max-h-105 space-y-3 overflow-y-auto bg-slate-50/80 p-4">
+                  <div v-for="line in selectedItemLines" :key="line.payrollItemLineId"
+                    class="rounded-2xl bg-white p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <p class="text-sm font-black text-slate-900">{{ line.componentName }}</p>
+                        <p class="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          {{ line.componentCode }} · {{ line.componentCategory }} · {{ line.lineSourceType }}
+                        </p>
+                      </div>
+                      <p class="text-sm font-black text-slate-900">{{ formatCurrency(line.lineAmount) }}</p>
+                    </div>
+                    <p v-if="line.lineNote" class="mt-2 text-sm font-medium text-slate-500">{{ line.lineNote }}</p>
+                  </div>
+                </div>
+                <p v-else class="p-4 text-sm font-medium text-slate-500">Phiếu lương này chưa có line chi tiết.</p>
+              </div>
+
+              <div class="rounded-[24px] bg-slate-50 p-4 text-sm font-medium text-slate-600">
+                <p>Manager confirmed: {{ formatDateTime(selectedItem.managerConfirmedAt) }}</p>
+                <p class="mt-2">HR approved: {{ formatDateTime(selectedItem.hrApprovedAt) }}</p>
+                <p class="mt-2">Published: {{ formatDateTime(selectedItem.publishedAt) }}</p>
+                <p v-if="selectedItem.adjustmentNote" class="mt-2">Adjustment note: {{ selectedItem.adjustmentNote }}
+                </p>
+              </div>
+            </div>
+
+            <EmptyState v-else iconName="Wallet" title="Chọn một phiếu lương"
+              description="Bấm vào card nhân sự ở bên trái để xem breakdown lương chi tiết." />
+          </div>
         </SurfacePanel>
       </div>
 
-      <EmptyState
-        v-else
-        iconName="Banknote"
-        title="Chưa có dữ liệu bảng lương"
-        description="Kỳ lương này chưa được tạo hoặc chưa có nhân sự phù hợp với bộ lọc hiện tại."
-      />
+      <EmptyState v-else iconName="Banknote" title="Chưa có dữ liệu bảng lương"
+        description="Kỳ lương này chưa được tạo hoặc chưa có nhân sự phù hợp với bộ lọc hiện tại." />
     </SurfacePanel>
   </div>
 </template>

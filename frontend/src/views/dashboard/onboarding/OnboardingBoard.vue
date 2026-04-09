@@ -516,7 +516,8 @@ async function submitCreateOnboarding(payload) {
         <p class="text-slate-500 font-medium ml-1">Chuẩn bị lộ trình nhập môn cho thành viên mới</p>
       </div>
 
-      <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold" @click="openCreateModal">
+      <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold"
+        @click="openCreateModal">
         <Plus class="w-5 h-5 mr-2" /> Tạo hồ sơ Onboarding
       </BaseButton>
     </div>
@@ -650,21 +651,16 @@ async function submitCreateOnboarding(payload) {
 
   </div>
 
-  <OnboardingCreateModal
-    :open="showCreateModal"
-    :submitting="createLoading"
-    :reference-loading="createReferenceLoading"
-    :org-unit-options="orgUnitOptions"
-    :job-title-options="jobTitleOptions"
-    :manager-options="managerOptions"
-    @close="showCreateModal = false"
-    @submit="submitCreateOnboarding"
-  />
+  <OnboardingCreateModal :open="showCreateModal" :submitting="createLoading" :reference-loading="createReferenceLoading"
+    :org-unit-options="orgUnitOptions" :job-title-options="jobTitleOptions" :manager-options="managerOptions"
+    @close="showCreateModal = false" @submit="submitCreateOnboarding" />
 
   <Teleport to="body">
     <Transition name="slide-panel">
-      <div v-if="showChecklistModal && selectedRecord" class="fixed inset-0 z-100 overflow-y-auto bg-slate-950/45 p-4 sm:p-6" @click.self="showChecklistModal = false">
-        <div class="relative z-10 mx-auto my-6 w-full max-w-4xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
+      <div v-if="showChecklistModal && selectedRecord"
+        class="fixed inset-0 z-100 overflow-y-auto bg-slate-950/45 p-4 sm:p-6" @click.self="showChecklistModal = false">
+        <div
+          class="relative z-10 mx-auto my-6 w-full max-w-4xl overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
           <div class="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
             <div class="border-r border-slate-200 p-8">
               <div class="flex items-start justify-between gap-4">
@@ -675,11 +671,9 @@ async function submitCreateOnboarding(payload) {
                     Thêm đầu việc chuẩn bị, chỉnh sửa item hiện có và chốt hoàn thành ngay trong luồng tiếp nhận.
                   </p>
                 </div>
-                <button
-                  type="button"
+                <button type="button"
                   class="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
-                  @click="showChecklistModal = false"
-                >
+                  @click="showChecklistModal = false">
                   ×
                 </button>
               </div>
@@ -689,45 +683,50 @@ async function submitCreateOnboarding(payload) {
                   {{ checklistEditingId ? 'Cập nhật đầu việc' : 'Thêm đầu việc mới' }}
                 </h4>
                 <div class="mt-4 flex flex-wrap gap-2">
-                  <button
-                    v-for="template in checklistTemplates"
-                    :key="`modal-${template.itemCode}`"
-                    type="button"
+                  <button v-for="template in checklistTemplates" :key="`modal-${template.itemCode}`" type="button"
                     class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-all hover:border-indigo-200 hover:text-indigo-700"
-                    @click="applyChecklistTemplate(template)"
-                  >
+                    @click="applyChecklistTemplate(template)">
                     {{ template.itemName }}
                   </button>
                 </div>
                 <div class="mt-5 grid gap-4 md:grid-cols-2">
                   <label class="block">
                     <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Mã checklist</span>
-                    <input v-model="checklistForm.itemCode" type="text" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Ví dụ: LAPTOP_READY" />
+                    <input v-model="checklistForm.itemCode" type="text"
+                      class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+                      placeholder="Ví dụ: LAPTOP_READY" />
                   </label>
 
                   <label class="block">
                     <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Hạn xử lý</span>
-                    <input v-model="checklistForm.dueDate" type="date" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" />
+                    <input v-model="checklistForm.dueDate" type="date"
+                      class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" />
                   </label>
 
                   <label class="block md:col-span-2">
                     <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Tên đầu việc</span>
-                    <input v-model="checklistForm.itemName" type="text" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Ví dụ: Chuẩn bị laptop và email công ty" />
+                    <input v-model="checklistForm.itemName" type="text"
+                      class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+                      placeholder="Ví dụ: Chuẩn bị laptop và email công ty" />
                   </label>
 
                   <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <input v-model="checklistForm.required" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <input v-model="checklistForm.required" type="checkbox"
+                      class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                     <span class="text-sm font-bold text-slate-700">Đầu việc bắt buộc</span>
                   </label>
 
                   <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <input v-model="checklistForm.completed" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <input v-model="checklistForm.completed" type="checkbox"
+                      class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                     <span class="text-sm font-bold text-slate-700">Đánh dấu đã hoàn tất</span>
                   </label>
 
                   <label class="block md:col-span-2">
                     <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Ghi chú</span>
-                    <textarea v-model="checklistForm.note" rows="4" class="mt-2 w-full rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-sm font-medium outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Ghi chú cho HR/IT/manager nếu cần" />
+                    <textarea v-model="checklistForm.note" rows="4"
+                      class="mt-2 w-full rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-sm font-medium outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+                      placeholder="Ghi chú cho HR/IT/manager nếu cần" />
                   </label>
                 </div>
 
@@ -760,35 +759,38 @@ async function submitCreateOnboarding(payload) {
               </div>
 
               <div class="mt-6 space-y-4">
-                <div
-                  v-for="item in safeArray(selectedRecord.checklistItems)"
-                  :key="item.onboardingChecklistId"
-                  class="rounded-[24px] border border-white/10 bg-white/5 p-4"
-                >
+                <div v-for="item in safeArray(selectedRecord.checklistItems)" :key="item.onboardingChecklistId"
+                  class="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <div class="flex items-start justify-between gap-3">
                     <div>
                       <p class="text-sm font-black text-white">{{ item.itemName }}</p>
-                      <p class="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ item.itemCode }}</p>
+                      <p class="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ item.itemCode
+                        }}</p>
                     </div>
-                    <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]" :class="item.completed ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200'">
+                    <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]"
+                      :class="item.completed ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200'">
                       {{ item.completed ? 'Done' : 'Open' }}
                     </span>
                   </div>
                   <p v-if="item.note" class="mt-3 text-sm font-medium text-slate-300">{{ item.note }}</p>
-                  <p v-if="item.completedAt || item.completedByUsername" class="mt-2 text-xs font-bold text-emerald-300">
+                  <p v-if="item.completedAt || item.completedByUsername"
+                    class="mt-2 text-xs font-bold text-emerald-300">
                     {{ item.completedByUsername || 'Hệ thống' }} xác nhận hoàn tất
                   </p>
                   <div class="mt-3 flex flex-wrap gap-2">
-                    <span v-if="item.required" class="rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-200">
+                    <span v-if="item.required"
+                      class="rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-200">
                       Required
                     </span>
-                    <span v-if="item.dueDate" class="rounded-full bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">
+                    <span v-if="item.dueDate"
+                      class="rounded-full bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">
                       Due {{ item.dueDate }}
                     </span>
                   </div>
                 </div>
 
-                <div v-if="!safeArray(selectedRecord.checklistItems).length" class="rounded-[24px] border border-dashed border-white/15 bg-white/[0.03] p-5 text-sm font-medium text-slate-300">
+                <div v-if="!safeArray(selectedRecord.checklistItems).length"
+                  class="rounded-[24px] border border-dashed border-white/15 bg-white/[0.03] p-5 text-sm font-medium text-slate-300">
                   Chưa có checklist nào. Hãy tạo item đầu tiên để mở quy trình chuẩn bị onboarding.
                 </div>
               </div>
@@ -856,7 +858,8 @@ async function submitCreateOnboarding(payload) {
                     <ListChecks class="w-4 h-4 text-indigo-600" /> Checklist tiến độ
                   </h4>
                   <p class="mt-2 text-sm font-medium text-slate-500">
-                    {{ checklistStats.completed }}/{{ checklistStats.total || 0 }} đầu việc đã hoàn tất, còn {{ checklistStats.open }} đầu việc đang mở.
+                    {{ checklistStats.completed }}/{{ checklistStats.total || 0 }} đầu việc đã hoàn tất, còn {{
+                    checklistStats.open }} đầu việc đang mở.
                   </p>
                 </div>
                 <BaseButton variant="outline" size="sm" @click="openChecklistModal()">
@@ -878,45 +881,46 @@ async function submitCreateOnboarding(payload) {
                 <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">
                   Bắt buộc {{ checklistStats.required }}
                 </span>
-                <span v-if="checklistStats.overdue" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700">
+                <span v-if="checklistStats.overdue"
+                  class="rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700">
                   Quá hạn {{ checklistStats.overdue }}
                 </span>
               </div>
 
               <div class="mb-4 flex flex-wrap gap-2">
-                <button
-                  v-for="template in checklistTemplates"
-                  :key="template.itemCode"
-                  type="button"
+                <button v-for="template in checklistTemplates" :key="template.itemCode" type="button"
                   class="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-700 transition-all hover:border-indigo-300 hover:bg-indigo-100"
-                  @click="applyChecklistTemplate(template)"
-                >
+                  @click="applyChecklistTemplate(template)">
                   + {{ template.itemName }}
                 </button>
               </div>
-              <div v-if="safeArray(selectedRecord.checklistItems).length" class="mb-4 space-y-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
-                <div
-                  v-for="item in safeArray(selectedRecord.checklistItems)"
-                  :key="item.onboardingChecklistId"
-                  class="flex flex-col gap-3 rounded-[24px] bg-white p-4 shadow-sm shadow-slate-200/60 md:flex-row md:items-center md:justify-between"
-                >
+              <div v-if="safeArray(selectedRecord.checklistItems).length"
+                class="mb-4 space-y-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+                <div v-for="item in safeArray(selectedRecord.checklistItems)" :key="item.onboardingChecklistId"
+                  class="flex flex-col gap-3 rounded-[24px] bg-white p-4 shadow-sm shadow-slate-200/60 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div class="flex flex-wrap items-center gap-2">
                       <p class="text-sm font-black text-slate-900">{{ item.itemName }}</p>
-                      <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]" :class="item.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'">
+                      <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]"
+                        :class="item.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'">
                         {{ item.completed ? 'Đã xong' : 'Đang mở' }}
                       </span>
-                      <span v-if="item.required" class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">
+                      <span v-if="item.required"
+                        class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">
                         Bắt buộc
                       </span>
                     </div>
                     <p class="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{{ item.itemCode }}</p>
                     <p v-if="item.note" class="mt-2 text-sm font-medium text-slate-500">{{ item.note }}</p>
-                    <p v-if="item.dueDate" class="mt-2 text-xs font-bold" :class="!item.completed && item.dueDate < new Date().toISOString().slice(0, 10) ? 'text-rose-500' : 'text-slate-400'">
+                    <p v-if="item.dueDate" class="mt-2 text-xs font-bold"
+                      :class="!item.completed && item.dueDate < new Date().toISOString().slice(0, 10) ? 'text-rose-500' : 'text-slate-400'">
                       Hạn xử lý: {{ item.dueDate }}
                     </p>
-                    <p v-if="item.completedAt || item.completedByUsername" class="mt-1 text-xs font-bold text-emerald-600">
-                      Hoàn tất {{ item.completedAt ? `lúc ${item.completedAt}` : '' }}{{ item.completedByUsername ? ` bởi ${item.completedByUsername}` : '' }}
+                    <p v-if="item.completedAt || item.completedByUsername"
+                      class="mt-1 text-xs font-bold text-emerald-600">
+                      Hoàn tất {{ item.completedAt ? `lúc ${item.completedAt}` : '' }}{{ item.completedByUsername ? `
+                      bởi
+                      ${item.completedByUsername}` : '' }}
                     </p>
                   </div>
 
@@ -925,7 +929,8 @@ async function submitCreateOnboarding(payload) {
                       <PencilLine class="mr-2 h-4 w-4" />
                       Sửa
                     </BaseButton>
-                    <BaseButton variant="primary" size="sm" :loading="checklistSubmitting" @click="toggleChecklistCompleted(item)">
+                    <BaseButton variant="primary" size="sm" :loading="checklistSubmitting"
+                      @click="toggleChecklistCompleted(item)">
                       <CheckCheck class="mr-2 h-4 w-4" />
                       {{ item.completed ? 'Mở lại' : 'Hoàn tất' }}
                     </BaseButton>

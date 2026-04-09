@@ -28,6 +28,7 @@ import {
   createRenewalDraft,
   exportContract,
   getContractDetail,
+  getContractTypeDetail,
   getContractHistory,
 } from '@/api/admin/contract'
 import { useToast } from '@/composables/useToast'
@@ -349,6 +350,62 @@ function buildRenewalEndDate(detail, nextEffectiveDate) {
   return formatDateToIso(nextEffective)
 }
 
+function parseIsoDate(value) {
+  if (!value || typeof value !== 'string') return null
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return null
+  return { year, month, day }
+}
+
+function getLastDayOfMonth(year, month) {
+  return new Date(year, month, 0).getDate()
+}
+
+function addMonthsToIsoDate(value, monthsToAdd) {
+  const parsed = parseIsoDate(value)
+  if (!parsed || !Number.isFinite(monthsToAdd)) return null
+
+  const totalMonths = (parsed.year * 12) + (parsed.month - 1) + monthsToAdd
+  const targetYear = Math.floor(totalMonths / 12)
+  const targetMonth = (totalMonths % 12) + 1
+  const targetDay = Math.min(parsed.day, getLastDayOfMonth(targetYear, targetMonth))
+
+  return formatDateToIso(new Date(targetYear, targetMonth - 1, targetDay))
+}
+
+function shiftIsoDateByDays(value, daysToShift) {
+  const parsed = parseIsoDate(value)
+  if (!parsed || !Number.isFinite(daysToShift)) return null
+
+  const date = new Date(parsed.year, parsed.month - 1, parsed.day)
+  date.setDate(date.getDate() + daysToShift)
+  return formatDateToIso(date)
+}
+
+async function resolveRenewalEndDate(detail, nextEffectiveDate) {
+  if (!detail?.contractTypeId || !nextEffectiveDate) {
+    return buildRenewalEndDate(detail, nextEffectiveDate)
+  }
+
+  try {
+    const response = await getContractTypeDetail(detail.contractTypeId)
+    const contractType = response?.data || response || {}
+
+    if (contractType.requiresEndDate === false) {
+      return null
+    }
+
+    if (Number.isInteger(contractType.maxTermMonths) && contractType.maxTermMonths > 0) {
+      const maxEndDate = addMonthsToIsoDate(nextEffectiveDate, contractType.maxTermMonths)
+      return maxEndDate ? shiftIsoDateByDays(maxEndDate, -1) : buildRenewalEndDate(detail, nextEffectiveDate)
+    }
+  } catch (error) {
+    console.warn('Failed to resolve contract type policy for renewal draft:', error)
+  }
+
+  return buildRenewalEndDate(detail, nextEffectiveDate)
+}
+
 function normalizeAppendices(items = []) {
   return items.map((item) => ({
     id: item.contractAppendixId,
@@ -421,20 +478,21 @@ async function handleCreateRenewalDraft() {
   const today = new Date()
   const nextEffectiveDate = source.endDate
     ? (() => {
-        const date = new Date(source.endDate)
-        date.setDate(date.getDate() + 1)
-        return formatDateToIso(date)
-      })()
+      const date = new Date(source.endDate)
+      date.setDate(date.getDate() + 1)
+      return formatDateToIso(date)
+    })()
     : formatDateToIso(today)
 
   renewalSubmitting.value = true
   try {
+    const nextEndDate = await resolveRenewalEndDate(source, nextEffectiveDate)
     const response = await createRenewalDraft(contract.value.id, {
       contractTypeId: source.contractTypeId,
       contractNumber: buildRenewalContractNumber(source.contractNumber),
       signDate: formatDateToIso(today),
       effectiveDate: nextEffectiveDate,
-      endDate: buildRenewalEndDate(source, nextEffectiveDate),
+      endDate: nextEndDate,
       jobTitleId: source.jobTitleId,
       orgUnitId: source.orgUnitId,
       workLocation: source.workLocation,
@@ -608,13 +666,13 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="loading"
-      class="flex items-center justify-center gap-3 rounded-[32px] border border-slate-200 bg-white px-6 py-16 text-slate-500 shadow-sm">
+      class="flex items-center justify-center gap-3 rounded-4xl border border-slate-200 bg-white px-6 py-16 text-slate-500 shadow-sm">
       <Clock3 class="h-5 w-5 animate-pulse text-indigo-600" />
       <span class="font-medium">Đang tải chi tiết hợp đồng...</span>
     </div>
 
     <div v-else
-      class="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+      class="overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
       <div
         class="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.16),_transparent_28%),linear-gradient(135deg,#f8fafc_0%,#eef2ff_45%,#ffffff_100%)] px-7 py-7">
         <div class="absolute right-0 top-0 h-56 w-56 rounded-full bg-indigo-200/20 blur-3xl" />
@@ -686,8 +744,7 @@ onBeforeUnmount(() => {
             </button>
             <button v-if="contract.status === 'ACTIVE'"
               class="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
-              :disabled="renewalSubmitting"
-              @click="handleCreateRenewalDraft">
+              :disabled="renewalSubmitting" @click="handleCreateRenewalDraft">
               <RotateCcw class="h-4 w-4" />
               {{ renewalSubmitting ? 'Đang tạo...' : 'Tạo hợp đồng kế nhiệm' }}
             </button>
@@ -964,86 +1021,68 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-      v-if="showAppendixModal"
-      ref="appendixOverlayRef"
+    <div v-if="showAppendixModal" ref="appendixOverlayRef"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
-      @click.self="showAppendixModal = false"
-    >
-        <div class="flex max-h-[min(820px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+      @click.self="showAppendixModal = false">
+      <div
+        class="flex max-h-[min(820px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
         <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 pt-6 pb-4">
           <div>
             <h3 class="text-xl font-black text-slate-900">Tạo phụ lục hợp đồng</h3>
             <p class="mt-1 text-sm text-slate-500">Ghi nhận thay đổi phát sinh cho hợp đồng hiện tại</p>
           </div>
-          <button class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" @click="showAppendixModal = false">
+          <button class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            @click="showAppendixModal = false">
             <XCircle class="h-5 w-5" />
           </button>
         </div>
 
         <form class="flex flex-1 flex-col overflow-hidden" @submit.prevent="handleCreateAppendix">
           <div class="mt-5 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Số phụ lục</label>
-              <input
-                ref="appendixFirstFieldRef"
-                v-model="appendixForm.appendixNumber"
-                class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="VD: PL-2026-001"
-              >
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-600">Số phụ lục</label>
+                <input ref="appendixFirstFieldRef" v-model="appendixForm.appendixNumber"
+                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="VD: PL-2026-001">
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-600">Ngày hiệu lực</label>
+                <input v-model="appendixForm.effectiveDate" type="date"
+                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              </div>
             </div>
+
             <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Ngày hiệu lực</label>
-              <input
-                v-model="appendixForm.effectiveDate"
-                type="date"
+              <label class="mb-1 block text-sm font-semibold text-slate-600">Tên phụ lục</label>
+              <input v-model="appendixForm.appendixName"
                 class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
+                placeholder="VD: Phụ lục điều chỉnh lương">
             </div>
-          </div>
 
-          <div>
-            <label class="mb-1 block text-sm font-semibold text-slate-600">Tên phụ lục</label>
-            <input
-              v-model="appendixForm.appendixName"
-              class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="VD: Phụ lục điều chỉnh lương"
-            >
-          </div>
+            <div>
+              <label class="mb-1 block text-sm font-semibold text-slate-600">Nội dung thay đổi</label>
+              <textarea v-model="appendixForm.changedFieldsJson"
+                class="h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="Mô tả ngắn các trường hoặc điều khoản được điều chỉnh" />
+            </div>
 
-          <div>
-            <label class="mb-1 block text-sm font-semibold text-slate-600">Nội dung thay đổi</label>
-            <textarea
-              v-model="appendixForm.changedFieldsJson"
-              class="h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="Mô tả ngắn các trường hoặc điều khoản được điều chỉnh"
-            />
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-semibold text-slate-600">Ghi chú</label>
-            <textarea
-              v-model="appendixForm.note"
-              class="h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="Ghi chú nội bộ cho phụ lục"
-            />
-          </div>
+            <div>
+              <label class="mb-1 block text-sm font-semibold text-slate-600">Ghi chú</label>
+              <textarea v-model="appendixForm.note"
+                class="h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="Ghi chú nội bộ cho phụ lục" />
+            </div>
           </div>
 
           <div class="flex justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4">
-            <button
-              type="button"
+            <button type="button"
               class="rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-600 hover:bg-slate-50"
-              @click="showAppendixModal = false"
-            >
+              @click="showAppendixModal = false">
               Hủy
             </button>
-            <button
-              type="submit"
-              :disabled="appendixSubmitting"
-              class="rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" :disabled="appendixSubmitting"
+              class="rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70">
               {{ appendixSubmitting ? 'Đang tạo...' : 'Lưu phụ lục' }}
             </button>
           </div>
@@ -1051,92 +1090,73 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-      v-if="showAttachmentModal"
-      ref="attachmentOverlayRef"
+    <div v-if="showAttachmentModal" ref="attachmentOverlayRef"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
-      @click.self="showAttachmentModal = false"
-    >
-        <div class="flex max-h-[min(820px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+      @click.self="showAttachmentModal = false">
+      <div
+        class="flex max-h-[min(820px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
         <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 pt-6 pb-4">
           <div>
             <h3 class="text-xl font-black text-slate-900">Thêm tài liệu đính kèm</h3>
             <p class="mt-1 text-sm text-slate-500">Lưu metadata tài liệu pháp lý cho hợp đồng</p>
           </div>
-          <button class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" @click="showAttachmentModal = false">
+          <button class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            @click="showAttachmentModal = false">
             <XCircle class="h-5 w-5" />
           </button>
         </div>
 
         <form class="flex flex-1 flex-col overflow-hidden" @submit.prevent="handleCreateAttachment">
           <div class="mt-5 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Loại tài liệu</label>
-              <select
-                ref="attachmentFirstFieldRef"
-                v-model="attachmentForm.attachmentType"
-                class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
-                <option v-for="item in attachmentTypeOptions" :key="item.value" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </select>
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-600">Loại tài liệu</label>
+                <select ref="attachmentFirstFieldRef" v-model="attachmentForm.attachmentType"
+                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                  <option v-for="item in attachmentTypeOptions" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-600">Tên file</label>
+                <input v-model="attachmentForm.fileName"
+                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="VD: Hop_dong_NV001.pdf">
+              </div>
             </div>
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Tên file</label>
-              <input
-                v-model="attachmentForm.fileName"
-                class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="VD: Hop_dong_NV001.pdf"
-              >
-            </div>
-          </div>
 
-          <div>
-            <label class="mb-1 block text-sm font-semibold text-slate-600">Đường dẫn lưu trữ</label>
-            <input
-              v-model="attachmentForm.storagePath"
-              class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="VD: contracts/2026/hdld-2026-001.pdf"
-            >
-          </div>
+            <div>
+              <label class="mb-1 block text-sm font-semibold text-slate-600">Đường dẫn lưu trữ</label>
+              <input v-model="attachmentForm.storagePath"
+                class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="VD: contracts/2026/hdld-2026-001.pdf">
+            </div>
 
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">MIME type</label>
-              <input
-                v-model="attachmentForm.mimeType"
-                class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="application/pdf"
-              >
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-600">MIME type</label>
+                <input v-model="attachmentForm.mimeType"
+                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="application/pdf">
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-semibold text-slate-600">Dung lượng file (bytes)</label>
+                <input v-model="attachmentForm.fileSizeBytes" type="number" min="0"
+                  class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="0">
+              </div>
             </div>
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-slate-600">Dung lượng file (bytes)</label>
-              <input
-                v-model="attachmentForm.fileSizeBytes"
-                type="number"
-                min="0"
-                class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="0"
-              >
-            </div>
-          </div>
           </div>
 
           <div class="flex justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4">
-            <button
-              type="button"
+            <button type="button"
               class="rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-600 hover:bg-slate-50"
-              @click="showAttachmentModal = false"
-            >
+              @click="showAttachmentModal = false">
               Hủy
             </button>
-            <button
-              type="submit"
-              :disabled="attachmentSubmitting"
-              class="rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <button type="submit" :disabled="attachmentSubmitting"
+              class="rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70">
               {{ attachmentSubmitting ? 'Đang lưu...' : 'Lưu tài liệu' }}
             </button>
           </div>
