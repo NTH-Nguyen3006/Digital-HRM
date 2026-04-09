@@ -1,28 +1,34 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import OnboardingCreateModal from '@/components/hrm/OnboardingCreateModal.vue'
 import {
   UserPlus, Search, Plus, CheckCircle2, Clock, Users,
   FileText, Laptop, KeyRound, Mail, ClipboardList,
   ChevronRight, AlertCircle, CheckCheck, Eye,
   CalendarDays, Building2, Briefcase, ArrowRight,
   BadgeCheck, UserCheck, Send, FilePlus2, ListChecks,
-  Loader2, MoreVertical
+  Loader2, MoreVertical, PencilLine
 } from 'lucide-vue-next'
 import {
   getOnboardings, getOnboardingDetail,
   completeOnboarding, notifyOnboarding,
-  createUserForOnboarding, createInitialContract,
+  createOnboarding,
+  createUserForOnboarding,
   upsertOnboardingChecklist
 } from '@/api/admin/onboarding.js'
-import { Phone, Mail, FileWarning } from 'lucide-vue-next'
+import { getOrgUnits } from '@/api/admin/orgUnit'
+import { getJobTitles } from '@/api/admin/jobTitle'
+import { getEmployees } from '@/api/admin/employee'
+import { Phone, FileWarning } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import { useUiStore } from '@/stores/ui'
+import { safeArray, unwrapData, unwrapPage } from '@/utils/api'
 
 /* ------------------ CONFIG ------------------ */
 
@@ -53,6 +59,15 @@ const searchQuery = ref('')
 const activeStatus = ref('ALL')
 const selectedRecord = ref(null)
 const showDetailPanel = ref(false)
+const showCreateModal = ref(false)
+const showChecklistModal = ref(false)
+const createLoading = ref(false)
+const createReferenceLoading = ref(false)
+const checklistSubmitting = ref(false)
+const checklistEditingId = ref(null)
+const orgUnitOptions = ref([])
+const jobTitleOptions = ref([])
+const managerOptions = ref([])
 
 const statsData = ref([
   { title: 'Đang chuẩn bị', value: '0', icon: Clock, color: 'amber', trend: 0 },
@@ -60,6 +75,58 @@ const statsData = ref([
   { title: 'Hoàn tất tháng này', value: '0', icon: CheckCircle2, color: 'emerald', trend: 0 },
   { title: 'Tổng tiếp nhận', value: '0', icon: UserPlus, color: 'rose' },
 ])
+
+const checklistTemplates = [
+  {
+    itemCode: 'ORIENTATION_DONE',
+    itemName: 'Hoàn tất orientation',
+    required: true,
+    note: 'Đã giới thiệu team và công việc.',
+  },
+  {
+    itemCode: 'WORKPLACE_READY',
+    itemName: 'Bàn giao chỗ ngồi và thiết bị',
+    required: true,
+    note: 'Đã cấp laptop và thẻ nhân viên.',
+  },
+  {
+    itemCode: 'EMAIL_READY',
+    itemName: 'Tạo email và quyền hệ thống',
+    required: true,
+    note: 'IT xác nhận email công ty và quyền truy cập cơ bản.',
+  },
+  {
+    itemCode: 'WELCOME_SENT',
+    itemName: 'Gửi thư chào mừng',
+    required: false,
+    note: 'Gửi email welcome cho nhân sự mới và manager.',
+  },
+]
+
+const checklistForm = ref({
+  itemCode: '',
+  itemName: '',
+  required: true,
+  completed: false,
+  dueDate: '',
+  note: '',
+})
+
+const checklistStats = computed(() => {
+  const items = safeArray(selectedRecord.value?.checklistItems)
+  const completed = items.filter((item) => item.completed).length
+  const required = items.filter((item) => item.required).length
+  const overdue = items.filter((item) => !item.completed && item.dueDate && item.dueDate < new Date().toISOString().slice(0, 10)).length
+  return {
+    total: items.length,
+    completed,
+    open: items.length - completed,
+    required,
+    overdue,
+  }
+})
+
+let lockedScrollY = 0
 
 /*  API CALL  */
 const fetchOnboardings = async () => {
@@ -70,12 +137,12 @@ const fetchOnboardings = async () => {
       status: activeStatus.value !== 'ALL' ? activeStatus.value : undefined
     }
     const response = await getOnboardings(params)
-    records.value = response.data || []
+    records.value = unwrapPage(response).items
 
     // Quick stats calc
-    const inProgress = records.value.filter(r => r.onboardingStatus === 'IN_PROGRESS').length
-    const ready = records.value.filter(r => r.onboardingStatus === 'READY_FOR_JOIN').length
-    const completed = records.value.filter(r => r.onboardingStatus === 'COMPLETED').length
+    const inProgress = records.value.filter(r => r.status === 'IN_PROGRESS').length
+    const ready = records.value.filter(r => r.status === 'READY_FOR_JOIN').length
+    const completed = records.value.filter(r => r.status === 'COMPLETED').length
 
     statsData.value[0].value = inProgress.toString()
     statsData.value[1].value = ready.toString()
@@ -88,15 +155,87 @@ const fetchOnboardings = async () => {
   }
 }
 
+const fetchCreateReferences = async () => {
+  createReferenceLoading.value = true
+  try {
+    const [orgUnitsResponse, jobTitlesResponse, managersResponse] = await Promise.all([
+      getOrgUnits({ size: 100 }),
+      getJobTitles({ size: 100 }),
+      getEmployees({ size: 100 }),
+    ])
+    orgUnitOptions.value = unwrapPage(orgUnitsResponse).items
+    jobTitleOptions.value = unwrapPage(jobTitlesResponse).items
+    managerOptions.value = unwrapPage(managersResponse).items
+  } catch (error) {
+    console.error('Failed to fetch onboarding references:', error)
+    toast.error('Không thể tải dữ liệu tham chiếu để tạo onboarding')
+  } finally {
+    createReferenceLoading.value = false
+  }
+}
+
 onMounted(fetchOnboardings)
 
 watch([searchQuery, activeStatus], () => {
   fetchOnboardings()
 })
 
+function syncBodyScrollLock() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return
+
+  const shouldLock = showCreateModal.value || showDetailPanel.value || showChecklistModal.value
+  const { body, documentElement } = document
+
+  if (shouldLock) {
+    if (!body.dataset.scrollLocked) {
+      lockedScrollY = window.scrollY
+      body.dataset.scrollLocked = 'true'
+      body.style.position = 'fixed'
+      body.style.top = `-${lockedScrollY}px`
+      body.style.left = '0'
+      body.style.right = '0'
+      body.style.width = '100%'
+      body.style.overflow = 'hidden'
+      documentElement.style.overflow = 'hidden'
+    }
+    return
+  }
+
+  if (body.dataset.scrollLocked) {
+    delete body.dataset.scrollLocked
+    body.style.position = ''
+    body.style.top = ''
+    body.style.left = ''
+    body.style.right = ''
+    body.style.width = ''
+    body.style.overflow = ''
+    documentElement.style.overflow = ''
+    window.scrollTo(0, lockedScrollY)
+  }
+}
+
+watch([showCreateModal, showDetailPanel, showChecklistModal], syncBodyScrollLock)
+
+onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') {
+    const { body, documentElement } = document
+    delete body.dataset.scrollLocked
+    body.style.position = ''
+    body.style.top = ''
+    body.style.left = ''
+    body.style.right = ''
+    body.style.width = ''
+    body.style.overflow = ''
+    documentElement.style.overflow = ''
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, lockedScrollY)
+    }
+  }
+})
+
 function getStepState(record, step) {
   const statusOrder = ['DRAFT', 'IN_PROGRESS', 'READY_FOR_JOIN', 'COMPLETED', 'CANCELLED']
-  const currentIdx = statusOrder.indexOf(record.onboardingStatus)
+  const currentIdx = statusOrder.indexOf(record.status)
   const requiredIdx = statusOrder.indexOf(step.status)
 
   // Logic simplified based on status mapping
@@ -105,11 +244,126 @@ function getStepState(record, step) {
   return 'pending'
 }
 
+function resetChecklistForm() {
+  checklistEditingId.value = null
+  checklistForm.value = {
+    itemCode: '',
+    itemName: '',
+    required: true,
+    completed: false,
+    dueDate: '',
+    note: '',
+  }
+}
+
+function openChecklistModal(item = null) {
+  if (item) {
+    checklistEditingId.value = item.onboardingChecklistId
+    checklistForm.value = {
+      itemCode: item.itemCode || '',
+      itemName: item.itemName || '',
+      required: Boolean(item.required),
+      completed: Boolean(item.completed),
+      dueDate: item.dueDate || '',
+      note: item.note || '',
+    }
+  } else {
+    resetChecklistForm()
+  }
+  showChecklistModal.value = true
+}
+
+async function refreshSelectedRecord() {
+  if (!selectedRecord.value?.onboardingId) return
+  const response = await getOnboardingDetail(selectedRecord.value.onboardingId)
+  selectedRecord.value = unwrapData(response)
+}
+
+async function submitChecklistForm() {
+  if (!selectedRecord.value?.onboardingId) return
+  if (!checklistForm.value.itemCode || !checklistForm.value.itemName) {
+    toast.warning('Vui lòng nhập mã checklist và tên đầu việc')
+    return
+  }
+
+  const normalizedCode = checklistForm.value.itemCode.trim().toUpperCase()
+  const duplicated = safeArray(selectedRecord.value.checklistItems).some(
+    (item) => item.itemCode === normalizedCode && item.onboardingChecklistId !== checklistEditingId.value,
+  )
+  if (duplicated) {
+    toast.warning('Mã checklist đã tồn tại trong hồ sơ onboarding này')
+    return
+  }
+
+  checklistSubmitting.value = true
+  try {
+    await upsertOnboardingChecklist(
+      selectedRecord.value.onboardingId,
+      checklistEditingId.value,
+      {
+        itemCode: normalizedCode,
+        itemName: checklistForm.value.itemName,
+        required: checklistForm.value.required,
+        completed: checklistForm.value.completed,
+        dueDate: checklistForm.value.dueDate || null,
+        note: checklistForm.value.note || null,
+      },
+    )
+    toast.success(checklistEditingId.value ? 'Đã cập nhật checklist' : 'Đã thêm checklist mới')
+    await refreshSelectedRecord()
+    resetChecklistForm()
+  } catch (error) {
+    console.error('Failed to submit checklist:', error)
+    toast.error(error.response?.data?.message || 'Không thể lưu checklist')
+  } finally {
+    checklistSubmitting.value = false
+  }
+}
+
+function applyChecklistTemplate(template) {
+  checklistEditingId.value = null
+  checklistForm.value = {
+    itemCode: template.itemCode,
+    itemName: template.itemName,
+    required: template.required,
+    completed: false,
+    dueDate: selectedRecord.value?.plannedStartDate || '',
+    note: template.note,
+  }
+  showChecklistModal.value = true
+}
+
+async function toggleChecklistCompleted(item) {
+  if (!selectedRecord.value?.onboardingId) return
+  checklistSubmitting.value = true
+  try {
+    await upsertOnboardingChecklist(
+      selectedRecord.value.onboardingId,
+      item.onboardingChecklistId,
+      {
+        itemCode: item.itemCode,
+        itemName: item.itemName,
+        required: item.required,
+        completed: !item.completed,
+        dueDate: item.dueDate || null,
+        note: item.note || null,
+      },
+    )
+    toast.success(!item.completed ? 'Đã đánh dấu hoàn tất checklist' : 'Đã mở lại checklist')
+    await refreshSelectedRecord()
+  } catch (error) {
+    console.error('Failed to toggle checklist:', error)
+    toast.error(error.response?.data?.message || 'Không thể cập nhật checklist')
+  } finally {
+    checklistSubmitting.value = false
+  }
+}
+
 async function openDetail(record) {
   loading.value = true
   try {
     const response = await getOnboardingDetail(record.onboardingId)
-    selectedRecord.value = response.data
+    selectedRecord.value = unwrapData(response)
     showDetailPanel.value = true
   } catch (error) {
     console.error('Failed to get detail:', error)
@@ -120,7 +374,7 @@ async function openDetail(record) {
 
 async function handleComplete(record) {
   try {
-    await completeOnboarding(record.onboardingId)
+    await completeOnboarding(record.onboardingId, { note: 'Hoàn tất onboarding từ dashboard HR.' })
     await fetchOnboardings()
     showDetailPanel.value = false
   } catch (error) {
@@ -130,7 +384,13 @@ async function handleComplete(record) {
 
 async function handleNotify(record) {
   try {
-    await notifyOnboarding(record.onboardingId, { notifyNewHire: true, notifyManager: true })
+    await notifyOnboarding(record.onboardingId, {
+      notifyNewHire: true,
+      notifyManager: true,
+      notifyLinkedUser: true,
+      customRecipientEmails: [],
+      note: 'Gửi thông báo chào mừng từ dashboard HR.',
+    })
     toast.success('Đã gửi thông báo chào mừng')
     await openDetail(record) // Refresh detail
   } catch (error) {
@@ -151,22 +411,27 @@ async function handleStepProcess(step) {
         confirmLabel: 'Tạo ngay'
       })
       if (!confirmed) return
-      await createUserForOnboarding(record.onboardingId, {})
+      const username = record.fullName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '.')
+        .replace(/^\.+|\.+$/g, '')
+        .slice(0, 30) || `onboard.${record.onboardingId}`
+
+      await createUserForOnboarding(record.onboardingId, {
+        username,
+        initialPassword: 'P@ssword123',
+        sendSetupEmail: true,
+      })
       toast.success('Đã tạo tài khoản thành công')
     }
     else if (step.key === 'contract') {
-      const confirmed = await ui.confirm({
-        title: 'Tạo hợp đồng đầu tiên',
-        message: 'Hệ thống sẽ tạo bản nháp hợp đồng dựa trên thông tin ứng viên. Tiếp tục?',
-        confirmLabel: 'Tạo bản nháp'
-      })
-      if (!confirmed) return
-      await createInitialContract(record.onboardingId, { contractType: 'PROBATION' })
-      toast.success('Đã tạo bản nháp hợp đồng')
+      toast.info('Màn HR đã hiển thị đúng dữ liệu onboarding. Flow tạo hợp đồng cần thêm thông tin lương và loại hợp đồng nên sẽ được xử lý ở bước tạo hợp đồng riêng.')
+      return
     }
     else if (step.key === 'checklist') {
-      // For now, just mark it as "In Progress" or "Ready" via a simple update
-      toast.info('Tính năng cập nhật Checklist chi tiết đang được phát triển')
+      openChecklistModal()
       return
     }
     else if (step.key === 'notify') {
@@ -188,6 +453,50 @@ function initials(name) {
   return name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'
 }
 
+function recordStatus(record) {
+  return record?.status || 'DRAFT'
+}
+
+async function openCreateModal() {
+  showCreateModal.value = true
+  if (!orgUnitOptions.value.length || !jobTitleOptions.value.length || !managerOptions.value.length) {
+    await fetchCreateReferences()
+  }
+}
+
+async function submitCreateOnboarding(payload) {
+  createLoading.value = true
+  try {
+    const response = await createOnboarding({
+      onboardingCode: payload.onboardingCode,
+      fullName: payload.fullName,
+      personalEmail: payload.personalEmail,
+      personalPhone: payload.personalPhone,
+      genderCode: payload.genderCode,
+      dateOfBirth: payload.dateOfBirth,
+      plannedStartDate: payload.plannedStartDate,
+      employeeCode: payload.employeeCode,
+      orgUnitId: Number(payload.orgUnitId),
+      jobTitleId: Number(payload.jobTitleId),
+      managerEmployeeId: payload.managerEmployeeId ? Number(payload.managerEmployeeId) : null,
+      workLocation: payload.workLocation,
+      note: payload.note,
+    })
+    const created = unwrapData(response)
+    toast.success('Đã tạo hồ sơ onboarding mới')
+    showCreateModal.value = false
+    await fetchOnboardings()
+    if (created?.onboardingId) {
+      await openDetail(created)
+    }
+  } catch (error) {
+    console.error('Failed to create onboarding:', error)
+    toast.error(error.response?.data?.message || 'Tạo hồ sơ onboarding thất bại')
+  } finally {
+    createLoading.value = false
+  }
+}
+
 </script>
 
 <template>
@@ -207,7 +516,7 @@ function initials(name) {
         <p class="text-slate-500 font-medium ml-1">Chuẩn bị lộ trình nhập môn cho thành viên mới</p>
       </div>
 
-      <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold">
+      <BaseButton variant="primary" size="lg" shadow class="rounded-2xl! px-6! h-12.5! font-bold" @click="openCreateModal">
         <Plus class="w-5 h-5 mr-2" /> Tạo hồ sơ Onboarding
       </BaseButton>
     </div>
@@ -326,7 +635,7 @@ function initials(name) {
 
           <!-- Side actions -->
           <div class="flex items-center gap-6 justify-between xl:justify-end">
-            <StatusBadge :status="rec.onboardingStatus" />
+            <StatusBadge :status="recordStatus(rec)" />
             <button
               class="p-2 text-slate-300 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 rounded-xl transition-all">
               <chevron-right class="w-5 h-5" />
@@ -340,6 +649,155 @@ function initials(name) {
     </div>
 
   </div>
+
+  <OnboardingCreateModal
+    :open="showCreateModal"
+    :submitting="createLoading"
+    :reference-loading="createReferenceLoading"
+    :org-unit-options="orgUnitOptions"
+    :job-title-options="jobTitleOptions"
+    :manager-options="managerOptions"
+    @close="showCreateModal = false"
+    @submit="submitCreateOnboarding"
+  />
+
+  <Teleport to="body">
+    <Transition name="slide-panel">
+      <div v-if="showChecklistModal && selectedRecord" class="fixed inset-0 z-100 overflow-y-auto bg-slate-950/45 p-4 sm:p-6" @click.self="showChecklistModal = false">
+        <div class="relative z-10 mx-auto my-6 w-full max-w-4xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
+          <div class="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+            <div class="border-r border-slate-200 p-8">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-500">Checklist Processing</p>
+                  <h3 class="mt-3 text-3xl font-black tracking-tight text-slate-900">Xử lý checklist onboarding</h3>
+                  <p class="mt-2 text-sm font-medium text-slate-500">
+                    Thêm đầu việc chuẩn bị, chỉnh sửa item hiện có và chốt hoàn thành ngay trong luồng tiếp nhận.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
+                  @click="showChecklistModal = false"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div class="mt-8 rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                <h4 class="text-lg font-black text-slate-900">
+                  {{ checklistEditingId ? 'Cập nhật đầu việc' : 'Thêm đầu việc mới' }}
+                </h4>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <button
+                    v-for="template in checklistTemplates"
+                    :key="`modal-${template.itemCode}`"
+                    type="button"
+                    class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-all hover:border-indigo-200 hover:text-indigo-700"
+                    @click="applyChecklistTemplate(template)"
+                  >
+                    {{ template.itemName }}
+                  </button>
+                </div>
+                <div class="mt-5 grid gap-4 md:grid-cols-2">
+                  <label class="block">
+                    <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Mã checklist</span>
+                    <input v-model="checklistForm.itemCode" type="text" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Ví dụ: LAPTOP_READY" />
+                  </label>
+
+                  <label class="block">
+                    <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Hạn xử lý</span>
+                    <input v-model="checklistForm.dueDate" type="date" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" />
+                  </label>
+
+                  <label class="block md:col-span-2">
+                    <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Tên đầu việc</span>
+                    <input v-model="checklistForm.itemName" type="text" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Ví dụ: Chuẩn bị laptop và email công ty" />
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <input v-model="checklistForm.required" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <span class="text-sm font-bold text-slate-700">Đầu việc bắt buộc</span>
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <input v-model="checklistForm.completed" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <span class="text-sm font-bold text-slate-700">Đánh dấu đã hoàn tất</span>
+                  </label>
+
+                  <label class="block md:col-span-2">
+                    <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Ghi chú</span>
+                    <textarea v-model="checklistForm.note" rows="4" class="mt-2 w-full rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-sm font-medium outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Ghi chú cho HR/IT/manager nếu cần" />
+                  </label>
+                </div>
+
+                <div class="mt-5 flex flex-wrap gap-3">
+                  <BaseButton variant="outline" @click="resetChecklistForm">Làm mới</BaseButton>
+                  <BaseButton variant="primary" :loading="checklistSubmitting" @click="submitChecklistForm">
+                    <CheckCheck class="mr-2 h-4 w-4" />
+                    {{ checklistEditingId ? 'Lưu cập nhật' : 'Thêm checklist' }}
+                  </BaseButton>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-950 p-8 text-white">
+              <p class="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-200">Current Checklist</p>
+              <h4 class="mt-3 text-2xl font-black">{{ selectedRecord.fullName }}</h4>
+              <p class="mt-2 text-sm font-medium text-slate-300">
+                Theo dõi các đầu việc chuẩn bị trước ngày bắt đầu và cập nhật tiến độ ngay trong hồ sơ onboarding.
+              </p>
+
+              <div class="mt-5 grid grid-cols-2 gap-3">
+                <div class="rounded-[22px] border border-white/10 bg-white/5 p-4">
+                  <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Đã xong</p>
+                  <p class="mt-2 text-2xl font-black text-white">{{ checklistStats.completed }}</p>
+                </div>
+                <div class="rounded-[22px] border border-white/10 bg-white/5 p-4">
+                  <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Đang mở</p>
+                  <p class="mt-2 text-2xl font-black text-white">{{ checklistStats.open }}</p>
+                </div>
+              </div>
+
+              <div class="mt-6 space-y-4">
+                <div
+                  v-for="item in safeArray(selectedRecord.checklistItems)"
+                  :key="item.onboardingChecklistId"
+                  class="rounded-[24px] border border-white/10 bg-white/5 p-4"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-black text-white">{{ item.itemName }}</p>
+                      <p class="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ item.itemCode }}</p>
+                    </div>
+                    <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]" :class="item.completed ? 'bg-emerald-500/15 text-emerald-200' : 'bg-amber-500/15 text-amber-200'">
+                      {{ item.completed ? 'Done' : 'Open' }}
+                    </span>
+                  </div>
+                  <p v-if="item.note" class="mt-3 text-sm font-medium text-slate-300">{{ item.note }}</p>
+                  <p v-if="item.completedAt || item.completedByUsername" class="mt-2 text-xs font-bold text-emerald-300">
+                    {{ item.completedByUsername || 'Hệ thống' }} xác nhận hoàn tất
+                  </p>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <span v-if="item.required" class="rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-200">
+                      Required
+                    </span>
+                    <span v-if="item.dueDate" class="rounded-full bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">
+                      Due {{ item.dueDate }}
+                    </span>
+                  </div>
+                </div>
+
+                <div v-if="!safeArray(selectedRecord.checklistItems).length" class="rounded-[24px] border border-dashed border-white/15 bg-white/[0.03] p-5 text-sm font-medium text-slate-300">
+                  Chưa có checklist nào. Hãy tạo item đầu tiên để mở quy trình chuẩn bị onboarding.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 
   <!-- DETAIL PANEL -->
   <Teleport to="body">
@@ -382,7 +840,7 @@ function initials(name) {
               </div>
               <div class="p-4 bg-slate-50 rounded-2xl">
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Manager</p>
-                <p class="text-xs font-bold text-slate-800">{{ selectedRecord.managerEmployeeName || 'Chưa gán' }}</p>
+                <p class="text-xs font-bold text-slate-800">{{ selectedRecord.managerFullName || 'Chưa gán' }}</p>
               </div>
             </div>
           </div>
@@ -392,9 +850,88 @@ function initials(name) {
 
             <!-- Checklist -->
             <div>
-              <h4 class="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <ListChecks class="w-4 h-4 text-indigo-600" /> Checklist tiến độ
-              </h4>
+              <div class="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h4 class="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                    <ListChecks class="w-4 h-4 text-indigo-600" /> Checklist tiến độ
+                  </h4>
+                  <p class="mt-2 text-sm font-medium text-slate-500">
+                    {{ checklistStats.completed }}/{{ checklistStats.total || 0 }} đầu việc đã hoàn tất, còn {{ checklistStats.open }} đầu việc đang mở.
+                  </p>
+                </div>
+                <BaseButton variant="outline" size="sm" @click="openChecklistModal()">
+                  <Plus class="mr-2 h-4 w-4" />
+                  Thêm checklist
+                </BaseButton>
+              </div>
+
+              <div class="mb-4 flex flex-wrap gap-2">
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                  Tổng {{ checklistStats.total }}
+                </span>
+                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                  Đã xong {{ checklistStats.completed }}
+                </span>
+                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">
+                  Đang mở {{ checklistStats.open }}
+                </span>
+                <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">
+                  Bắt buộc {{ checklistStats.required }}
+                </span>
+                <span v-if="checklistStats.overdue" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-700">
+                  Quá hạn {{ checklistStats.overdue }}
+                </span>
+              </div>
+
+              <div class="mb-4 flex flex-wrap gap-2">
+                <button
+                  v-for="template in checklistTemplates"
+                  :key="template.itemCode"
+                  type="button"
+                  class="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-700 transition-all hover:border-indigo-300 hover:bg-indigo-100"
+                  @click="applyChecklistTemplate(template)"
+                >
+                  + {{ template.itemName }}
+                </button>
+              </div>
+              <div v-if="safeArray(selectedRecord.checklistItems).length" class="mb-4 space-y-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+                <div
+                  v-for="item in safeArray(selectedRecord.checklistItems)"
+                  :key="item.onboardingChecklistId"
+                  class="flex flex-col gap-3 rounded-[24px] bg-white p-4 shadow-sm shadow-slate-200/60 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="text-sm font-black text-slate-900">{{ item.itemName }}</p>
+                      <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]" :class="item.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'">
+                        {{ item.completed ? 'Đã xong' : 'Đang mở' }}
+                      </span>
+                      <span v-if="item.required" class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">
+                        Bắt buộc
+                      </span>
+                    </div>
+                    <p class="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{{ item.itemCode }}</p>
+                    <p v-if="item.note" class="mt-2 text-sm font-medium text-slate-500">{{ item.note }}</p>
+                    <p v-if="item.dueDate" class="mt-2 text-xs font-bold" :class="!item.completed && item.dueDate < new Date().toISOString().slice(0, 10) ? 'text-rose-500' : 'text-slate-400'">
+                      Hạn xử lý: {{ item.dueDate }}
+                    </p>
+                    <p v-if="item.completedAt || item.completedByUsername" class="mt-1 text-xs font-bold text-emerald-600">
+                      Hoàn tất {{ item.completedAt ? `lúc ${item.completedAt}` : '' }}{{ item.completedByUsername ? ` bởi ${item.completedByUsername}` : '' }}
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap gap-2">
+                    <BaseButton variant="outline" size="sm" @click="openChecklistModal(item)">
+                      <PencilLine class="mr-2 h-4 w-4" />
+                      Sửa
+                    </BaseButton>
+                    <BaseButton variant="primary" size="sm" :loading="checklistSubmitting" @click="toggleChecklistCompleted(item)">
+                      <CheckCheck class="mr-2 h-4 w-4" />
+                      {{ item.completed ? 'Mở lại' : 'Hoàn tất' }}
+                    </BaseButton>
+                  </div>
+                </div>
+              </div>
               <div class="space-y-3">
                 <div v-for="step in stepDefs" :key="step.key"
                   class="p-4 rounded-3xl border transition-all flex items-center justify-between" :class="{
@@ -435,11 +972,11 @@ function initials(name) {
                   <span class="text-indigo-600 cursor-pointer hover:underline">+ Thêm</span>
                 </h4>
                 <div v-if="selectedRecord.documents?.length" class="space-y-3">
-                  <div v-for="doc in selectedRecord.documents" :key="doc.id"
+                  <div v-for="doc in safeArray(selectedRecord.documents)" :key="doc.onboardingDocumentId"
                     class="flex items-center justify-between text-xs font-bold bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
                     <span class="truncate">{{ doc.documentName }}</span>
                     <div class="flex items-center gap-2">
-                      <span v-if="doc.received" class="text-emerald-500 text-[10px]">Đã nhận</span>
+                      <span class="text-emerald-500 text-[10px]">{{ doc.status }}</span>
                       <Eye class="w-4 h-4 text-slate-400 cursor-pointer hover:text-indigo-600" />
                     </div>
                   </div>
@@ -456,10 +993,10 @@ function initials(name) {
                     <span class="text-white cursor-pointer hover:underline">+ Cấp phát</span>
                   </h4>
                   <div v-if="selectedRecord.assets?.length" class="space-y-2">
-                    <div v-for="asset in selectedRecord.assets" :key="asset.id"
+                    <div v-for="asset in safeArray(selectedRecord.assets)" :key="asset.onboardingAssetId"
                       class="flex items-center justify-between text-xs font-bold bg-white/10 p-2.5 rounded-xl">
                       <span class="truncate">{{ asset.assetName }}</span>
-                      <span class="text-[10px] opacity-70">{{ asset.specifications }}</span>
+                      <span class="text-[10px] opacity-70">{{ asset.status }}</span>
                     </div>
                   </div>
                   <div v-else class="py-4 text-center text-xs text-indigo-200 italic">Chưa có thiết bị nào</div>
@@ -473,16 +1010,16 @@ function initials(name) {
           <!-- Sticky Actions -->
           <div
             class="p-8 border-t border-slate-50 flex items-center gap-4 shrink-0 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
-            <BaseButton v-if="selectedRecord.onboardingStatus === 'READY_FOR_JOIN'" variant="primary" size="lg" shadow
+            <BaseButton v-if="recordStatus(selectedRecord) === 'READY_FOR_JOIN'" variant="primary" size="lg" shadow
               class="flex-1 rounded-2xl! font-bold" @click="handleComplete(selectedRecord)">
               <CheckCheck class="w-5 h-5 mr-2" /> Chốt hoàn tất Onboarding
             </BaseButton>
-            <BaseButton v-if="selectedRecord.onboardingStatus === 'READY_FOR_JOIN'" variant="outline" size="lg"
+            <BaseButton v-if="recordStatus(selectedRecord) === 'READY_FOR_JOIN'" variant="outline" size="lg"
               class="flex-1 rounded-2xl! font-bold" @click="handleNotify(selectedRecord)">
               <Send class="w-5 h-5 mr-2" /> Gửi mail chào mừng
             </BaseButton>
 
-            <div v-if="selectedRecord.onboardingStatus === 'COMPLETED'"
+            <div v-if="recordStatus(selectedRecord) === 'COMPLETED'"
               class="w-full text-center py-4 bg-emerald-50 text-emerald-700 rounded-2xl font-black uppercase text-xs tracking-widest">
               Quy trình đã hoàn thành 100%
             </div>

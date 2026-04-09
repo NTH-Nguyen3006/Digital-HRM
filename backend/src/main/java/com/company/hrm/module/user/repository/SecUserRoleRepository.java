@@ -14,6 +14,7 @@ public interface SecUserRoleRepository extends JpaRepository<SecUserRole, UUID> 
     @Query("""
             select ur
             from SecUserRole ur
+            join fetch ur.role r
             where ur.user.userId = :userId
               and ur.primaryRole = true
               and ur.status = com.company.hrm.common.constant.RecordStatus.ACTIVE

@@ -1,268 +1,249 @@
 <script setup>
-import { ref, reactive } from 'vue'
-import { FileText, Calendar, MessageSquare, Upload, X } from 'lucide-vue-next'
+import { onMounted, reactive, ref } from 'vue'
+import { Calendar, FileText, Loader2, MessageSquare } from 'lucide-vue-next'
+import { getMyResignationRequests, submitResignationRequest } from '@/api/me/portal'
+import { safeArray, unwrapData } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
+
+const toast = useToast()
 
 const showForm = ref(false)
 const loading = ref(false)
+const submitting = ref(false)
+const requests = ref([])
+
 const form = reactive({
-    effectiveDate: '',
-    reason: '',
-    detailedReason: '',
-    handoverNotes: '',
-    attachments: []
+  requestedLastWorkingDate: '',
+  reason: '',
+  detailedReason: '',
 })
 
-const requests = ref([
-    {
-        id: 1,
-        effectiveDate: '2026-05-15',
-        reason: 'Cá nhân',
-        detailedReason: 'Muốn thay đổi môi trường làm việc',
-        handoverNotes: 'Đã bàn giao công việc cho đồng nghiệp Nguyễn Văn B',
-        status: 'PENDING',
-        submittedAt: '2026-04-08T10:30:00Z',
-        attachments: ['resignation_letter.pdf']
-    }
-])
-
 const resignationReasons = [
-    'Cá nhân',
-    'Sức khỏe',
-    'Học tập',
-    'Thăng tiến',
-    'Di chuyển',
-    'Khác'
+  'Cá nhân',
+  'Sức khỏe',
+  'Học tập',
+  'Thay đổi định hướng',
+  'Di chuyển nơi ở',
+  'Khác',
 ]
 
-const getStatusLabel = (status) => {
-    switch (status) {
-        case 'PENDING': return 'Đang chờ duyệt'
-        case 'APPROVED': return 'Đã duyệt'
-        case 'REJECTED': return 'Từ chối'
-        case 'COMPLETED': return 'Hoàn thành'
-        default: return status
-    }
+function minDate() {
+  const today = new Date()
+  today.setDate(today.getDate() + 30)
+  return today.toISOString().split('T')[0]
 }
 
-const getStatusColor = (status) => {
-    switch (status) {
-        case 'PENDING': return 'bg-yellow-100 text-yellow-800'
-        case 'APPROVED': return 'bg-green-100 text-green-800'
-        case 'REJECTED': return 'bg-red-100 text-red-800'
-        case 'COMPLETED': return 'bg-blue-100 text-blue-800'
-        default: return 'bg-slate-100 text-slate-800'
-    }
+function resetForm() {
+  form.requestedLastWorkingDate = ''
+  form.reason = ''
+  form.detailedReason = ''
 }
 
-const submitRequest = async () => {
-    loading.value = true
-    try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        const newRequest = {
-            id: Date.now(),
-            ...form,
-            status: 'PENDING',
-            submittedAt: new Date().toISOString()
-        }
-
-        requests.value.unshift(newRequest)
-
-        // Reset form
-        Object.keys(form).forEach(key => {
-            if (key === 'attachments') {
-                form[key] = []
-            } else {
-                form[key] = ''
-            }
-        })
-        showForm.value = false
-    } catch (error) {
-        console.error('Failed to submit resignation request:', error)
-    } finally {
-        loading.value = false
-    }
+function formatDate(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('vi-VN')
 }
 
-const removeAttachment = (index) => {
-    form.attachments.splice(index, 1)
+function formatDateTime(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('vi-VN')
 }
 
-const formatDate = (dateString) => {
-    if (!dateString) return '—'
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+function getStatusLabel(status) {
+  const labels = {
+    REQUESTED: 'Đã gửi yêu cầu',
+    MANAGER_REVIEWED: 'QL đã xem xét',
+    HR_FINALIZED: 'HR đã chốt',
+    CLOSED: 'Đã hoàn tất',
+    CANCELLED: 'Đã hủy',
+  }
+  return labels[status] || status || 'Không xác định'
+}
+
+function getStatusColor(status) {
+  const styles = {
+    REQUESTED: 'bg-amber-100 text-amber-800',
+    MANAGER_REVIEWED: 'bg-sky-100 text-sky-800',
+    HR_FINALIZED: 'bg-indigo-100 text-indigo-800',
+    CLOSED: 'bg-emerald-100 text-emerald-800',
+    CANCELLED: 'bg-slate-100 text-slate-700',
+  }
+  return styles[status] || 'bg-slate-100 text-slate-700'
+}
+
+async function fetchRequests() {
+  loading.value = true
+  try {
+    const response = await getMyResignationRequests()
+    requests.value = safeArray(unwrapData(response))
+  } catch (error) {
+    console.error('Failed to fetch resignation requests:', error)
+    requests.value = []
+    toast.error('Không thể tải yêu cầu nghỉ việc')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleSubmit() {
+  if (!form.requestedLastWorkingDate || !form.reason || !form.detailedReason.trim()) {
+    toast.warning('Vui lòng nhập đủ ngày nghỉ và lý do')
+    return
+  }
+
+  submitting.value = true
+  try {
+    await submitResignationRequest({
+      requestedLastWorkingDate: form.requestedLastWorkingDate,
+      requestReason: `${form.reason}: ${form.detailedReason.trim()}`,
     })
+    toast.success('Đã gửi yêu cầu nghỉ việc')
+    resetForm()
+    showForm.value = false
+    await fetchRequests()
+  } catch (error) {
+    console.error('Failed to submit resignation request:', error)
+    toast.error(error.response?.data?.message || 'Gửi yêu cầu nghỉ việc thất bại')
+  } finally {
+    submitting.value = false
+  }
 }
 
-const minDate = () => {
-    const today = new Date()
-    today.setDate(today.getDate() + 30) // At least 30 days notice
-    return today.toISOString().split('T')[0]
-}
+onMounted(fetchRequests)
 </script>
 
 <template>
-    <div class="max-w-4xl mx-auto px-6 py-8">
-        <div class="mb-8">
-            <h1 class="text-3xl font-black text-slate-900 mb-2">Yêu cầu nghỉ việc</h1>
-            <p class="text-slate-600">Gửi yêu cầu nghỉ việc để trình lãnh đạo phê duyệt</p>
-        </div>
-
-        <!-- Important Notice -->
-        <div class="rounded-4xl border border-yellow-200 bg-yellow-50 p-6 mb-8">
-            <div class="flex items-start gap-3">
-                <MessageSquare class="w-6 h-6 text-yellow-600 mt-0.5" />
-                <div>
-                    <h3 class="font-semibold text-yellow-800 mb-2">Lưu ý quan trọng</h3>
-                    <ul class="text-sm text-yellow-700 space-y-1">
-                        <li>• Thời gian báo trước tối thiểu 30 ngày làm việc</li>
-                        <li>• Yêu cầu cần được trưởng phòng và HR phê duyệt</li>
-                        <li>• Quá trình nghỉ việc sẽ bao gồm bàn giao công việc và thanh toán</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Create Request Button -->
-        <div class="mb-8">
-            <button @click="showForm = !showForm"
-                class="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition">
-                <FileText class="w-5 h-5" />
-                Tạo yêu cầu nghỉ việc
-            </button>
-        </div>
-
-        <!-- Create Request Form -->
-        <div v-if="showForm" class="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm mb-8">
-            <h2 class="text-xl font-black text-slate-900 mb-6">Thông tin nghỉ việc</h2>
-
-            <form @submit.prevent="submitRequest" class="space-y-6">
-                <div class="grid gap-6 md:grid-cols-2">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Ngày hiệu lực cuối cùng</label>
-                        <input v-model="form.effectiveDate" type="date" :min="minDate()" required
-                            class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500" />
-                        <p class="text-xs text-slate-500 mt-1">Tối thiểu 30 ngày kể từ ngày hiện tại</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Lý do nghỉ việc</label>
-                        <select v-model="form.reason" required
-                            class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500">
-                            <option value="">Chọn lý do</option>
-                            <option v-for="reason in resignationReasons" :key="reason" :value="reason">
-                                {{ reason }}
-                            </option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Lý do chi tiết</label>
-                    <textarea v-model="form.detailedReason" required rows="4"
-                        placeholder="Mô tả chi tiết lý do nghỉ việc..."
-                        class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Ghi chú bàn giao công việc</label>
-                    <textarea v-model="form.handoverNotes" rows="3"
-                        placeholder="Mô tả công việc cần bàn giao, người nhận việc..."
-                        class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Tài liệu đính kèm (Đơn xin nghỉ
-                        việc)</label>
-                    <div class="space-y-2">
-                        <input type="file" multiple accept=".pdf,.doc,.docx"
-                            @change="(e) => form.attachments = Array.from(e.target.files)"
-                            class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500" />
-                        <p class="text-xs text-slate-500">Chấp nhận file PDF, DOC, DOCX</p>
-                        <div v-if="form.attachments.length > 0" class="flex flex-wrap gap-2">
-                            <span v-for="(file, index) in form.attachments" :key="index"
-                                class="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-sm">
-                                {{ file.name }}
-                                <button @click="removeAttachment(index)" class="text-slate-500 hover:text-red-500">
-                                    <X class="w-4 h-4" />
-                                </button>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex gap-4">
-                    <button type="submit" :disabled="loading"
-                        class="px-6 py-3 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 disabled:opacity-50 transition">
-                        <span v-if="loading" class="inline-flex items-center gap-2">
-                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Đang gửi...
-                        </span>
-                        <span v-else>Gửi yêu cầu nghỉ việc</span>
-                    </button>
-
-                    <button type="button" @click="showForm = false"
-                        class="px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-full hover:bg-slate-300 transition">
-                        Hủy
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Request History -->
-        <div class="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 class="text-xl font-black text-slate-900 mb-6">Lịch sử yêu cầu nghỉ việc</h2>
-
-            <div v-if="requests.length === 0" class="text-center py-8">
-                <FileText class="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 class="text-lg font-semibold text-slate-900 mb-2">Chưa có yêu cầu nào</h3>
-                <p class="text-slate-600">Tạo yêu cầu nghỉ việc khi cần thiết.</p>
-            </div>
-
-            <div v-else class="space-y-4">
-                <div v-for="request in requests" :key="request.id"
-                    class="rounded-3xl border border-slate-100 bg-slate-50 p-6">
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-3 mb-2">
-                                <Calendar class="w-5 h-5 text-slate-400" />
-                                <span class="font-semibold text-slate-900">Ngày hiệu lực: {{
-                                    formatDate(request.effectiveDate) }}</span>
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold"
-                                    :class="getStatusColor(request.status)">
-                                    {{ getStatusLabel(request.status) }}
-                                </span>
-                            </div>
-                            <p class="text-sm text-slate-600 mb-2"><strong>Lý do:</strong> {{ request.reason }}</p>
-                            <p class="text-sm text-slate-600 mb-2"><strong>Chi tiết:</strong> {{ request.detailedReason
-                            }}</p>
-                            <p v-if="request.handoverNotes" class="text-sm text-slate-600">
-                                <strong>Bàn giao:</strong> {{ request.handoverNotes }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div
-                        class="flex items-center justify-between text-sm text-slate-500 pt-4 border-t border-slate-200">
-                        <span>Đã gửi: {{ formatDate(request.submittedAt) }}</span>
-                    </div>
-
-                    <div v-if="request.attachments.length > 0" class="mt-4 pt-4 border-t border-slate-200">
-                        <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Tài liệu đính kèm</p>
-                        <div class="flex flex-wrap gap-2">
-                            <span v-for="file in request.attachments" :key="file"
-                                class="inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full text-sm border border-slate-200">
-                                <Upload class="w-4 h-4" />
-                                {{ file }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="max-w-4xl mx-auto px-6 py-8 space-y-8">
+    <div>
+      <h1 class="text-3xl font-black text-slate-900 mb-2">Yêu cầu nghỉ việc</h1>
+      <p class="text-slate-600">Gửi đơn nghỉ việc và theo dõi tiến trình offboarding thực tế từ backend.</p>
     </div>
+
+    <div class="rounded-4xl border border-yellow-200 bg-yellow-50 p-6">
+      <div class="flex items-start gap-3">
+        <MessageSquare class="w-6 h-6 text-yellow-600 mt-0.5" />
+        <div>
+          <h3 class="font-semibold text-yellow-800 mb-2">Lưu ý quan trọng</h3>
+          <ul class="text-sm text-yellow-700 space-y-1">
+            <li>Thời gian báo trước tối thiểu 30 ngày.</li>
+            <li>Yêu cầu sẽ đi qua các bước xem xét của quản lý và HR.</li>
+            <li>Thông tin settlement và ngày nghỉ chính thức sẽ được cập nhật theo tiến trình xử lý.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <button
+        @click="showForm = !showForm"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition"
+      >
+        <FileText class="w-5 h-5" />
+        {{ showForm ? 'Hủy tạo yêu cầu' : 'Tạo yêu cầu nghỉ việc' }}
+      </button>
+    </div>
+
+    <div v-if="showForm" class="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
+      <h2 class="text-xl font-black text-slate-900 mb-6">Thông tin nghỉ việc</h2>
+
+      <form @submit.prevent="handleSubmit" class="space-y-6">
+        <div class="grid gap-6 md:grid-cols-2">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Ngày làm việc cuối dự kiến *</label>
+            <input
+              v-model="form.requestedLastWorkingDate"
+              type="date"
+              :min="minDate()"
+              class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Nhóm lý do *</label>
+            <select
+              v-model="form.reason"
+              class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="">Chọn lý do</option>
+              <option v-for="reason in resignationReasons" :key="reason" :value="reason">{{ reason }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Lý do chi tiết *</label>
+          <textarea
+            v-model="form.detailedReason"
+            rows="4"
+            placeholder="Mô tả rõ lý do và bối cảnh nghỉ việc..."
+            class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+
+        <div class="flex gap-4">
+          <button
+            type="submit"
+            :disabled="submitting"
+            class="px-6 py-3 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 disabled:opacity-50 transition inline-flex items-center gap-2"
+          >
+            <Loader2 v-if="submitting" class="w-4 h-4 animate-spin" />
+            <span>{{ submitting ? 'Đang gửi...' : 'Gửi yêu cầu nghỉ việc' }}</span>
+          </button>
+
+          <button
+            type="button"
+            @click="showForm = false"
+            class="px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-full hover:bg-slate-300 transition"
+          >
+            Hủy
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="loading" class="space-y-4">
+      <div v-for="item in 3" :key="item" class="h-36 animate-pulse rounded-4xl bg-slate-100" />
+    </div>
+
+    <div v-else-if="requests.length" class="space-y-4">
+      <div
+        v-for="request in requests"
+        :key="request.offboardingCaseId"
+        class="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm"
+      >
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div class="space-y-3">
+            <div class="flex items-center gap-3 flex-wrap">
+              <Calendar class="w-5 h-5 text-slate-400" />
+              <span class="font-semibold text-slate-900">{{ request.offboardingCode }}</span>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="getStatusColor(request.status)">
+                {{ getStatusLabel(request.status) }}
+              </span>
+            </div>
+            <p class="text-sm text-slate-600">Ngày gửi yêu cầu: {{ formatDate(request.requestDate) }}</p>
+            <p class="text-sm text-slate-600">Ngày nghỉ dự kiến: {{ formatDate(request.requestedLastWorkingDate) }}</p>
+            <p class="text-sm text-slate-600">Ngày nghỉ hiệu lực: {{ formatDate(request.effectiveLastWorkingDate) }}</p>
+            <p class="text-sm text-slate-600">Quản lý trực tiếp: {{ request.managerEmployeeName || '—' }}</p>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2 w-full md:w-auto md:min-w-[320px]">
+            <div class="rounded-2xl bg-slate-50 p-4">
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">HR Finalized</p>
+              <p class="mt-2 font-semibold text-slate-900">{{ formatDateTime(request.hrFinalizedAt) }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-50 p-4">
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Closed At</p>
+              <p class="mt-2 font-semibold text-slate-900">{{ formatDateTime(request.closedAt) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="rounded-4xl border border-slate-200 bg-white p-16 shadow-sm text-center">
+      <FileText class="w-20 h-20 text-slate-300 mx-auto mb-6" />
+      <h3 class="text-xl font-bold text-slate-900 mb-2">Chưa có yêu cầu nào</h3>
+      <p class="text-slate-600">Lịch sử nghỉ việc sẽ xuất hiện tại đây khi backend có dữ liệu tương ứng.</p>
+    </div>
+  </div>
 </template>

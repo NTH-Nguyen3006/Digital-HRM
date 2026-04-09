@@ -1,472 +1,612 @@
 <script setup>
-import { ref, computed } from 'vue'
-import GlassCard from '@/components/common/GlassCard.vue'
-import StatCard from '@/components/common/StatCard.vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { Banknote, CheckCircle2, Clock3, Download, Landmark, PlayCircle, Search, Send, Wallet } from 'lucide-vue-next'
+import PageHeader from '@/components/common/PageHeader.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
+import AvatarBox from '@/components/common/AvatarBox.vue'
+import InsightCard from '@/components/hrm/InsightCard.vue'
+import SurfacePanel from '@/components/hrm/SurfacePanel.vue'
 import {
-  Calculator, Send, FileText, Download, Plus,
-  Banknote, TrendingUp, Users, CheckCircle2,
-  ChevronDown, Search, Eye, Settings, RefreshCw,
-  ArrowUpRight, ArrowDownRight, BarChart2, Clock,
-  Wallet, Shield
-} from 'lucide-vue-next'
-import {
-  getPayrollPeriods,
-  getPayrollItems,
-  generatePayrollDraft,
   approvePayrollPeriod,
-  publishPayrollPeriod,
   exportBankTransferReport,
   exportPitReport,
-  adjustPayrollItem
-} from '@/api/admin/payroll.js'
+  generatePayrollDraft,
+  getPayrollItemDetail,
+  getPayrollItems,
+  getPayrollPeriods,
+  publishPayrollPeriod,
+} from '@/api/admin/payroll'
+import { useToast } from '@/composables/useToast'
+import { useUiStore } from '@/stores/ui'
+import { downloadBlob, unwrapData, unwrapPage } from '@/utils/api'
+import { formatCurrency, formatDateTime, formatMonthYear, formatNumber } from '@/utils/format'
 
-// =================== STATE ===================
-const activeTab = ref('payslips')
+const toast = useToast()
+const ui = useUiStore()
+
+const loading = ref(false)
+const detailLoading = ref(false)
+const actionLoading = ref('')
 const searchQuery = ref('')
-const selectedPeriod = ref('T03/2026')
-const isGenerating = ref(false)
-const showDetailModal = ref(false)
+const periods = ref([])
+const items = ref([])
+const selectedPeriodId = ref(null)
 const selectedItem = ref(null)
 
-const periods = ref(['T04/2026', 'T03/2026', 'T02/2026', 'T01/2026'])
+const selectedPeriod = computed(() =>
+  periods.value.find((item) => item.payrollPeriodId === selectedPeriodId.value) || null,
+)
 
-const periodStatus = ref({
-  label: 'Nháp',
-  class: 'bg-amber-100 text-amber-700 border border-amber-200',
-  dot: 'bg-amber-400'
-})
+const filteredItems = computed(() => {
+  const keyword = searchQuery.value.trim().toLowerCase()
+  if (!keyword) return items.value
 
-const stats = [
-  { title: 'Tổng quỹ lương', value: '1.24 tỷ', icon: Banknote, color: 'indigo', trend: 5, trendLabel: 'so với kỳ trước' },
-  { title: 'Số phiếu lương', value: '127', icon: Users, color: 'emerald', trend: 2, trendLabel: 'nhân sự' },
-  { title: 'Đã thanh toán', value: '98', icon: CheckCircle2, color: 'sky', trend: 12, trendLabel: 'phiếu' },
-  { title: 'Tổng khấu trừ thuế', value: '87.4 tr', icon: Shield, color: 'rose', trend: 3, trendLabel: 'TNCN kỳ này' },
-]
-
-const payroll = ref([
-  { id: 1, employee: 'Nguyễn Văn Anh', avatar: 'NA', dept: 'Engineering', position: 'Senior Dev', baseSalary: 20000000, workDays: 22, allowance: 2000000, insurance: 900000, tax: 1875000, bonus: 1000000, netPay: 20225000, status: 'APPROVED', bankAccount: '...8821' },
-  { id: 2, employee: 'Trần Thị Bích', avatar: 'TB', dept: 'Marketing', position: 'Marketing Lead', baseSalary: 15000000, workDays: 21.5, allowance: 1500000, insurance: 675000, tax: 1050000, bonus: 0, netPay: 14482954, status: 'PAID', bankAccount: '...4432' },
-  { id: 3, employee: 'Lê Hoàng Cường', avatar: 'LC', dept: 'Sales', position: 'Sales Manager', baseSalary: 18000000, workDays: 22, allowance: 1800000, insurance: 810000, tax: 1500000, bonus: 2000000, netPay: 19490000, status: 'DRAFT', bankAccount: '...7756' },
-  { id: 4, employee: 'Phạm Thị Dung', avatar: 'PD', dept: 'Finance', position: 'Accountant', baseSalary: 13000000, workDays: 20, allowance: 1000000, insurance: 585000, tax: 680000, bonus: 0, netPay: 11550000, status: 'PAID', bankAccount: '...3309' },
-  { id: 5, employee: 'Hoàng Văn Em', avatar: 'HE', dept: 'HR', position: 'HR Specialist', baseSalary: 12000000, workDays: 22, allowance: 800000, insurance: 540000, tax: 520000, bonus: 500000, netPay: 12240000, status: 'DRAFT', bankAccount: '...6614' },
-])
-
-// =================== COMPUTED ===================
-const tabs = [
-  { key: 'payslips', label: 'Bảng lương chi tiết', icon: FileText },
-  { key: 'summary', label: 'Tóm tắt kỳ lương', icon: BarChart2 },
-]
-
-const statusConfig = {
-  DRAFT:    { label: 'Nháp',          class: 'bg-slate-100 text-slate-600 border border-slate-200', dot: 'bg-slate-400' },
-  APPROVED: { label: 'Đã duyệt',      class: 'bg-indigo-100 text-indigo-700 border border-indigo-200', dot: 'bg-indigo-400' },
-  PAID:     { label: 'Đã thanh toán', class: 'bg-emerald-100 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
-}
-
-const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500', 'bg-sky-500']
-function getAvatarColor(name) {
-  return avatarColors[name.charCodeAt(0) % avatarColors.length]
-}
-
-const filteredPayroll = computed(() => {
-  if (!searchQuery.value) return payroll.value
-  const q = searchQuery.value.toLowerCase()
-  return payroll.value.filter(p =>
-    p.employee.toLowerCase().includes(q) ||
-    p.dept.toLowerCase().includes(q) ||
-    p.position.toLowerCase().includes(q)
+  return items.value.filter((item) =>
+    [item.employeeName, item.employeeCode, item.orgUnitName]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(keyword)),
   )
 })
 
-function fmt(num) {
-  return new Intl.NumberFormat('vi-VN').format(num) + ' ₫'
-}
+const stats = computed(() => [
+  {
+    title: 'Nhân sự trong kỳ',
+    value: selectedPeriod.value?.totalEmployeeCount ?? items.value.length,
+    subtitle: 'Đã đưa vào batch lương',
+    icon: Banknote,
+    tone: 'indigo',
+  },
+  {
+    title: 'Manager xác nhận',
+    value: selectedPeriod.value?.managerConfirmedCount ?? items.value.filter((item) => item.managerConfirmedAt).length,
+    subtitle: 'Tiến độ xác nhận trước HR',
+    icon: CheckCircle2,
+    tone: 'emerald',
+  },
+  {
+    title: 'Tổng gross',
+    value: formatCurrency(selectedPeriod.value?.totalGrossAmount ?? items.value.reduce((sum, item) => sum + Number(item.grossIncome || 0), 0)),
+    subtitle: 'Chi phí lương trước khấu trừ',
+    icon: Landmark,
+    tone: 'amber',
+  },
+  {
+    title: 'Tổng net',
+    value: formatCurrency(selectedPeriod.value?.totalNetAmount ?? items.value.reduce((sum, item) => sum + Number(item.netPay || 0), 0)),
+    subtitle: 'Thực chi cho kỳ đang chọn',
+    icon: Wallet,
+    tone: 'rose',
+  },
+])
 
-const totalNetPay = computed(() =>
-  payroll.value.reduce((s, p) => s + p.netPay, 0)
+const selectedItemLines = computed(() => selectedItem.value?.lines || [])
+
+const managerConfirmRequiredCount = computed(() =>
+  items.value.filter((item) => item.managerConfirmationRequired).length,
 )
-const totalTax = computed(() =>
-  payroll.value.reduce((s, p) => s + p.tax, 0)
-)
-const totalBonus = computed(() =>
-  payroll.value.reduce((s, p) => s + p.bonus, 0)
+
+const managerConfirmedCount = computed(() =>
+  items.value.filter((item) => item.itemStatus === 'MANAGER_CONFIRMED' || item.managerConfirmedAt).length,
 )
 
-// =================== METHODS ===================
-function openDetail(item) {
-  selectedItem.value = item
-  showDetailModal.value = true
+const payrollActionState = computed(() => {
+  const period = selectedPeriod.value
+  const status = period?.periodStatus || ''
+  const hasItems = items.value.length > 0
+  const managerPending = items.value.some((item) => item.managerConfirmationRequired && item.itemStatus !== 'MANAGER_CONFIRMED')
+
+  return {
+    canGenerate: Boolean(period) && !['APPROVED', 'PUBLISHED'].includes(status),
+    canApprove: Boolean(period) && hasItems && ['DRAFT', 'TEAM_REVIEW'].includes(status) && !managerPending,
+    canPublish: Boolean(period) && hasItems && status === 'APPROVED',
+    canExport: Boolean(period) && ['APPROVED', 'PUBLISHED'].includes(status),
+    managerPending,
+  }
+})
+
+const workflowHint = computed(() => {
+  if (!selectedPeriod.value) return 'Chọn một kỳ lương để thao tác.'
+
+  if (actionLoading.value) return 'Hệ thống đang xử lý tác vụ kỳ lương.'
+
+  if (!items.value.length) return 'Kỳ lương chưa có dữ liệu. Hãy chạy nháp để tạo bảng lương.'
+
+  if (selectedPeriod.value.periodStatus === 'APPROVED') {
+    return 'Kỳ lương đã được duyệt. HR có thể phát hành phiếu lương hoặc xuất báo cáo.'
+  }
+
+  if (selectedPeriod.value.periodStatus === 'PUBLISHED') {
+    return 'Kỳ lương đã phát hành. Nhân viên đã có thể xem phiếu lương.'
+  }
+
+  if (payrollActionState.value.managerPending) {
+    return `Còn ${formatNumber(managerConfirmRequiredCount.value - managerConfirmedCount.value)} phiếu cần manager xác nhận trước khi HR duyệt kỳ.`
+  }
+
+  return 'Dữ liệu đã sẵn sàng. HR có thể duyệt kỳ lương để chuyển sang bước phát hành.'
+})
+
+const selectedItemSummary = computed(() => {
+  if (!selectedItem.value) return []
+
+  return [
+    { label: 'Lương tháng', value: formatCurrency(selectedItem.value.baseSalaryMonthly) },
+    { label: 'Lương prorate', value: formatCurrency(selectedItem.value.baseSalaryProrated) },
+    { label: 'Khấu trừ BH', value: formatCurrency(selectedItem.value.employeeInsuranceAmount) },
+    { label: 'Thu nhập tính thuế', value: formatCurrency(selectedItem.value.taxableIncome) },
+    { label: 'PIT', value: formatCurrency(selectedItem.value.pitAmount) },
+    { label: 'Net pay', value: formatCurrency(selectedItem.value.netPay) },
+  ]
+})
+
+function getPeriodProgress(period) {
+  if (!period?.totalEmployeeCount) return 0
+  return Math.min(100, Math.round(((period.managerConfirmedCount || 0) / period.totalEmployeeCount) * 100))
 }
 
-async function handleGenerate() {
-  isGenerating.value = true
-  try {
-    await generatePayrollDraft('period-03-2026')
-  } catch (_) {}
-  setTimeout(() => { isGenerating.value = false }, 1500)
+async function fetchPeriods() {
+  const response = await getPayrollPeriods()
+  periods.value = unwrapPage(response).items
+  if (!selectedPeriodId.value && periods.value.length) {
+    selectedPeriodId.value = periods.value[0].payrollPeriodId
+  }
 }
 
-async function handleApprove() {
-  try {
-    await approvePayrollPeriod('period-03-2026')
-    periodStatus.value = { label: 'Đã duyệt', class: 'bg-indigo-100 text-indigo-700 border border-indigo-200', dot: 'bg-indigo-400' }
-  } catch (_) {}
+async function fetchItems() {
+  if (!selectedPeriodId.value) {
+    items.value = []
+    selectedItem.value = null
+    return
+  }
+
+  const response = await getPayrollItems(selectedPeriodId.value, {
+    keyword: searchQuery.value || undefined,
+    size: 200,
+  })
+  items.value = unwrapPage(response).items
+
+  if (!items.value.length) {
+    selectedItem.value = null
+    return
+  }
+
+  const nextItemId = selectedItem.value?.payrollItemId && items.value.some((item) => item.payrollItemId === selectedItem.value.payrollItemId)
+    ? selectedItem.value.payrollItemId
+    : items.value[0].payrollItemId
+
+  await openItem(nextItemId)
 }
 
-async function handlePublish() {
+async function fetchAll() {
+  loading.value = true
   try {
-    await publishPayrollPeriod('period-03-2026')
-  } catch (_) {}
+    await fetchPeriods()
+    await fetchItems()
+  } catch (error) {
+    console.error('Failed to fetch payroll data:', error)
+    periods.value = []
+    items.value = []
+    selectedItem.value = null
+    toast.error('Không thể tải dữ liệu tính lương')
+  } finally {
+    loading.value = false
+  }
 }
 
-async function handleBankExport() {
+async function openItem(payrollItemId) {
+  if (!payrollItemId) return
+
+  detailLoading.value = true
   try {
-    await exportBankTransferReport({ period: selectedPeriod.value })
-  } catch (_) {}
+    const response = await getPayrollItemDetail(payrollItemId)
+    selectedItem.value = unwrapData(response)
+  } catch (error) {
+    console.error('Failed to fetch payroll item detail:', error)
+    toast.error('Không thể tải chi tiết phiếu lương')
+  } finally {
+    detailLoading.value = false
+  }
 }
 
-async function handlePitExport() {
+async function runPeriodAction(action, handler, payload, successMessage) {
+  if (!selectedPeriodId.value) return
+
+  actionLoading.value = action
   try {
-    await exportPitReport({ year: 2026 })
-  } catch (_) {}
+    await handler(selectedPeriodId.value, payload)
+    toast.success(successMessage)
+    await fetchAll()
+  } catch (error) {
+    console.error(`Payroll action ${action} failed:`, error)
+    toast.error(error.response?.data?.message || 'Không thể xử lý tác vụ kỳ lương')
+  } finally {
+    actionLoading.value = ''
+  }
 }
+
+function getPeriodStatusLabel(status) {
+  const labels = {
+    DRAFT: 'Nháp',
+    TEAM_REVIEW: 'Chờ team xác nhận',
+    APPROVED: 'Đã duyệt',
+    PUBLISHED: 'Đã phát hành',
+  }
+  return labels[status] || status || 'Không xác định'
+}
+
+function getItemStatusLabel(status) {
+  const labels = {
+    DRAFT: 'Nháp',
+    MANAGER_CONFIRMED: 'QL đã xác nhận',
+    HR_APPROVED: 'HR đã duyệt',
+    PUBLISHED: 'Đã phát hành',
+  }
+  return labels[status] || status || 'Không xác định'
+}
+
+function getActionTitle(action) {
+  if (!selectedPeriod.value) return 'Chọn một kỳ lương trước'
+
+  if (action === 'generate') {
+    if (payrollActionState.value.canGenerate) return 'Tính lại bảng lương nháp cho kỳ đang chọn'
+    return 'Không thể chạy nháp khi kỳ lương đã duyệt hoặc đã phát hành'
+  }
+
+  if (action === 'approve') {
+    if (!items.value.length) return 'Kỳ lương chưa có dữ liệu để duyệt'
+    if (payrollActionState.value.managerPending) return 'Cần manager xác nhận hết các phiếu bắt buộc trước khi duyệt'
+    if (payrollActionState.value.canApprove) return 'Chốt duyệt toàn bộ phiếu lương trong kỳ'
+    return 'Chỉ có thể duyệt khi kỳ đang ở trạng thái nháp hoặc chờ team xác nhận'
+  }
+
+  if (action === 'publish') {
+    if (payrollActionState.value.canPublish) return 'Phát hành phiếu lương để nhân viên tra cứu'
+    return 'Chỉ có thể phát hành sau khi kỳ lương đã được duyệt'
+  }
+
+  return ''
+}
+
+async function handleGenerateDraft() {
+  if (!selectedPeriod.value || !payrollActionState.value.canGenerate) return
+
+  const confirmed = await ui.confirm({
+    title: 'Chạy bảng lương nháp',
+    message: `Hệ thống sẽ tính lại bảng lương nháp cho kỳ ${formatMonthYear(selectedPeriod.value.periodYear, selectedPeriod.value.periodMonth, selectedPeriod.value.periodCode)}. Các dòng lương nháp hiện tại sẽ được thay thế.`,
+    confirmLabel: 'Chạy nháp',
+  })
+  if (!confirmed) return
+
+  await runPeriodAction(
+    'generate',
+    generatePayrollDraft,
+    { regenerate: true, note: 'Tạo lại bảng lương nháp từ HR workspace.' },
+    'Đã tạo lại bảng lương nháp',
+  )
+}
+
+async function handleApprovePeriod() {
+  if (!selectedPeriod.value || !payrollActionState.value.canApprove) return
+
+  const confirmed = await ui.confirm({
+    title: 'Duyệt kỳ lương',
+    message: 'HR sẽ chốt duyệt toàn bộ phiếu lương trong kỳ này. Sau bước này, dữ liệu được xem là đã chốt nội bộ và sẵn sàng để phát hành.',
+    confirmLabel: 'Duyệt kỳ',
+  })
+  if (!confirmed) return
+
+  await runPeriodAction(
+    'approve',
+    approvePayrollPeriod,
+    { note: 'Phê duyệt kỳ lương từ HR workspace.' },
+    'Đã duyệt kỳ lương',
+  )
+}
+
+async function handlePublishPeriod() {
+  if (!selectedPeriod.value || !payrollActionState.value.canPublish) return
+
+  const confirmed = await ui.confirm({
+    title: 'Phát hành phiếu lương',
+    message: 'Phiếu lương sẽ được phát hành chính thức cho nhân viên. Sau bước này, nhân viên có thể xem dữ liệu lương của kỳ này trên cổng cá nhân.',
+    confirmLabel: 'Phát hành',
+  })
+  if (!confirmed) return
+
+  await runPeriodAction(
+    'publish',
+    publishPayrollPeriod,
+    { note: 'Phát hành phiếu lương từ HR workspace.' },
+    'Đã phát hành kỳ lương',
+  )
+}
+
+async function handleExportBank() {
+  if (!selectedPeriodId.value || !payrollActionState.value.canExport) return
+
+  try {
+    const blob = await exportBankTransferReport({ payrollPeriodId: selectedPeriodId.value })
+    downloadBlob(blob, `bank-transfer-${selectedPeriodId.value}.csv`)
+  } catch (error) {
+    console.error('Bank transfer export failed:', error)
+    toast.error('Xuất file chuyển khoản thất bại')
+  }
+}
+
+async function handleExportPit() {
+  if (!selectedPeriodId.value || !payrollActionState.value.canExport) return
+
+  try {
+    const blob = await exportPitReport({ payrollPeriodId: selectedPeriodId.value })
+    downloadBlob(blob, `pit-report-${selectedPeriodId.value}.csv`)
+  } catch (error) {
+    console.error('PIT export failed:', error)
+    toast.error('Xuất báo cáo thuế thất bại')
+  }
+}
+
+onMounted(fetchAll)
+watch(selectedPeriodId, fetchItems)
+watch(searchQuery, fetchItems)
 </script>
 
 <template>
-  
-    <div class="space-y-8">
+  <div class="space-y-8">
+    <PageHeader
+      title="Bảng tính lương"
+      subtitle="Kỳ lương, từng phiếu lương và trạng thái vận hành được gom về một workspace HR duy nhất."
+      :icon="Banknote"
+    >
+      <template #actions>
+        <BaseButton
+          variant="outline"
+          :disabled="!payrollActionState.canExport"
+          :title="payrollActionState.canExport ? 'Xuất file chuyển khoản ngân hàng' : 'Chỉ có thể xuất sau khi kỳ lương đã được duyệt'"
+          @click="handleExportBank"
+        >
+          <Download class="mr-2 h-4 w-4" />
+          UNC ngân hàng
+        </BaseButton>
+        <BaseButton
+          variant="outline"
+          :disabled="!payrollActionState.canExport"
+          :title="payrollActionState.canExport ? 'Xuất báo cáo PIT' : 'Chỉ có thể xuất sau khi kỳ lương đã được duyệt'"
+          @click="handleExportPit"
+        >
+          <Download class="mr-2 h-4 w-4" />
+          Báo cáo PIT
+        </BaseButton>
+        <BaseButton
+          variant="outline"
+          :disabled="!payrollActionState.canGenerate"
+          :title="getActionTitle('generate')"
+          :loading="actionLoading === 'generate'"
+          @click="handleGenerateDraft"
+        >
+          <PlayCircle class="mr-2 h-4 w-4" />
+          Chạy nháp
+        </BaseButton>
+        <BaseButton
+          variant="outline"
+          :disabled="!payrollActionState.canApprove"
+          :title="getActionTitle('approve')"
+          :loading="actionLoading === 'approve'"
+          @click="handleApprovePeriod"
+        >
+          <CheckCircle2 class="mr-2 h-4 w-4" />
+          Duyệt kỳ
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          :disabled="!payrollActionState.canPublish"
+          :title="getActionTitle('publish')"
+          :loading="actionLoading === 'publish'"
+          @click="handlePublishPeriod"
+        >
+          <Send class="mr-2 h-4 w-4" />
+          Phát hành
+        </BaseButton>
+      </template>
+    </PageHeader>
 
-      <!-- ===== HEADER ===== -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-3 mb-1">
-            <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-              <Calculator class="w-5 h-5 text-white" />
-            </div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tight">Tính lương</h2>
-          </div>
-          <div class="ml-[52px] flex items-center gap-3">
-            <p class="text-slate-500 font-medium">Kỳ lương:</p>
-            <select v-model="selectedPeriod"
-              class="text-sm font-bold text-slate-700 border border-slate-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none cursor-pointer">
-              <option v-for="p in periods" :key="p" :value="p">{{ p }}</option>
-            </select>
-            <!-- Period status badge -->
-            <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" :class="periodStatus.class">
-              <span class="w-1.5 h-1.5 rounded-full" :class="periodStatus.dot"></span>
-              {{ periodStatus.label }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Action buttons -->
-        <div class="flex flex-wrap items-center gap-2">
-          <button @click="handleBankExport"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm text-sm">
-            <Download class="w-4 h-4" /> UNC Ngân hàng
-          </button>
-          <button @click="handlePitExport"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm text-sm">
-            <Download class="w-4 h-4" /> Kê khai Thuế TNCN
-          </button>
-          <button @click="handleApprove"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all shadow-sm text-sm">
-            <CheckCircle2 class="w-4 h-4" /> Duyệt bảng lương
-          </button>
-          <button @click="handleGenerate" :disabled="isGenerating"
-            class="flex items-center gap-2 bg-indigo-600 px-5 py-2.5 rounded-xl font-bold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
-            <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isGenerating }" />
-            {{ isGenerating ? 'Đang tính...' : 'Chạy bảng lương' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- ===== STAT CARDS ===== -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard
-          v-for="stat in stats" :key="stat.title"
-          :title="stat.title" :value="stat.value"
-          :icon="stat.icon" :color="stat.color"
-          :trend="stat.trend" :trendLabel="stat.trendLabel"
-        />
-      </div>
-
-      <!-- ===== MAIN CARD ===== -->
-      <GlassCard :glass="false" padding="p-0" class="rounded-3xl border border-slate-100 shadow-sm overflow-hidden bg-white">
-
-        <!-- Tabs + Search -->
-        <div class="border-b border-slate-100 px-6 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="flex gap-1">
-            <button
-              v-for="tab in tabs" :key="tab.key"
-              @click="activeTab = tab.key"
-              class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl transition-all relative"
-              :class="activeTab === tab.key
-                ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-            >
-              <component :is="tab.icon" class="w-4 h-4" />{{ tab.label }}
-              <span v-if="activeTab === tab.key"
-                class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
-            </button>
-          </div>
-
-          <div class="pb-3">
-            <div class="relative">
-              <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input v-model="searchQuery" type="text" placeholder="Tìm nhân viên, phòng ban..."
-                class="pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 w-56 transition-all" />
-            </div>
-          </div>
-        </div>
-
-        <!-- ===== TAB: PAYSLIPS TABLE ===== -->
-        <div v-if="activeTab === 'payslips'" class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead>
-              <tr class="bg-slate-50/80 border-b border-slate-100">
-                <th class="py-3.5 px-5 font-bold text-slate-500 text-xs uppercase tracking-wider">Nhân viên</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Lương cơ bản</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày công</th>
-                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-emerald-600">+ Phụ cấp</th>
-                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-violet-600">+ Thưởng</th>
-                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-rose-600">- BHXH</th>
-                <th class="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-rose-600">- Thuế TNCN</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Thực nhận</th>
-                <th class="py-3.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Trạng thái</th>
-                <th class="py-3.5 px-4"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-              <tr v-for="pay in filteredPayroll" :key="pay.id"
-                class="hover:bg-slate-50/60 transition-colors group cursor-pointer"
-                @click="openDetail(pay)">
-                <!-- Employee -->
-                <td class="py-4 px-5">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0"
-                      :class="getAvatarColor(pay.employee)">
-                      {{ pay.avatar }}
-                    </div>
-                    <div>
-                      <div class="font-bold text-slate-900">{{ pay.employee }}</div>
-                      <div class="text-xs text-slate-400">{{ pay.position }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-semibold text-slate-700">{{ fmt(pay.baseSalary) }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{{ pay.workDays }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-semibold text-emerald-600">+{{ fmt(pay.allowance) }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-semibold" :class="pay.bonus > 0 ? 'text-violet-600' : 'text-slate-300'">
-                    {{ pay.bonus > 0 ? '+' + fmt(pay.bonus) : '—' }}
-                  </span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-semibold text-rose-500">-{{ fmt(pay.insurance) }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-semibold text-rose-500">-{{ fmt(pay.tax) }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="font-black text-slate-900 text-base">{{ fmt(pay.netPay) }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="flex items-center gap-1 w-fit px-2.5 py-1 rounded-full text-xs font-bold"
-                    :class="statusConfig[pay.status]?.class">
-                    <span class="w-1.5 h-1.5 rounded-full" :class="statusConfig[pay.status]?.dot"></span>
-                    {{ statusConfig[pay.status]?.label }}
-                  </span>
-                </td>
-                <td class="py-4 px-4 text-right">
-                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button @click.stop="openDetail(pay)"
-                      class="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-                      <Eye class="w-4 h-4" />
-                    </button>
-                    <button @click.stop
-                      class="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
-                      <Send class="w-3.5 h-3.5" /> Gửi phiếu
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-            <!-- Total row -->
-            <tfoot>
-              <tr class="bg-slate-50/80 border-t-2 border-slate-200">
-                <td colspan="3" class="py-4 px-5 font-black text-slate-800 text-sm">Tổng cộng ({{ payroll.length }} nhân viên)</td>
-                <td colspan="2" class="py-4 px-4 font-bold text-emerald-600 text-sm">+{{ fmt(totalBonus) }}</td>
-                <td colspan="2" class="py-4 px-4 font-bold text-rose-500 text-sm">-{{ fmt(totalTax) }}</td>
-                <td class="py-4 px-4 font-black text-indigo-700 text-lg">{{ fmt(totalNetPay) }}</td>
-                <td colspan="2"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <!-- ===== TAB: SUMMARY ===== -->
-        <div v-if="activeTab === 'summary'" class="p-6 space-y-6">
-          <div class="grid md:grid-cols-2 gap-6">
-            <!-- Breakdown card -->
-            <div class="bg-slate-50 rounded-2xl p-6 space-y-4">
-              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                <Wallet class="w-5 h-5 text-indigo-600" /> Cơ cấu tổng quỹ lương
-              </h3>
-              <div class="space-y-3">
-                <div v-for="row in [
-                  { label: 'Lương cơ bản', value: payroll.reduce((s,p)=>s+p.baseSalary,0), color: 'bg-indigo-400' },
-                  { label: 'Phụ cấp', value: payroll.reduce((s,p)=>s+p.allowance,0), color: 'bg-emerald-400' },
-                  { label: 'Thưởng', value: payroll.reduce((s,p)=>s+p.bonus,0), color: 'bg-violet-400' },
-                  { label: '(-) BHXH', value: -payroll.reduce((s,p)=>s+p.insurance,0), color: 'bg-rose-400' },
-                  { label: '(-) Thuế TNCN', value: -payroll.reduce((s,p)=>s+p.tax,0), color: 'bg-rose-600' },
-                ]" :key="row.label" class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 rounded-full" :class="row.color"></div>
-                    <span class="text-sm font-medium text-slate-600">{{ row.label }}</span>
-                  </div>
-                  <span class="font-bold text-slate-800 text-sm" :class="row.value < 0 ? 'text-rose-600' : ''">
-                    {{ row.value < 0 ? '-' : '' }}{{ fmt(Math.abs(row.value)) }}
-                  </span>
-                </div>
-                <div class="pt-3 border-t border-slate-200 flex items-center justify-between">
-                  <span class="font-black text-slate-900">Tổng thực nhận</span>
-                  <span class="font-black text-lg text-indigo-700">{{ fmt(totalNetPay) }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Status breakdown -->
-            <div class="bg-slate-50 rounded-2xl p-6 space-y-4">
-              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                <BarChart2 class="w-5 h-5 text-indigo-600" /> Phân bổ theo trạng thái
-              </h3>
-              <div class="space-y-3">
-                <div v-for="s in ['DRAFT','APPROVED','PAID']" :key="s">
-                  <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
-                    <span>{{ statusConfig[s].label }}</span>
-                    <span>{{ payroll.filter(p=>p.status===s).length }} người</span>
-                  </div>
-                  <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      class="h-full rounded-full"
-                      :class="s==='DRAFT' ? 'bg-slate-400' : s==='APPROVED' ? 'bg-indigo-500' : 'bg-emerald-500'"
-                      :style="{ width: (payroll.filter(p=>p.status===s).length / payroll.length * 100) + '%' }"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Quick actions -->
-              <div class="pt-4 border-t border-slate-200 grid grid-cols-2 gap-2">
-                <button @click="handlePublish"
-                  class="flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
-                  <Send class="w-4 h-4" /> Phát phiếu lương
-                </button>
-                <button @click="handleBankExport"
-                  class="flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-md">
-                  <Download class="w-4 h-4" /> Xuất UNC
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Pagination footer -->
-        <div class="border-t border-slate-100 px-6 py-3 flex items-center justify-between text-sm text-slate-500">
-          <span>{{ filteredPayroll.length }} phiếu lương</span>
-          <div class="flex items-center gap-1">
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium transition-colors">←</button>
-            <button class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold">1</button>
-            <button class="px-3 py-1 rounded-lg hover:bg-slate-50 font-medium transition-colors">→</button>
-          </div>
-        </div>
-      </GlassCard>
-
+    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <InsightCard
+        v-for="item in stats"
+        :key="item.title"
+        :title="item.title"
+        :value="item.value"
+        :subtitle="item.subtitle"
+        :icon="item.icon"
+        :tone="item.tone"
+      />
     </div>
 
-    <!-- ===== PAYSLIP DETAIL MODAL ===== -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showDetailModal = false"></div>
-          <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <!-- Modal header -->
-            <div class="bg-linear-to-r from-indigo-600 to-indigo-700 p-6 text-white">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="font-black text-xl">Chi tiết phiếu lương</h3>
-                <button @click="showDetailModal = false" class="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors text-lg font-bold">×</button>
+    <SurfacePanel>
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="period in periods"
+            :key="period.payrollPeriodId"
+            type="button"
+            class="min-w-[190px] rounded-[24px] border px-4 py-4 text-left transition-all"
+            :class="selectedPeriodId === period.payrollPeriodId ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+            @click="selectedPeriodId = period.payrollPeriodId"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-black">{{ formatMonthYear(period.periodYear, period.periodMonth, period.periodCode) }}</p>
+                <p class="mt-1 text-xs font-bold tracking-[0.08em] text-slate-400">{{ getPeriodStatusLabel(period.periodStatus) }}</p>
               </div>
-              <div class="flex items-center gap-3" v-if="selectedItem">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center font-black text-lg">
-                  {{ selectedItem.avatar }}
-                </div>
-                <div>
-                  <div class="font-black text-lg">{{ selectedItem.employee }}</div>
-                  <div class="text-indigo-200 text-sm">{{ selectedItem.position }} · {{ selectedItem.dept }}</div>
-                </div>
-              </div>
+              <Clock3 class="h-4 w-4 text-slate-400" />
             </div>
+            <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
+              <div class="h-full rounded-full bg-indigo-500" :style="{ width: `${getPeriodProgress(period)}%` }" />
+            </div>
+            <p class="mt-2 text-xs font-medium text-slate-500">{{ getPeriodProgress(period) }}% manager confirm</p>
+          </button>
+        </div>
 
-            <!-- Modal body -->
-            <div v-if="selectedItem" class="p-6 space-y-3">
-              <div v-for="row in [
-                { label: 'Lương cơ bản', value: fmt(selectedItem.baseSalary), type: 'neutral' },
-                { label: 'Ngày công thực tế', value: selectedItem.workDays + ' / 22 ngày', type: 'neutral' },
-                { label: '+ Phụ cấp', value: fmt(selectedItem.allowance), type: 'positive' },
-                { label: '+ Thưởng', value: selectedItem.bonus > 0 ? fmt(selectedItem.bonus) : '—', type: 'positive' },
-                { label: '- BHXH nhân viên đóng', value: fmt(selectedItem.insurance), type: 'negative' },
-                { label: '- Thuế TNCN', value: fmt(selectedItem.tax), type: 'negative' },
-              ]" :key="row.label"
-                class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
-                <span class="text-sm font-medium text-slate-600">{{ row.label }}</span>
-                <span class="font-bold text-sm"
-                  :class="row.type === 'positive' ? 'text-emerald-600' : row.type === 'negative' ? 'text-rose-600' : 'text-slate-800'">
-                  {{ row.value }}
-                </span>
-              </div>
-              <div class="flex items-center justify-between pt-3 border-t-2 border-slate-200">
-                <span class="font-black text-slate-900">Thực nhận</span>
-                <span class="font-black text-2xl text-indigo-700">{{ fmt(selectedItem.netPay) }}</span>
-              </div>
-              <div class="text-xs text-slate-400 flex items-center gap-1">
-                <Banknote class="w-3.5 h-3.5" /> Tài khoản nhận: {{ selectedItem.bankAccount }}
-              </div>
-            </div>
+        <div class="relative">
+          <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Tìm nhân sự trong kỳ..."
+            class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium outline-none transition-all focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 md:w-72"
+          >
+        </div>
+      </div>
 
-            <!-- Modal footer -->
-            <div class="px-6 pb-6 flex gap-2">
-              <button @click="showDetailModal = false"
-                class="flex-1 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-all text-sm">Đóng</button>
-              <button
-                class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
-                <Send class="w-4 h-4" /> Gửi phiếu lương
-              </button>
-            </div>
+      <div v-if="selectedPeriod" class="mt-6 rounded-[28px] bg-slate-50 p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Kỳ đang chọn</p>
+            <h3 class="mt-2 text-2xl font-black text-slate-900">
+              {{ formatMonthYear(selectedPeriod.periodYear, selectedPeriod.periodMonth, selectedPeriod.periodCode) }}
+            </h3>
+            <p class="mt-1 text-sm font-medium text-slate-500">
+              Công thức {{ selectedPeriod.formulaCode || 'chưa gán' }} · attendance {{ selectedPeriod.attendancePeriodCode || 'chưa liên kết' }}
+            </p>
+            <p class="mt-3 text-sm font-medium text-slate-600">
+              {{ workflowHint }}
+            </p>
+          </div>
+          <div class="flex flex-col items-start gap-2 lg:items-end">
+            <StatusBadge :status="selectedPeriod.periodStatus || 'DRAFT'" :label="getPeriodStatusLabel(selectedPeriod.periodStatus)" />
+            <p class="text-xs font-medium text-slate-500">
+              Generated {{ formatDateTime(selectedPeriod.generatedAt) }} · Approved {{ formatDateTime(selectedPeriod.approvedAt) }} · Published {{ formatDateTime(selectedPeriod.publishedAt) }}
+            </p>
           </div>
         </div>
-      </Transition>
-    </Teleport>
-  
-</template>
+      </div>
 
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: all 0.25s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-enter-from .relative,
-.modal-leave-to .relative {
-  transform: scale(0.95) translateY(20px);
-}
-</style>
+      <div v-if="loading" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_420px]">
+        <div class="h-[480px] animate-pulse rounded-[28px] bg-slate-100" />
+        <div class="h-[480px] animate-pulse rounded-[28px] bg-slate-100" />
+      </div>
+
+      <div v-else-if="filteredItems.length" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_420px]">
+        <div class="space-y-4">
+          <article
+            v-for="item in filteredItems"
+            :key="item.payrollItemId"
+            class="rounded-[28px] border p-5 transition-all cursor-pointer"
+            :class="selectedItem?.payrollItemId === item.payrollItemId ? 'border-indigo-200 bg-indigo-50/60 shadow-lg' : 'border-slate-200 bg-white hover:border-indigo-200 hover:shadow-lg'"
+            @click="openItem(item.payrollItemId)"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <AvatarBox :name="item.employeeName" size="lg" shape="rounded-[20px]" />
+                <div>
+                  <h4 class="text-lg font-black text-slate-900">{{ item.employeeName }}</h4>
+                  <p class="mt-1 text-sm font-medium text-slate-500">{{ item.employeeCode }} · {{ item.orgUnitName || '—' }}</p>
+                </div>
+              </div>
+              <StatusBadge :status="item.itemStatus || 'DRAFT'" :label="getItemStatusLabel(item.itemStatus)" />
+            </div>
+
+            <div class="mt-5 grid gap-4 rounded-[24px] bg-white/70 p-4 md:grid-cols-4">
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Gross</p>
+                <p class="mt-2 text-sm font-bold text-slate-800">{{ formatCurrency(item.grossIncome) }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Net pay</p>
+                <p class="mt-2 text-sm font-bold text-emerald-700">{{ formatCurrency(item.netPay) }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">PIT</p>
+                <p class="mt-2 text-sm font-bold text-slate-800">{{ formatCurrency(item.pitAmount) }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Ngày hiện diện</p>
+                <p class="mt-2 text-sm font-bold text-slate-800">{{ item.presentDayCount ?? 0 }}/{{ item.scheduledDayCount ?? 0 }}</p>
+              </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              <span>{{ item.approvedOtMinutes || 0 }} phút OT · {{ item.absentDayCount || 0 }} ngày vắng</span>
+              <span>{{ item.managerConfirmedAt ? 'Manager đã xác nhận' : 'Chưa manager xác nhận' }}</span>
+            </div>
+          </article>
+        </div>
+
+        <SurfacePanel class="h-fit">
+          <div v-if="detailLoading" class="h-80 animate-pulse rounded-[28px] bg-slate-100" />
+
+          <div v-else-if="selectedItem" class="space-y-5">
+            <div class="flex items-start gap-4">
+              <AvatarBox :name="selectedItem.employeeName" size="xl" shape="rounded-[24px]" />
+              <div>
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Phiếu lương</p>
+                <h3 class="mt-2 text-2xl font-black text-slate-900">{{ selectedItem.employeeName }}</h3>
+                <p class="mt-1 text-sm font-medium text-slate-500">{{ selectedItem.employeeCode }} · {{ selectedItem.orgUnitName || '—' }}</p>
+              </div>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-2">
+              <div
+                v-for="row in selectedItemSummary"
+                :key="row.label"
+                class="rounded-2xl bg-slate-50 p-4"
+              >
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{{ row.label }}</p>
+                <p class="mt-2 text-sm font-bold text-slate-800">{{ row.value }}</p>
+              </div>
+            </div>
+
+            <div class="rounded-[24px] border border-slate-200 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Breakdown thành phần</p>
+                <StatusBadge :status="selectedItem.itemStatus || 'DRAFT'" :label="getItemStatusLabel(selectedItem.itemStatus)" />
+              </div>
+
+              <div v-if="selectedItemLines.length" class="mt-4 space-y-3">
+                <div
+                  v-for="line in selectedItemLines"
+                  :key="line.payrollItemLineId"
+                  class="rounded-2xl bg-slate-50 p-4"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-black text-slate-900">{{ line.componentName }}</p>
+                      <p class="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                        {{ line.componentCode }} · {{ line.componentCategory }} · {{ line.lineSourceType }}
+                      </p>
+                    </div>
+                    <p class="text-sm font-black text-slate-900">{{ formatCurrency(line.lineAmount) }}</p>
+                  </div>
+                  <p v-if="line.lineNote" class="mt-2 text-sm font-medium text-slate-500">{{ line.lineNote }}</p>
+                </div>
+              </div>
+              <p v-else class="mt-4 text-sm font-medium text-slate-500">Phiếu lương này chưa có line chi tiết.</p>
+            </div>
+
+            <div class="rounded-[24px] bg-slate-50 p-4 text-sm font-medium text-slate-600">
+              <p>Manager confirmed: {{ formatDateTime(selectedItem.managerConfirmedAt) }}</p>
+              <p class="mt-2">HR approved: {{ formatDateTime(selectedItem.hrApprovedAt) }}</p>
+              <p class="mt-2">Published: {{ formatDateTime(selectedItem.publishedAt) }}</p>
+              <p v-if="selectedItem.adjustmentNote" class="mt-2">Adjustment note: {{ selectedItem.adjustmentNote }}</p>
+            </div>
+          </div>
+
+          <EmptyState
+            v-else
+            iconName="Wallet"
+            title="Chọn một phiếu lương"
+            description="Bấm vào card nhân sự ở bên trái để xem breakdown lương chi tiết."
+          />
+        </SurfacePanel>
+      </div>
+
+      <EmptyState
+        v-else
+        iconName="Banknote"
+        title="Chưa có dữ liệu bảng lương"
+        description="Kỳ lương này chưa được tạo hoặc chưa có nhân sự phù hợp với bộ lọc hiện tại."
+      />
+    </SurfacePanel>
+  </div>
+</template>

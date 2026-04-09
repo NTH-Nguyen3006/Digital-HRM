@@ -161,6 +161,13 @@ public class OffboardingService {
     }
 
     @Transactional(readOnly = true)
+    public OffboardingDetailResponse getManagerDetail(Long offboardingCaseId) {
+        OffOffboardingCase entity = getCase(offboardingCaseId);
+        accessScopeService.assertManagerCanAccessEmployee(entity.getEmployee());
+        return toDetail(entity);
+    }
+
+    @Transactional(readOnly = true)
     public OffboardingDetailResponse getDetail(Long offboardingCaseId) {
         OffOffboardingCase entity = getCase(offboardingCaseId);
         return toDetail(entity);

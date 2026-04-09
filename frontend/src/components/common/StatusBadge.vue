@@ -13,11 +13,15 @@ const statusStyles = {
   PENDING: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-400', defaultLabel: 'Chờ xử lý' },
   IN_PROGRESS: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-400', defaultLabel: 'Đang xử lý' },
   REQUESTED: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-400', defaultLabel: 'Chờ duyệt' },
+  TEAM_REVIEW: { bg: 'bg-sky-100', text: 'text-sky-700', border: 'border-sky-200', dot: 'bg-sky-500', defaultLabel: 'Chờ team xác nhận' },
+  MANAGER_CONFIRMED: { bg: 'bg-sky-100', text: 'text-sky-700', border: 'border-sky-200', dot: 'bg-sky-500', defaultLabel: 'QL đã xác nhận' },
   
   // Trạng thái thành công / Hoàn tất
   ACTIVE: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500', defaultLabel: 'Hoạt động' },
   APPROVED: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500', defaultLabel: 'Đã duyệt' },
+  HR_APPROVED: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500', defaultLabel: 'HR đã duyệt' },
   COMPLETED: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500', defaultLabel: 'Hoàn tất' },
+  PUBLISHED: { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500', defaultLabel: 'Đã phát hành' },
   READY_FOR_JOIN: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500', defaultLabel: 'Sẵn sàng' },
   MANAGER_APPROVED: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500', defaultLabel: 'QL đã duyệt' },
   HR_FINALIZED: { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500', defaultLabel: 'HR đã chốt' },

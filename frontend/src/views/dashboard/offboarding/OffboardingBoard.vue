@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
 import StatCard from '@/components/common/StatCard.vue'
+import { useAuthStore } from '@/stores/auth'
 import {
   UserMinus, Search, Clock, AlertTriangle, CheckCircle2,
   ArrowRight, FileText, MonitorOff, Wallet, ShieldOff,
@@ -19,6 +20,12 @@ import {
   processSettlement, closeOffboarding,
   createAssetReturn, updateAssetReturn
 } from '@/api/admin/offboarding.js'
+import {
+  getPendingOffboardings,
+  getPendingOffboardingDetail,
+  reviewOffboarding,
+} from '@/api/manager/manager'
+import { safeArray, unwrapData, unwrapPage } from '@/utils/api'
 
 /* ------------------ CONFIG ------------------ */
 
@@ -41,6 +48,8 @@ const searchQuery = ref('')
 const activeStatus = ref('ALL')
 const selectedRecord = ref(null)
 const showPanel = ref(false)
+const authStore = useAuthStore()
+const isManager = computed(() => authStore.isManager)
 
 const statsData = ref([
   { title: 'Chờ duyệt', value: '0', icon: Clock, color: 'amber', trend: 0 },
@@ -54,17 +63,32 @@ const statsData = ref([
 const fetchOffboardings = async () => {
   loading.value = true
   try {
-    const params = {
-      keyword: searchQuery.value,
-      status: activeStatus.value !== 'ALL' ? activeStatus.value : undefined
+    if (isManager.value) {
+      const response = await getPendingOffboardings()
+      const items = Array.isArray(unwrapData(response)) ? unwrapData(response) : []
+      const keyword = searchQuery.value.trim().toLowerCase()
+      records.value = items.filter((item) => {
+        const statusMatched = activeStatus.value === 'ALL' ? true : item.status === activeStatus.value
+        const keywordMatched = !keyword
+          ? true
+          : [item.employeeFullName, item.employeeCode, item.offboardingCode, item.orgUnitName]
+              .filter(Boolean)
+              .some((value) => value.toLowerCase().includes(keyword))
+        return statusMatched && keywordMatched
+      })
+    } else {
+      const params = {
+        keyword: searchQuery.value,
+        status: activeStatus.value !== 'ALL' ? activeStatus.value : undefined
+      }
+      const response = await getOffboardings(params)
+      records.value = unwrapPage(response).items
     }
-    const response = await getOffboardings(params)
-    records.value = response.data || []
     
     // Quick stats calc
-    const requested = records.value.filter(r => r.offboardingStatus === 'REQUESTED').length
-    const inProcessing = records.value.filter(r => ['MANAGER_APPROVED', 'HR_FINALIZED', 'ACCESS_REVOKED', 'SETTLEMENT_PREPARED'].includes(r.offboardingStatus)).length
-    const closed = records.value.filter(r => r.offboardingStatus === 'CLOSED').length
+    const requested = records.value.filter(r => r.status === 'REQUESTED').length
+    const inProcessing = records.value.filter(r => ['MANAGER_APPROVED', 'HR_FINALIZED', 'ACCESS_REVOKED', 'SETTLEMENT_PREPARED'].includes(r.status)).length
+    const closed = records.value.filter(r => r.status === 'CLOSED').length
     
     statsData.value[0].value = requested.toString()
     statsData.value[1].value = inProcessing.toString()
@@ -88,8 +112,10 @@ watch([searchQuery, activeStatus], () => {
 const openPanel = async (rec) => {
   loading.value = true
   try {
-    const response = await getOffboardingDetail(rec.offboardingCaseId)
-    selectedRecord.value = response.data
+    const response = isManager.value
+      ? await getPendingOffboardingDetail(rec.offboardingCaseId)
+      : await getOffboardingDetail(rec.offboardingCaseId)
+    selectedRecord.value = unwrapData(response)
     showPanel.value = true
   } catch (error) {
     console.error('Failed to get detail:', error)
@@ -100,17 +126,28 @@ const openPanel = async (rec) => {
 
 const handleAction = async (record, actionKey) => {
   try {
-    if (actionKey === 'finalize') {
+    if (actionKey === 'approve') {
+      await reviewOffboarding(record.offboardingCaseId, { approved: true, note: 'Manager đã duyệt yêu cầu nghỉ việc.' })
+    } else if (actionKey === 'reject') {
+      await reviewOffboarding(record.offboardingCaseId, { approved: false, note: 'Manager từ chối yêu cầu nghỉ việc.' })
+    } else if (actionKey === 'finalize') {
       await finalizeOffboarding(record.offboardingCaseId, { effectiveLastWorkingDate: record.requestedLastWorkingDate, note: 'Chốt từ UI Admin.' })
     } else if (actionKey === 'revoke') {
       await revokeAccess(record.offboardingCaseId, { note: 'Thu hồi quyền từ UI Admin.' })
     } else if (actionKey === 'settlement') {
-      await processSettlement(record.offboardingCaseId, { createPayrollDraftIfMissing: true })
+      await processSettlement(record.offboardingCaseId, {
+        createPayrollDraftIfMissing: true,
+        note: 'Chuẩn bị settlement từ dashboard HR.',
+      })
     } else if (actionKey === 'close') {
-      await closeOffboarding(record.offboardingCaseId)
+      await closeOffboarding(record.offboardingCaseId, { note: 'Đóng hồ sơ offboarding từ dashboard HR.' })
     }
     await fetchOffboardings()
-    showPanel.value = false
+    if (isManager.value) {
+      showPanel.value = false
+    } else {
+      await openPanel(record)
+    }
   } catch (error) {
     console.error(`Action ${actionKey} failed:`, error)
   }
@@ -239,14 +276,14 @@ const initials = (name) => {
               />
               <div>
                 <div class="flex items-center gap-2 mb-1.5 text-xs font-black">
-                  <span class="text-slate-400 group-hover:text-rose-600 transition-colors uppercase tracking-widest">{{ rec.offboardingCaseCode }}</span>
+                  <span class="text-slate-400 group-hover:text-rose-600 transition-colors uppercase tracking-widest">{{ rec.offboardingCode }}</span>
                   <div class="w-1 h-1 rounded-full bg-slate-300"></div>
-                  <span class="text-slate-500">{{ rec.deptName }}</span>
+                  <span class="text-slate-500">{{ rec.orgUnitName }}</span>
                 </div>
                 <h4 class="text-lg font-black text-slate-900 mb-2">{{ rec.employeeFullName }}</h4>
                 <div class="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-tighter">
                   <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg">
-                    Quản lý: {{ rec.managerFullName || 'Chưa gán' }}
+                    Quản lý: {{ rec.managerEmployeeName || 'Chưa gán' }}
                   </span>
                   <div class="flex items-center gap-1.5 px-2 py-1 bg-rose-50 text-rose-700 rounded-lg">
                     <BadgeX class="w-3 h-3" />
@@ -260,7 +297,7 @@ const initials = (name) => {
             <div class="flex items-center gap-8 justify-between xl:justify-end">
               <div class="flex flex-col items-end gap-1">
                  <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Trạng thái hồ sơ</p>
-                 <StatusBadge :status="rec.offboardingStatus" />
+                 <StatusBadge :status="rec.status" />
               </div>
               <button class="p-2 text-slate-200 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-xl transition-all">
                 <ChevronRight class="w-5 h-5" />
@@ -295,7 +332,7 @@ const initials = (name) => {
                     {{ initials(selectedRecord.employeeFullName) }}
                   </div>
                   <div>
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 block">{{ selectedRecord.offboardingCaseCode }}</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 block">{{ selectedRecord.offboardingCode }}</span>
                     <h3 class="text-3xl font-black text-slate-900 tracking-tight">{{ selectedRecord.employeeFullName }}</h3>
                   </div>
                 </div>
@@ -309,7 +346,7 @@ const initials = (name) => {
                 </div>
                 <div class="p-4 bg-slate-50 rounded-2xl">
                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Phòng ban</p>
-                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.deptName }}</p>
+                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.orgUnitName }}</p>
                 </div>
                 <div class="p-4 bg-rose-50 rounded-2xl">
                    <p class="text-[9px] font-black text-rose-400 uppercase tracking-wider mb-1">Ngày làm cuối</p>
@@ -317,7 +354,7 @@ const initials = (name) => {
                 </div>
                 <div class="p-4 bg-slate-50 rounded-2xl">
                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Manager</p>
-                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.managerFullName || 'N/A' }}</p>
+                   <p class="text-xs font-bold text-slate-800">{{ selectedRecord.managerEmployeeName || 'N/A' }}</p>
                 </div>
               </div>
             </div>
@@ -346,21 +383,33 @@ const initials = (name) => {
               <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                  <div class="space-y-4">
                     <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <ListChecks class="w-4 h-4 text-rose-600" /> Bàn giao tài sản
+                      <ListChecks class="w-4 h-4 text-rose-600" /> {{ isManager ? 'Checklist bàn giao' : 'Bàn giao tài sản' }}
                     </h4>
-                    <div v-if="selectedRecord.assetReturns && selectedRecord.assetReturns.length > 0" class="space-y-3">
-                       <div v-for="asset in selectedRecord.assetReturns" :key="asset.assetReturnId"
+                    <div v-if="isManager && selectedRecord.checklistItems?.length" class="space-y-3">
+                       <div v-for="item in selectedRecord.checklistItems" :key="item.offboardingChecklistItemId"
+                        class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between">
+                          <div>
+                            <p class="text-xs font-black text-slate-800">{{ item.itemName }}</p>
+                            <p class="text-[9px] font-bold text-slate-400">{{ item.ownerRoleCode || 'EMPLOYEE' }}</p>
+                         </div>
+                         <span :class="['px-2 py-0.5 rounded-lg text-[9px] font-black', item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600']">
+                           {{ item.status === 'COMPLETED' ? 'ĐÃ XONG' : item.status }}
+                         </span>
+                       </div>
+                    </div>
+                    <div v-else-if="selectedRecord.assetReturns && selectedRecord.assetReturns.length > 0" class="space-y-3">
+                       <div v-for="asset in selectedRecord.assetReturns" :key="asset.offboardingAssetReturnId"
                         class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between">
                           <div>
                             <p class="text-xs font-black text-slate-800">{{ asset.assetName }}</p>
                             <p class="text-[9px] font-bold text-slate-400">{{ asset.assetCode }}</p>
                          </div>
-                         <span :class="['px-2 py-0.5 rounded-lg text-[9px] font-black', asset.isReturned ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600']">
-                           {{ asset.isReturned ? 'ĐÃ TRẢ' : 'CHỜ THU' }}
+                         <span :class="['px-2 py-0.5 rounded-lg text-[9px] font-black', asset.status === 'RETURNED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600']">
+                           {{ asset.status === 'RETURNED' ? 'ĐÃ TRẢ' : asset.status }}
                          </span>
                        </div>
                     </div>
-                    <div v-else class="text-xs text-slate-400 italic">Không có tài sản cần thu hồi</div>
+                    <div v-else class="text-xs text-slate-400 italic">{{ isManager ? 'Chưa có checklist bàn giao' : 'Không có tài sản cần thu hồi' }}</div>
                  </div>
 
                  <div class="space-y-4">
@@ -389,15 +438,15 @@ const initials = (name) => {
                     <History class="w-4 h-4 text-indigo-600" /> Lịch sử phê duyệt
                   </h4>
                   <div class="space-y-6 ml-2 border-l-2 border-slate-100 pl-8">
-                     <div v-for="(h, idx) in selectedRecord.histories" :key="idx" class="relative">
+                     <div v-for="(h, idx) in selectedRecord.histories" :key="h.offboardingHistoryId || idx" class="relative">
                         <div class="absolute -left-[41px] top-0 w-5 h-5 rounded-full bg-white border-4 border-indigo-500 shadow-sm"></div>
                         <div class="p-5 bg-slate-50 rounded-[28px] border border-slate-100 shadow-sm">
                            <div class="flex justify-between items-start mb-2">
-                              <span class="text-[10px] font-black text-indigo-600 uppercase">{{ h.action }}</span>
+                              <span class="text-[10px] font-black text-indigo-600 uppercase">{{ h.actionCode }}</span>
                               <span class="text-[9px] font-bold text-slate-400">{{ h.changedAt }}</span>
                            </div>
-                           <p class="text-xs text-slate-700 font-bold mb-1">{{ h.changedBy }}</p>
-                           <p class="text-xs text-slate-500 italic">{{ h.note || 'Không có ghi chú' }}</p>
+                           <p class="text-xs text-slate-700 font-bold mb-1">{{ h.changedByUsername }}</p>
+                           <p class="text-xs text-slate-500 italic">{{ h.actionNote || 'Không có ghi chú' }}</p>
                         </div>
                      </div>
                   </div>
@@ -406,10 +455,31 @@ const initials = (name) => {
 
             <!-- Actions Footer -->
             <div class="p-10 border-t border-slate-50 flex items-center gap-4 shrink-0 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+              <template v-if="isManager">
+                <BaseButton 
+                  v-if="selectedRecord.status === 'REQUESTED'"
+                  variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-emerald-600 hover:bg-emerald-700"
+                  @click="handleAction(selectedRecord, 'approve')"
+                >
+                  <CheckCheck class="w-5 h-5 mr-2" /> Duyệt yêu cầu
+                </BaseButton>
+
+                <BaseButton 
+                  v-if="selectedRecord.status === 'REQUESTED'"
+                  variant="outline" size="lg" class="flex-1 rounded-2xl! font-bold h-14!"
+                  @click="handleAction(selectedRecord, 'reject')"
+                >
+                  <X class="w-5 h-5 mr-2 text-rose-600" /> Từ chối
+                </BaseButton>
+
+                <div v-if="selectedRecord.status !== 'REQUESTED'" class="w-full text-center py-5 bg-slate-100 text-slate-600 rounded-[28px] font-black uppercase text-xs tracking-[0.2em]">
+                  Manager chỉ xử lý bước phê duyệt ban đầu và theo dõi checklist bàn giao
+                </div>
+              </template>
               
               <!-- HR Finalize Action -->
               <BaseButton 
-                v-if="selectedRecord.offboardingStatus === 'MANAGER_APPROVED'"
+                v-if="!isManager && selectedRecord.status === 'MANAGER_APPROVED'"
                 variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-violet-600 hover:bg-violet-700"
                 @click="handleAction(selectedRecord, 'finalize')"
               >
@@ -418,7 +488,7 @@ const initials = (name) => {
 
               <!-- IT / Access Actions -->
               <BaseButton 
-                v-if="selectedRecord.offboardingStatus === 'HR_FINALIZED'"
+                v-if="!isManager && selectedRecord.status === 'HR_FINALIZED'"
                 variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-orange-500 hover:bg-orange-600"
                 @click="handleAction(selectedRecord, 'revoke')"
               >
@@ -427,7 +497,7 @@ const initials = (name) => {
 
               <!-- Settlement -->
               <BaseButton 
-                v-if="['HR_FINALIZED', 'ACCESS_REVOKED'].includes(selectedRecord.offboardingStatus)"
+                v-if="!isManager && ['HR_FINALIZED', 'ACCESS_REVOKED'].includes(selectedRecord.status)"
                 variant="outline" size="lg" class="flex-1 rounded-2xl! font-bold h-14!"
                 @click="handleAction(selectedRecord, 'settlement')"
               >
@@ -436,14 +506,14 @@ const initials = (name) => {
 
               <!-- Close case -->
               <BaseButton 
-                v-if="['ACCESS_REVOKED', 'SETTLEMENT_PREPARED'].includes(selectedRecord.offboardingStatus)"
+                v-if="!isManager && ['ACCESS_REVOKED', 'SETTLEMENT_PREPARED'].includes(selectedRecord.status)"
                 variant="primary" size="lg" shadow class="flex-1 rounded-2xl! font-bold h-14! bg-slate-800 hover:bg-slate-900"
                 @click="handleAction(selectedRecord, 'close')"
               >
                 <Archive class="w-5 h-5 mr-2" /> Đóng hồ sơ hoàn tất
               </BaseButton>
 
-              <div v-if="selectedRecord.offboardingStatus === 'CLOSED'" class="w-full text-center py-5 bg-slate-100 text-slate-600 rounded-[28px] font-black uppercase text-xs tracking-[0.2em]">
+              <div v-if="!isManager && selectedRecord.status === 'CLOSED'" class="w-full text-center py-5 bg-slate-100 text-slate-600 rounded-[28px] font-black uppercase text-xs tracking-[0.2em]">
                 Hồ sơ đã đóng • Lưu trữ kho nhân sự
               </div>
             </div>
@@ -481,3 +551,4 @@ const initials = (name) => {
   transform: translateY(-5px);
 }
 </style>
+

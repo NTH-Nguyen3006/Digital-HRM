@@ -91,7 +91,7 @@ const fetchLogs = async () => {
       page: currentPage.value,
       size: 20,
     })
-    logs.value = res.data?.content || res.data || []
+    logs.value = res.data?.items || []
     setMeta({
       totalElements: res.data?.totalElements ?? logs.value.length,
       totalPages: res.data?.totalPages ?? 1,

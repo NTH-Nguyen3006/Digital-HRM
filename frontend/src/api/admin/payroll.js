@@ -193,8 +193,8 @@ export const createPayrollPeriod = async (payload) => {
  * @param {string|number} payrollPeriodId - Mã kỳ lương
  * @returns {Promise<Object>}
  */
-export const generatePayrollDraft = async (payrollPeriodId) => {
-    const response = await axios.post(`${PAYROLL_API}/periods/${payrollPeriodId}/generate-draft`);
+export const generatePayrollDraft = async (payrollPeriodId, payload = { regenerate: true, note: 'Tạo lại bảng lương nháp từ HR workspace.' }) => {
+    const response = await axios.post(`${PAYROLL_API}/periods/${payrollPeriodId}/generate-draft`, payload);
     return response.data;
 };
 
@@ -235,8 +235,8 @@ export const adjustPayrollItem = async (payrollItemId, payload) => {
  * @param {string|number} payrollPeriodId 
  * @returns {Promise<Object>}
  */
-export const approvePayrollPeriod = async (payrollPeriodId) => {
-    const response = await axios.patch(`${PAYROLL_API}/periods/${payrollPeriodId}/approve`);
+export const approvePayrollPeriod = async (payrollPeriodId, payload = { note: 'Phê duyệt kỳ lương từ HR workspace.' }) => {
+    const response = await axios.patch(`${PAYROLL_API}/periods/${payrollPeriodId}/approve`, payload);
     return response.data;
 };
 
@@ -245,8 +245,8 @@ export const approvePayrollPeriod = async (payrollPeriodId) => {
  * @param {string|number} payrollPeriodId 
  * @returns {Promise<Object>}
  */
-export const publishPayrollPeriod = async (payrollPeriodId) => {
-    const response = await axios.patch(`${PAYROLL_API}/periods/${payrollPeriodId}/publish`);
+export const publishPayrollPeriod = async (payrollPeriodId, payload = { note: 'Phát hành phiếu lương từ HR workspace.' }) => {
+    const response = await axios.patch(`${PAYROLL_API}/periods/${payrollPeriodId}/publish`, payload);
     return response.data;
 };
 

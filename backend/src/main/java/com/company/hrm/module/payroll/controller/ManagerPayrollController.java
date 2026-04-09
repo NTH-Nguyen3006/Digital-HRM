@@ -4,6 +4,7 @@ import com.company.hrm.common.response.ApiResponse;
 import com.company.hrm.module.audit.support.RequestTraceContext;
 import com.company.hrm.module.payroll.dto.ManagerConfirmPayrollItemRequest;
 import com.company.hrm.module.payroll.dto.PayrollItemResponse;
+import com.company.hrm.module.payroll.dto.PayrollPeriodResponse;
 import com.company.hrm.module.payroll.service.PayrollService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -18,6 +19,13 @@ public class ManagerPayrollController {
 
     public ManagerPayrollController(PayrollService payrollService) {
         this.payrollService = payrollService;
+    }
+
+    @GetMapping("/periods")
+    @PreAuthorize("hasAuthority('payroll.team.confirm')")
+    public ApiResponse<List<PayrollPeriodResponse>> listPayrollPeriodsForManager() {
+        return ApiResponse.success("PAYROLL_MANAGER_PERIOD_LIST_SUCCESS", "Lấy danh sách kỳ lương cho manager thành công.",
+                payrollService.listPayrollPeriods(), null, RequestTraceContext.getTraceId());
     }
 
     @GetMapping("/periods/{payrollPeriodId}/items")

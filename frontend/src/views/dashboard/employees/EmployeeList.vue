@@ -5,10 +5,9 @@ import AvatarBox from '@/components/common/AvatarBox.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useAuthStore } from '@/stores/auth'
-import { Plus, Search, MoreVertical, Mail, Phone, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next'
+import { Plus, Search, MoreVertical, Mail, Phone, Filter, ChevronLeft, ChevronRight, Loader2, Check } from 'lucide-vue-next'
 import { getEmployees } from '@/api/admin/employee'
 
-/* ------------------ STATE ------------------ */
 
 const authStore = useAuthStore()
 const isAdmin = authStore.isAdmin
@@ -27,7 +26,6 @@ const pageSize = ref(12)
 const selectedEmployees = ref([])
 const showFilter = ref(false)
 
-/* ------------------ API CALL ------------------ */
 
 const fetchEmployees = async () => {
   loading.value = true
@@ -37,10 +35,18 @@ const fetchEmployees = async () => {
       page: currentPage.value,
       size: pageSize.value
     })
-    employees.value = response.data.content
-    totalElements.value = response.data.totalElements
-    totalPages.value = response.data.totalPages
+    const pageData = response?.data || {}
+    employees.value = Array.isArray(pageData.items)
+      ? pageData.items
+      : Array.isArray(pageData.content)
+        ? pageData.content
+        : []
+    totalElements.value = Number(pageData.totalElements || 0)
+    totalPages.value = Number(pageData.totalPages || 0)
   } catch (error) {
+    employees.value = []
+    totalElements.value = 0
+    totalPages.value = 0
     console.error('Failed to fetch employees:', error)
   } finally {
     loading.value = false
@@ -96,6 +102,8 @@ const toggleSelect = (id) => {
   if (index === -1) selectedEmployees.value.push(id)
   else selectedEmployees.value.splice(index, 1)
 }
+
+const isSelected = (id) => selectedEmployees.value.includes(id)
 
 const deleteSelected = () => {
   console.log('Deleting:', selectedEmployees.value)
@@ -153,10 +161,19 @@ const deleteSelected = () => {
         <div v-for="emp in employees" :key="emp.employeeId"
           class="group bg-white rounded-[28px] border border-slate-200 p-6 transition-all duration-300 hover:border-indigo-200 hover:shadow-[0_20px_40px_rgba(79,70,229,0.08)] relative">
           <!-- Checkbox Overlay on Hover -->
-          <div v-if="canManage" class="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
-            <input type="checkbox" class="w-5 h-5 accent-indigo-600 cursor-pointer rounded-lg border-slate-300"
-              :checked="selectedEmployees.includes(emp.employeeId)" @change="toggleSelect(emp.employeeId)" />
-          </div>
+          <button
+            v-if="canManage"
+            type="button"
+            @click.stop="toggleSelect(emp.employeeId)"
+            class="absolute top-4 left-4 flex h-6 w-6 items-center justify-center rounded-xl border shadow-sm transition-all duration-200 ease-out"
+            :class="isSelected(emp.employeeId)
+              ? 'border-indigo-600 bg-indigo-600 text-white scale-100 shadow-indigo-200'
+              : 'border-slate-200 bg-white/95 text-transparent opacity-0 group-hover:opacity-100 group-hover:border-indigo-200 group-hover:text-slate-300 group-hover:scale-100 scale-90'"
+            :aria-pressed="isSelected(emp.employeeId)"
+            title="Chọn nhân sự"
+          >
+            <Check class="h-4 w-4 transition-transform duration-200" :class="isSelected(emp.employeeId) ? 'scale-100' : 'scale-75'" />
+          </button>
 
           <!-- Top Actions -->
           <button class="absolute top-4 right-4 text-slate-300 hover:text-indigo-600 transition-colors">
@@ -200,7 +217,8 @@ const deleteSelected = () => {
 
           <div class="mt-6 flex items-center justify-between">
             <StatusBadge :status="emp.employmentStatus" />
-            <router-link :to="'/employees/' + emp.employeeId" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">Hồ sơ
+            <router-link :to="'/employees/' + emp.employeeId"
+              class="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">Hồ sơ
               &rarr;</router-link>
           </div>
         </div>
@@ -239,8 +257,7 @@ const deleteSelected = () => {
   </div>
 
   <!-- SELECTION ACTION BAR -->
-  <div
-    v-if="canManage"
+  <div v-if="canManage"
     class="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-4 bg-slate-900 shadow-2xl rounded-3xl transition-all duration-500 z-60"
     :class="selectedEmployees.length > 0 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'">
     <div class="flex flex-col">

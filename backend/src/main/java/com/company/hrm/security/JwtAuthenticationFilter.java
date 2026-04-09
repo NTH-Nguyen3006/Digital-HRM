@@ -3,9 +3,13 @@ package com.company.hrm.security;
 import com.company.hrm.common.constant.RoleCode;
 import com.company.hrm.common.constant.SessionStatus;
 import com.company.hrm.common.constant.UserStatus;
+import com.company.hrm.config.AppProperties;
 import com.company.hrm.module.auth.entity.SecAuthSession;
+import com.company.hrm.module.role.repository.SecRolePermissionRepository;
 import com.company.hrm.module.user.entity.SecUserAccount;
 import com.company.hrm.module.auth.repository.SecAuthSessionRepository;
+import com.company.hrm.module.user.entity.SecUserRole;
+import com.company.hrm.module.user.repository.SecUserRoleRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -30,11 +34,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final SecAuthSessionRepository authSessionRepository;
+    private final SecUserRoleRepository userRoleRepository;
+    private final SecRolePermissionRepository rolePermissionRepository;
+    private final AppProperties appProperties;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
-            @Lazy SecAuthSessionRepository authSessionRepository) {
+            @Lazy SecAuthSessionRepository authSessionRepository,
+            @Lazy SecUserRoleRepository userRoleRepository,
+            @Lazy SecRolePermissionRepository rolePermissionRepository,
+            AppProperties appProperties) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authSessionRepository = authSessionRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.rolePermissionRepository = rolePermissionRepository;
+        this.appProperties = appProperties;
     }
 
     @Override
@@ -48,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authSessionRepository.findByAuthSessionId(sessionId)
                     .filter(session -> isSessionValid(session, session.getUser()))
                     .ifPresent(session -> {
-                        SecurityUserPrincipal principal = buildPrincipal(claims, sessionId);
+                        SecurityUserPrincipal principal = buildPrincipal(session, claims, sessionId);
                         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                                 principal,
                                 null,
@@ -72,11 +85,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return user.getStatus() == UserStatus.ACTIVE && !user.isDeleted();
     }
 
-    @SuppressWarnings("unchecked")
-    private SecurityUserPrincipal buildPrincipal(Claims claims, UUID sessionId) {
-        List<String> permissions = claims.get("permissions", List.class);
+    private SecurityUserPrincipal buildPrincipal(SecAuthSession session, Claims claims, UUID sessionId) {
+        SecUserAccount user = session.getUser();
+        SecUserRole activeRole = userRoleRepository.findActivePrimaryRole(user.getUserId(), LocalDateTime.now())
+                .orElse(null);
+        RoleCode roleCode = activeRole == null
+                ? RoleCode.valueOf(claims.get("roleCode", String.class))
+                : activeRole.getRole().getRoleCode();
+        List<String> permissions = activeRole == null
+                ? List.of()
+                : rolePermissionRepository.findAllowedPermissionCodes(activeRole.getRole().getRoleId());
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        RoleCode roleCode = RoleCode.valueOf(claims.get("roleCode", String.class));
 
         authorities.add(new SimpleGrantedAuthority("ROLE_" + roleCode.name()));
         if (permissions != null) {
@@ -84,10 +103,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return new SecurityUserPrincipal(
-                UUID.fromString(claims.getSubject()),
+                user.getUserId(),
                 sessionId,
-                claims.get("username", String.class),
-                claims.get("email", String.class),
+                user.getUsername(),
+                user.getEmail(),
                 roleCode,
                 permissions == null ? List.of() : permissions,
                 authorities);
@@ -95,9 +114,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveBearerToken(HttpServletRequest request) {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header == null || !header.startsWith("Bearer ")) {
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+
+        if (request.getCookies() == null) {
             return null;
         }
-        return header.substring(7);
+
+        String accessTokenCookieName = appProperties.getAuth().getAccessTokenCookieName();
+        for (var cookie : request.getCookies()) {
+            if (accessTokenCookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

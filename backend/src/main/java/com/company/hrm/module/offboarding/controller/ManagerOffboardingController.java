@@ -26,6 +26,13 @@ public class ManagerOffboardingController {
                 offboardingService.listManagerPendingCases(), null, RequestTraceContext.getTraceId());
     }
 
+    @GetMapping("/{offboardingCaseId}")
+    @PreAuthorize("hasAuthority('offboarding.review')")
+    public ApiResponse<OffboardingDetailResponse> getDetail(@PathVariable Long offboardingCaseId) {
+        return ApiResponse.success("OFFBOARDING_MANAGER_DETAIL_SUCCESS", "Lấy chi tiết offboarding cho manager thành công.",
+                offboardingService.getManagerDetail(offboardingCaseId), null, RequestTraceContext.getTraceId());
+    }
+
     @PatchMapping("/{offboardingCaseId}/review")
     @PreAuthorize("hasAuthority('offboarding.review')")
     public ApiResponse<OffboardingDetailResponse> review(@PathVariable Long offboardingCaseId,

@@ -1,11 +1,28 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
-  ArrowLeft, Edit, Upload, Download, Plus, Trash2, ChevronRight,
-  Phone, Mail, MapPin, CreditCard, Briefcase, UserCheck,
-  AlertTriangle, FileText, Lock, Unlock, RefreshCw, Send, Loader2
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  ChevronRight,
+  CircleDashed,
+  CreditCard,
+  Edit,
+  Eye,
+  FileText,
+  Files,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  ScanFace,
+  Send,
+  ShieldCheck,
+  UserCheck,
+  Wallet
 } from 'lucide-vue-next'
 import {
   getEmployeeDetail,
@@ -27,10 +44,8 @@ const router = useRouter()
 const employeeId = route.params.id
 
 const loading = ref(true)
+const viewMode = ref('overview')
 const activeTab = ref('profile')
-const showEditModal = ref(false)
-const showTransferModal = ref(false)
-const showAddressModal = ref(false)
 
 const employee = ref({})
 const profile = ref({})
@@ -40,18 +55,17 @@ const identifications = ref([])
 const bankAccounts = ref([])
 const documents = ref([])
 
+const statusMap = {
+  ACTIVE: { label: 'Chính thức', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200', tone: 'text-emerald-600' },
+  PROBATION: { label: 'Thử việc', chip: 'bg-amber-50 text-amber-700 border-amber-200', tone: 'text-amber-600' },
+  SUSPENDED: { label: 'Đình chỉ', chip: 'bg-rose-50 text-rose-700 border-rose-200', tone: 'text-rose-600' },
+  RESIGNED: { label: 'Đã nghỉ', chip: 'bg-slate-100 text-slate-600 border-slate-200', tone: 'text-slate-500' }
+}
+
 const fetchAllData = async () => {
   loading.value = true
   try {
-    const [
-      detailRes,
-      profileRes,
-      addressRes,
-      emergencyRes,
-      idRes,
-      bankRes,
-      docRes
-    ] = await Promise.all([
+    const [detailRes, profileRes, addressRes, emergencyRes, idRes, bankRes, docRes] = await Promise.all([
       getEmployeeDetail(employeeId),
       getEmployeeProfile(employeeId),
       listAddresses(employeeId),
@@ -61,14 +75,21 @@ const fetchAllData = async () => {
       listDocuments(employeeId)
     ])
 
-    employee.value = detailRes.data
-    profile.value = profileRes.data || {}
-    addresses.value = addressRes.data
-    emergencyContacts.value = emergencyRes.data
-    identifications.value = idRes.data
-    bankAccounts.value = bankRes.data
-    documents.value = docRes.data
+    employee.value = detailRes?.data || {}
+    profile.value = profileRes?.data || {}
+    addresses.value = Array.isArray(addressRes?.data) ? addressRes.data : []
+    emergencyContacts.value = Array.isArray(emergencyRes?.data) ? emergencyRes.data : []
+    identifications.value = Array.isArray(idRes?.data) ? idRes.data : []
+    bankAccounts.value = Array.isArray(bankRes?.data) ? bankRes.data : []
+    documents.value = Array.isArray(docRes?.data) ? docRes.data : []
   } catch (error) {
+    employee.value = {}
+    profile.value = {}
+    addresses.value = []
+    emergencyContacts.value = []
+    identifications.value = []
+    bankAccounts.value = []
+    documents.value = []
     console.error('Failed to fetch employee data:', error)
   } finally {
     loading.value = false
@@ -77,31 +98,176 @@ const fetchAllData = async () => {
 
 onMounted(fetchAllData)
 
-const tabs = [
-  { key: 'profile', label: 'Hồ sơ chính', icon: UserCheck },
-  { key: 'addresses', label: 'Địa chỉ', icon: MapPin },
-  { key: 'emergency', label: 'Liên hệ khẩn', icon: Phone },
-  { key: 'identification', label: 'Giấy tờ', icon: CreditCard },
-  { key: 'bank', label: 'Tài khoản NH', icon: CreditCard },
-  { key: 'documents', label: 'Hồ sơ/Tài liệu', icon: FileText },
-]
-
-const statusMap = {
-  ACTIVE: { label: 'Chính thức', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
-  PROBATION: { label: 'Thử việc', cls: 'bg-amber-50 text-amber-700 ring-amber-600/20' },
-  SUSPENDED: { label: 'Đình chỉ', cls: 'bg-rose-50 text-rose-700 ring-rose-600/20' },
-  RESIGNED: { label: 'Đã nghỉ', cls: 'bg-slate-100 text-slate-500 ring-slate-200' },
-}
-
 const getAvatarInitial = (name) => {
   if (!name) return '?'
-  return name.split(' ').pop().charAt(0).toUpperCase()
+  return name.trim().split(' ').filter(Boolean).pop()?.charAt(0)?.toUpperCase() || '?'
 }
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A'
   return new Date(dateStr).toLocaleDateString('vi-VN')
 }
+
+const getGenderLabel = (genderCode) => {
+  if (genderCode === 'MALE') return 'Nam'
+  if (genderCode === 'FEMALE') return 'Nữ'
+  if (genderCode === 'OTHER') return 'Khác'
+  return 'N/A'
+}
+
+const statusMeta = computed(() => statusMap[employee.value.employmentStatus] || statusMap.ACTIVE)
+
+const overviewStats = computed(() => [
+  {
+    label: 'Mức độ hồ sơ',
+    value: `${[employee.value.workEmail, employee.value.mobilePhone, profile.value.nationality, addresses.value[0]?.addressLine, identifications.value[0]?.documentNumber, bankAccounts.value[0]?.accountNumber].filter(Boolean).length}/6`,
+    hint: 'Độ đầy đủ thông tin'
+  },
+  {
+    label: 'Liên hệ khẩn',
+    value: emergencyContacts.value.length,
+    hint: 'Người liên hệ'
+  },
+  {
+    label: 'Giấy tờ',
+    value: identifications.value.length,
+    hint: 'Hồ sơ định danh'
+  },
+  {
+    label: 'Tài liệu',
+    value: documents.value.length,
+    hint: 'File đang lưu'
+  }
+])
+
+const summaryCards = computed(() => [
+  {
+    title: 'Nhân thân',
+    icon: UserCheck,
+    items: [
+      { label: 'Họ tên', value: employee.value.fullName || 'N/A' },
+      { label: 'Giới tính', value: getGenderLabel(employee.value.genderCode) },
+      { label: 'Ngày sinh', value: formatDate(employee.value.dateOfBirth) },
+      { label: 'Hôn nhân', value: profile.value.maritalStatus === 'MARRIED' ? 'Đã kết hôn' : profile.value.maritalStatus ? 'Độc thân' : 'N/A' }
+    ]
+  },
+  {
+    title: 'Công việc',
+    icon: Briefcase,
+    items: [
+      { label: 'Phòng ban', value: employee.value.orgUnitName || 'N/A' },
+      { label: 'Chức danh', value: employee.value.jobTitleName || 'N/A' },
+      { label: 'Quản lý', value: employee.value.managerEmployeeName || 'N/A' },
+      { label: 'Ngày vào làm', value: formatDate(employee.value.hireDate) }
+    ]
+  },
+  {
+    title: 'Liên hệ',
+    icon: Mail,
+    items: [
+      { label: 'Email công ty', value: employee.value.workEmail || 'N/A' },
+      { label: 'Email cá nhân', value: employee.value.personalEmail || 'N/A' },
+      { label: 'SDT cong ty', value: employee.value.workPhone || 'N/A' },
+      { label: 'SDT cá nhân', value: employee.value.mobilePhone || 'N/A' }
+    ]
+  },
+  {
+    title: 'Nhân sự mở rộng',
+    icon: ShieldCheck,
+    items: [
+      { label: 'Quốc tịch', value: profile.value.nationality || 'Việt Nam' },
+      { label: 'Dân tộc', value: profile.value.ethnicGroup || 'Kinh' },
+      { label: 'Tôn giáo', value: profile.value.religion || 'Không' },
+      { label: 'Mã số thuế', value: employee.value.taxCode || 'N/A' }
+    ]
+  }
+])
+
+const tabs = computed(() => [
+  { key: 'profile', label: 'Tổng quan cá nhân', icon: Eye, count: null },
+  { key: 'addresses', label: 'Địa chỉ', icon: MapPin, count: addresses.value.length },
+  { key: 'emergency', label: 'Liên hệ khẩn', icon: Phone, count: emergencyContacts.value.length },
+  { key: 'identification', label: 'Giấy tờ', icon: ScanFace, count: identifications.value.length },
+  { key: 'bank', label: 'Tài khoản NH', icon: Wallet, count: bankAccounts.value.length },
+  { key: 'documents', label: 'Hồ sơ tài liệu', icon: Files, count: documents.value.length }
+])
+
+const currentTab = computed(() => tabs.value.find((tab) => tab.key === activeTab.value) || tabs.value[0])
+
+const compactPanels = computed(() => ({
+  profile: {
+    title: 'Ho so chinh',
+    title: 'Hồ sơ chính',
+    description: 'Những thông tin cần truy cập nhanh nhất để làm việc hằng ngày.',
+    blocks: [
+      {
+        title: 'Thông tin cơ bản',
+        items: [
+          { label: 'Họ tên', value: employee.value.fullName || 'N/A' },
+          { label: 'Giới tính', value: getGenderLabel(employee.value.genderCode) },
+          { label: 'Ngày sinh', value: formatDate(employee.value.dateOfBirth) },
+          { label: 'Nơi sinh', value: profile.value.placeOfBirth || 'N/A' }
+        ]
+      },
+      {
+        title: 'Thông tin công việc',
+        items: [
+          { label: 'Phòng ban', value: employee.value.orgUnitName || 'N/A' },
+          { label: 'Chức danh', value: employee.value.jobTitleName || 'N/A' },
+          { label: 'Trạng thái', value: statusMeta.value.label },
+          { label: 'Địa điểm', value: employee.value.workLocation || 'N/A' }
+        ]
+      }
+    ]
+  },
+  addresses: {
+    title: 'Địa chỉ',
+    description: 'Quản lý thường trú, tạm trú và các địa điểm liên quan.',
+    cards: addresses.value.map((item) => ({
+      title: item.addressType === 'PERMANENT' ? 'Thường trú' : 'Tạm trú',
+      badge: item.primary ? 'Chính' : null,
+      subtitle: [item.addressLine, item.wardName, item.districtName, item.provinceName].filter(Boolean).join(', ')
+    }))
+  },
+  emergency: {
+    title: 'Liên hệ khẩn cấp',
+    description: 'Người có thể liên hệ ngay khi xảy ra sự cố.',
+    cards: emergencyContacts.value.map((item) => ({
+      title: item.contactName || 'N/A',
+      badge: item.primary ? 'Chính' : item.relationshipCode,
+      subtitle: [item.phoneNumber, item.email].filter(Boolean).join(' • ')
+    }))
+  },
+  identification: {
+    title: 'Giấy tờ định danh',
+    description: 'CCCD, passport và các giấy tờ pháp lý quan trọng.',
+    cards: identifications.value.map((item) => ({
+      title: item.documentType || 'N/A',
+      badge: item.status === 'ACTIVE' ? 'Còn hiệu lực' : item.status,
+      subtitle: `${item.documentNumber || 'N/A'} • ${formatDate(item.expiryDate)}`
+    }))
+  },
+  bank: {
+    title: 'Tài khoản ngân hàng',
+    description: 'Thông tin tài khoản chi lương và đối soát.',
+    cards: bankAccounts.value.map((item) => ({
+      title: item.bankName || 'N/A',
+      badge: item.primary ? 'Chính' : null,
+      subtitle: `${item.accountHolderName || 'N/A'} • ${item.accountNumber || 'N/A'}`
+    }))
+  },
+  documents: {
+    title: 'Hồ sơ tài liệu',
+    description: 'Tất cả tài liệu đính kèm của nhân sự.',
+    cards: documents.value.map((item) => ({
+      title: item.documentName || 'N/A',
+      badge: item.status || null,
+      subtitle: `${item.documentCategory || 'N/A'} • ${((item.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)} MB`
+    }))
+  }
+}))
+
+const activePanel = computed(() => compactPanels.value[activeTab.value] || compactPanels.value.profile)
 </script>
 
 <template>
@@ -111,402 +277,320 @@ const formatDate = (dateStr) => {
   </div>
 
   <div v-else class="space-y-6 animate-fade-in">
-    <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-sm font-medium">
-      <button @click="router.push('/employees')" class="text-indigo-600 hover:underline flex items-center gap-1">
-        <ArrowLeft class="w-4 h-4" /> Hồ sơ nhân sự
-      </button>
-      <ChevronRight class="w-4 h-4 text-slate-300" />
-      <span class="text-slate-500">{{ employee.employeeCode }} - {{ employee.fullName }}</span>
-    </div>
-
-    <!-- Employee Header Card -->
-    <div
-      class="bg-linear-to-r from-indigo-600 to-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-200">
-      <div class="absolute -top-20 -right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-      <div class="absolute -bottom-10 -left-10 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
-      <div class="relative flex flex-col md:flex-row md:items-center gap-6">
-        <!-- Avatar -->
-        <div v-if="employee.avatarUrl" class="w-24 h-24 rounded-3xl overflow-hidden border-2 border-white/30 shadow-xl">
-           <img :src="employee.avatarUrl" class="w-full h-full object-cover" />
-        </div>
-        <div v-else
-          class="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center font-black text-4xl border-2 border-white/30 shadow-xl">
-          {{ getAvatarInitial(employee.fullName) }}
-        </div>
-        <!-- Basic Info -->
-        <div class="flex-1">
-          <div class="flex items-center gap-3 mb-1">
-            <h1 class="text-3xl font-black tracking-tight">{{ employee.fullName }}</h1>
-            <span class="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">{{ employee.employeeCode }}</span>
-          </div>
-          <div class="flex flex-wrap gap-x-6 gap-y-2 text-indigo-100 font-medium">
-            <span class="flex items-center gap-1.5">
-              <Briefcase class="w-4 h-4" /> {{ employee.jobTitleName }}
-            </span>
-            <span class="flex items-center gap-1.5">
-              <Mail class="w-4 h-4" /> {{ employee.workEmail }}
-            </span>
-            <span class="flex items-center gap-1.5">
-              <Phone class="w-4 h-4" /> {{ employee.workPhone || 'Chưa cập nhật' }}
-            </span>
-          </div>
-          <div class="flex flex-wrap items-center gap-3 mt-4">
-            <span class="px-3 py-1.5 bg-white/20 text-white text-sm font-bold rounded-xl ring-1 ring-white/30">
-              {{ employee.orgUnitName }}
-            </span>
-            <span class="px-3 py-1.5 text-xs font-bold rounded-xl ring-1 ring-inset"
-              :class="statusMap[employee.employmentStatus]?.cls">
-              {{ statusMap[employee.employmentStatus]?.label }}
-            </span>
-          </div>
-        </div>
-        <!-- Actions -->
-        <div v-if="canManage" class="flex flex-wrap gap-3">
-          <button @click="showEditModal = true"
-            class="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2.5 rounded-xl font-bold text-sm transition-all border border-white/20">
-            <Edit class="w-4 h-4" /> Chỉnh sửa
-          </button>
-          <button @click="showTransferModal = true"
-            class="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2.5 rounded-xl font-bold text-sm transition-all border border-white/20">
-            <Send class="w-4 h-4" /> Điều chuyển
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab Navigation -->
-    <div class="flex overflow-x-auto scrollbar-hide bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5 gap-1">
-      <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
-        class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all"
-        :class="activeTab === tab.key ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'">
-        <component :is="tab.icon" class="w-4 h-4" />
-        {{ tab.label }}
-      </button>
-    </div>
-
-    <!-- Tab: Profile -->
-    <div v-if="activeTab === 'profile'" class="grid md:grid-cols-2 gap-6">
-      <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-        <h3 class="font-black text-slate-900 text-lg mb-5 pb-3 border-b border-slate-100">Thông tin cơ bản</h3>
-        <div class="space-y-4">
-          <div v-for="(val, key) in {
-            'Họ và Tên': employee.fullName,
-            'Giới tính': employee.genderCode === 'MALE' ? 'Nam' : 'Nữ',
-            'Ngày sinh': formatDate(employee.dateOfBirth),
-            'Quốc tịch': profile.nationality || 'Việt Nam',
-            'Dân tộc': profile.ethnicGroup || 'Kinh',
-            'Hôn nhân': profile.maritalStatus === 'MARRIED' ? 'Đã kết hôn' : 'Độc thân',
-            'Học vấn': profile.educationLevel || 'N/A',
-          }" :key="key" class="flex items-center justify-between py-2">
-            <span class="text-sm text-slate-400 font-bold">{{ key }}</span>
-            <span class="text-sm font-bold text-slate-900">{{ val }}</span>
-          </div>
-        </div>
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex items-center gap-2 text-sm font-medium">
+        <button @click="router.push('/employees')" class="text-indigo-600 hover:underline flex items-center gap-1">
+          <ArrowLeft class="w-4 h-4" /> Hồ sơ nhân sự
+        </button>
+        <ChevronRight class="w-4 h-4 text-slate-300" />
+        <span class="text-slate-500">{{ employee.employeeCode || 'N/A' }} - {{ employee.fullName || 'Nhan su' }}</span>
       </div>
 
-      <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-        <h3 class="font-black text-slate-900 text-lg mb-5 pb-3 border-b border-slate-100">Thông tin công việc</h3>
-        <div class="space-y-4">
-          <div v-for="(val, key) in {
-            'Phòng ban': employee.orgUnitName,
-            'Chức danh': employee.jobTitleName,
-            'Quản lý trực tiếp': employee.managerEmployeeName || 'N/A',
-            'Trạng thái': statusMap[employee.employmentStatus]?.label,
-            'Ngày vào làm': formatDate(employee.hireDate),
-            'Địa điểm': employee.workLocation || 'N/A',
-          }" :key="key" class="flex items-center justify-between py-2">
-            <span class="text-sm text-slate-400 font-bold">{{ key }}</span>
-            <span class="text-sm font-bold text-slate-900">{{ val }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:col-span-2">
-        <h3 class="font-black text-slate-900 text-lg mb-5 pb-3 border-b border-slate-100">Thông tin bổ sung</h3>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
-          <div v-for="(val, key) in {
-            'Mã số thuế': employee.taxCode || 'N/A',
-            'SĐT cá nhân': employee.mobilePhone || 'N/A',
-            'Email cá nhân': employee.personalEmail || 'N/A',
-            'Tôn giáo': profile.religion || 'Không',
-            'Nơi sinh': profile.placeOfBirth || 'N/A',
-            'Chuyên ngành': profile.major || 'N/A',
-          }" :key="key" class="py-2">
-            <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{{ key }}</div>
-            <div class="text-sm font-bold text-slate-900">{{ val }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab: Addresses -->
-    <div v-if="activeTab === 'addresses'" class="space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-black text-slate-900">Danh sách địa chỉ</h3>
-        <button v-if="canManage" @click="showAddressModal = true"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
-          <Plus class="w-4 h-4" /> Thêm địa chỉ
+      <div class="inline-flex rounded-2xl bg-white border border-slate-200 p-1 shadow-sm">
+        <button
+          type="button"
+          @click="viewMode = 'overview'"
+          class="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+          :class="viewMode === 'overview' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+        >
+          Tổng quan
+        </button>
+        <button
+          type="button"
+          @click="viewMode = '360'"
+          class="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+          :class="viewMode === '360' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+        >
+          Hồ sơ 360°
         </button>
       </div>
-      <div v-if="addresses.length > 0">
-        <div v-for="addr in addresses" :key="addr.employeeAddressId"
-          class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-start justify-between mb-4">
-          <div class="flex items-start gap-4">
-            <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-              <MapPin class="w-5 h-5" />
+    </div>
+
+    <section class="relative overflow-hidden rounded-[32px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.18),_transparent_24%),linear-gradient(135deg,#0f172a_0%,#312e81_38%,#4f46e5_72%,#1d4ed8_100%)] p-5 text-white shadow-[0_18px_50px_rgba(49,46,129,0.18)] lg:p-6">
+      <div class="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl"></div>
+      <div class="absolute -bottom-16 left-20 h-36 w-36 rounded-full bg-cyan-300/10 blur-3xl"></div>
+
+      <div class="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <div v-if="employee.avatarUrl" class="h-20 w-20 overflow-hidden rounded-[24px] border border-white/20 shadow-xl">
+            <img :src="employee.avatarUrl" class="h-full w-full object-cover" />
+          </div>
+          <div v-else class="flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/20 bg-white/12 text-3xl font-black shadow-xl">
+            {{ getAvatarInitial(employee.fullName) }}
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <h1 class="text-2xl font-black tracking-tight lg:text-3xl">{{ employee.fullName || 'Chưa có tên' }}</h1>
+              <span class="rounded-full border border-white/15 bg-white/12 px-3 py-1 text-sm font-bold">
+                {{ employee.employeeCode || 'N/A' }}
+              </span>
+              <span class="rounded-full border px-3 py-1 text-xs font-bold" :class="statusMeta.chip">
+                {{ statusMeta.label }}
+              </span>
             </div>
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="font-bold text-slate-900 text-sm">
-                  {{ addr.addressType === 'PERMANENT' ? 'Địa chỉ thường trú' : 'Địa chỉ tạm trú' }}
-                </span>
-                <span v-if="addr.primary"
-                  class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-xs font-bold ring-1 ring-indigo-200">Chính</span>
+
+            <div class="grid gap-2 text-sm text-indigo-100 md:grid-cols-2 xl:grid-cols-4">
+              <div class="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2">
+                <Briefcase class="h-4 w-4" />
+                <span>{{ employee.jobTitleName || 'Chưa cập nhật chức danh' }}</span>
               </div>
-              <p class="text-slate-500 font-medium text-sm">
-                 {{ addr.addressLine }}, {{ addr.wardName }}, {{ addr.districtName }}, {{ addr.provinceName }}
-              </p>
+              <div class="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2">
+                <Building2 class="h-4 w-4" />
+                <span>{{ employee.orgUnitName || 'Chưa cập nhật phòng ban' }}</span>
+              </div>
+              <div class="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2">
+                <Mail class="h-4 w-4" />
+                <span class="truncate">{{ employee.workEmail || 'Chưa có email công ty' }}</span>
+              </div>
+              <div class="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2">
+                <Phone class="h-4 w-4" />
+                <span>{{ employee.workPhone || 'Chưa cập nhật SDT' }}</span>
+              </div>
             </div>
           </div>
-          <div v-if="canManage" class="flex gap-2">
-            <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-              <Edit class="w-4 h-4" />
-            </button>
-            <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-              <Trash2 class="w-4 h-4" />
-            </button>
-          </div>
         </div>
-      </div>
-      <div v-else class="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-        <p class="text-slate-400 font-medium">Chưa có thông tin địa chỉ</p>
-      </div>
-    </div>
 
-    <!-- Tab: Emergency Contacts -->
-    <div v-if="activeTab === 'emergency'" class="space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-black text-slate-900">Liên hệ khẩn cấp</h3>
-        <button v-if="canManage"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
-          <Plus class="w-4 h-4" /> Thêm liên hệ
-        </button>
-      </div>
-      <div v-if="emergencyContacts.length > 0">
-        <div v-for="ec in emergencyContacts" :key="ec.emergencyContactId"
-          class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center justify-between mb-4">
-          <div class="flex items-center gap-4">
+        <div class="flex flex-col gap-3 xl:min-w-[420px]">
+          <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <div
-              class="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center font-black text-rose-600 text-lg">
-              {{ ec.contactName.charAt(0) }}
-            </div>
-            <div>
-              <div class="font-black text-slate-900">{{ ec.contactName }}</div>
-              <div class="flex gap-4 text-sm text-slate-500 font-medium mt-1">
-                <span>{{ ec.relationshipCode }}</span>
-                <span class="flex items-center gap-1">
-                  <Phone class="w-3.5 h-3.5" /> {{ ec.phoneNumber }}
-                </span>
-                <span v-if="ec.email" class="flex items-center gap-1">
-                  <Mail class="w-3.5 h-3.5" /> {{ ec.email }}
-                </span>
-              </div>
+              v-for="item in overviewStats"
+              :key="item.label"
+              class="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm"
+            >
+              <div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-100/65">{{ item.label }}</div>
+              <div class="mt-1 text-xl font-black leading-none">{{ item.value }}</div>
+              <div class="mt-1 text-[11px] leading-4 text-indigo-100/65">{{ item.hint }}</div>
             </div>
           </div>
-          <div v-if="canManage" class="flex gap-2">
-            <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-              <Edit class="w-4 h-4" />
+
+          <div v-if="canManage" class="flex flex-wrap gap-2 pt-1">
+            <button class="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold transition hover:bg-white/15">
+              <Edit class="h-4 w-4" /> Chỉnh sửa
             </button>
-            <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-              <Trash2 class="w-4 h-4" />
+            <button class="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold transition hover:bg-white/15">
+              <Send class="h-4 w-4" /> Điều chuyển
             </button>
           </div>
         </div>
       </div>
-      <div v-else class="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-        <p class="text-slate-400 font-medium">Chưa có thông tin liên hệ khẩn cấp</p>
-      </div>
-    </div>
+    </section>
 
-    <!-- Tab: Identification -->
-    <div v-if="activeTab === 'identification'" class="space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-black text-slate-900">Giấy tờ tùy thân</h3>
-        <button v-if="canManage"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
-          <Plus class="w-4 h-4" /> Thêm giấy tờ
-        </button>
-      </div>
-      <div v-if="identifications.length > 0">
-        <div v-for="id in identifications" :key="id.employeeIdentificationId"
-          class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-4">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-                <CreditCard class="w-5 h-5" />
+    <template v-if="viewMode === 'overview'">
+      <section class="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+        <div class="space-y-6">
+          <div class="grid gap-6 md:grid-cols-2">
+            <article
+              v-for="card in summaryCards"
+              :key="card.title"
+              class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <div class="mb-5 flex items-center gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                  <component :is="card.icon" class="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 class="text-lg font-black text-slate-900">{{ card.title }}</h3>
+                  <p class="text-sm text-slate-400">Thông tin cần xem nhanh</p>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div
+                  v-for="row in card.items"
+                  :key="row.label"
+                  class="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3"
+                >
+                  <span class="text-sm font-bold text-slate-400">{{ row.label }}</span>
+                  <span class="text-right text-sm font-black text-slate-900">{{ row.value }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="space-y-6">
+          <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-5 flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-black text-slate-900">Hồ sơ 360° Preview</h3>
+                <p class="text-sm text-slate-400">Chuyển nhanh sang từng nhóm thông tin.</p>
+              </div>
+              <button
+                type="button"
+                @click="viewMode = '360'"
+                class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+              >
+                Mở 360°
+              </button>
+            </div>
+
+            <div class="grid gap-3">
+              <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                type="button"
+                @click="viewMode = '360'; activeTab = tab.key"
+                class="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50/40"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                    <component :is="tab.icon" class="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div class="font-black text-slate-900">{{ tab.label }}</div>
+                    <div class="text-xs text-slate-400">
+                      {{ tab.count === null ? 'Tổng hợp' : `${tab.count} mục dữ liệu` }}
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight class="h-4 w-4 text-slate-300" />
+              </button>
+            </div>
+          </article>
+
+          <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-4 flex items-center gap-3">
+              <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <CheckCircle2 class="h-5 w-5" />
               </div>
               <div>
-                <span class="font-black text-slate-900">{{ id.documentType }}</span>
-                <span class="ml-2 px-2.5 py-0.5 rounded-md text-xs font-bold"
-                  :class="id.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
-                  {{ id.status === 'ACTIVE' ? 'Còn hiệu lực' : 'Hết hạn' }}
-                </span>
+                <h3 class="text-lg font-black text-slate-900">Tình trạng hồ sơ</h3>
+                <p class="text-sm text-slate-400">Nhận biết nhanh điểm thiếu để bổ sung.</p>
               </div>
             </div>
-            <div v-if="canManage" class="flex gap-2">
-              <button class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                <Edit class="w-4 h-4" />
-              </button>
-              <button class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <div class="text-xs text-slate-400 font-bold mb-1">Số hiệu</div>
-              <div class="font-bold text-slate-900 font-mono">{{ id.documentNumber }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-slate-400 font-bold mb-1">Ngày cấp</div>
-              <div class="font-bold text-slate-900">{{ formatDate(id.issueDate) }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-slate-400 font-bold mb-1">Hết hạn</div>
-              <div class="font-bold text-slate-900">{{ formatDate(id.expiryDate) }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-slate-400 font-bold mb-1">Nơi cấp</div>
-              <div class="font-bold text-slate-900">{{ id.issuePlace }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-else class="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-        <p class="text-slate-400 font-medium">Chưa có thông tin giấy tờ</p>
-      </div>
-    </div>
 
-    <!-- Tab: Bank Account -->
-    <div v-if="activeTab === 'bank'" class="space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-black text-slate-900">Tài khoản ngân hàng</h3>
-        <button v-if="canManage"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
-          <Plus class="w-4 h-4" /> Thêm tài khoản
-        </button>
-      </div>
-      <div v-if="bankAccounts.length > 0">
-        <div v-for="bank in bankAccounts" :key="bank.employeeBankAccountId"
-          class="bg-linear-to-r from-slate-800 to-slate-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden mb-4">
-          <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
-          <div class="flex items-center justify-between mb-6">
-            <span class="font-black text-lg">{{ bank.bankName }}</span>
-            <span v-if="bank.primary"
-              class="px-3 py-1 bg-amber-400 text-amber-900 rounded-full text-xs font-black">Chính</span>
-          </div>
-          <div class="font-mono text-2xl font-bold tracking-widest text-slate-200 mb-4">
-            {{ bank.accountNumber.replace(/(\d{4})/g, '$1 ').trim() }}
-          </div>
-          <div class="flex items-center justify-between text-sm">
-            <div>
-              <div class="text-slate-400 text-xs font-bold mb-1">Chủ tài khoản</div>
-              <div class="font-bold">{{ bank.accountHolderName }}</div>
+            <div class="space-y-3">
+              <div class="rounded-2xl bg-slate-50 px-4 py-3">
+                <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Email công ty</div>
+                <div class="mt-1 font-bold text-slate-900">{{ employee.workEmail || 'Cần bổ sung' }}</div>
+              </div>
+              <div class="rounded-2xl bg-slate-50 px-4 py-3">
+                <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Giấy tờ định danh</div>
+                <div class="mt-1 font-bold text-slate-900">{{ identifications.length ? 'Đã cập nhật' : 'Chưa có dữ liệu' }}</div>
+              </div>
+              <div class="rounded-2xl bg-slate-50 px-4 py-3">
+                <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Tài khoản ngân hàng</div>
+                <div class="mt-1 font-bold text-slate-900">{{ bankAccounts.length ? 'Đã cập nhật' : 'Chưa có dữ liệu' }}</div>
+              </div>
+              <div class="rounded-2xl bg-slate-50 px-4 py-3">
+                <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Địa chỉ chính</div>
+                <div class="mt-1 font-bold text-slate-900">{{ addresses.length ? 'Đã cập nhật' : 'Chưa có dữ liệu' }}</div>
+              </div>
             </div>
-            <div class="text-right">
-              <div class="text-slate-400 text-xs font-bold mb-1">Chi nhánh</div>
-              <div class="font-bold">{{ bank.branchName || 'N/A' }}</div>
-            </div>
-          </div>
-          <div v-if="canManage" class="flex gap-2 mt-4">
-            <button
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors">
-              <Edit class="w-3.5 h-3.5" /> Sửa
-            </button>
-            <button
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-rose-500/30 rounded-lg text-xs font-bold transition-colors text-rose-300">
-              <Trash2 class="w-3.5 h-3.5" /> Xóa
-            </button>
-          </div>
+          </article>
         </div>
-      </div>
-      <div v-else class="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-        <p class="text-slate-400 font-medium">Chưa có thông tin tài khoản ngân hàng</p>
-      </div>
-    </div>
+      </section>
+    </template>
 
-    <!-- Tab: Documents -->
-    <div v-if="activeTab === 'documents'" class="space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-black text-slate-900">Hồ sơ & Tài liệu đính kèm</h3>
-        <button v-if="canManage"
-          class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200">
-          <Upload class="w-4 h-4" /> Tải lên tài liệu
-        </button>
-      </div>
-      <div v-if="documents.length > 0" class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <table class="w-full">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-100">
-              <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Tên tài liệu
-              </th>
-              <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Danh mục</th>
-              <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Trạng thái
-              </th>
-              <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Ngày tải lên
-              </th>
-              <th class="py-3 px-5 text-left font-bold text-slate-500 text-xs uppercase tracking-wider">Kích thước
-              </th>
-              <th class="py-3 px-5"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="doc in documents" :key="doc.employeeDocumentId" class="hover:bg-slate-50/50 transition-colors">
-              <td class="py-4 px-5">
-                <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
-                    <FileText class="w-5 h-5 text-indigo-600" />
+    <template v-else>
+      <section class="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-24 xl:self-start">
+          <div class="mb-4 px-2">
+            <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Điều hướng 360°</p>
+            <h3 class="mt-1 text-lg font-black text-slate-900">Xem hồ sơ theo nhóm</h3>
+          </div>
+
+          <div class="space-y-2">
+            <button
+              v-for="tab in tabs"
+              :key="tab.key"
+              type="button"
+              @click="activeTab = tab.key"
+              class="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition-all"
+              :class="activeTab === tab.key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'"
+            >
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-2xl"
+                  :class="activeTab === tab.key ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-500'"
+                >
+                  <component :is="tab.icon" class="h-4 w-4" />
+                </div>
+                <div>
+                  <div class="font-black">{{ tab.label }}</div>
+                  <div class="text-xs" :class="activeTab === tab.key ? 'text-slate-300' : 'text-slate-400'">
+                    {{ tab.count === null ? 'Tổng hợp' : `${tab.count} mục` }}
                   </div>
-                  <span class="font-bold text-slate-900 text-sm">{{ doc.documentName }}</span>
                 </div>
-              </td>
-              <td class="py-4 px-5 text-sm font-medium text-slate-600">{{ doc.documentCategory }}</td>
-              <td class="py-4 px-5">
+              </div>
+              <ChevronRight class="h-4 w-4" :class="activeTab === tab.key ? 'text-slate-300' : 'text-slate-300'" />
+            </button>
+          </div>
+        </aside>
+
+        <div class="space-y-6">
+          <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Hồ sơ 360°</p>
+                <h2 class="mt-1 text-2xl font-black text-slate-900">{{ activePanel.title }}</h2>
+                <p class="mt-2 text-sm text-slate-500">{{ activePanel.description }}</p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Đang xem: <span class="font-black text-slate-900">{{ currentTab.label }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="activeTab === 'profile'" class="grid gap-6 lg:grid-cols-2">
+            <article
+              v-for="block in activePanel.blocks"
+              :key="block.title"
+              class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <h3 class="mb-5 text-lg font-black text-slate-900">{{ block.title }}</h3>
+              <div class="space-y-3">
+                <div
+                  v-for="item in block.items"
+                  :key="item.label"
+                  class="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3"
+                >
+                  <span class="text-sm font-bold text-slate-400">{{ item.label }}</span>
+                  <span class="text-right text-sm font-black text-slate-900">{{ item.value }}</span>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section v-else-if="activePanel.cards?.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <article
+              v-for="card in activePanel.cards"
+              :key="`${activeTab}-${card.title}-${card.subtitle}`"
+              class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div class="mb-4 flex items-start justify-between gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                  <component :is="currentTab.icon" class="h-5 w-5" />
+                </div>
                 <span
-                  class="px-2.5 py-1 rounded-lg text-xs font-bold ring-1 ring-inset"
-                  :class="doc.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-100 text-slate-500 ring-slate-200'">
-                  {{ doc.status === 'ACTIVE' ? 'Hoạt động' : 'Lưu trữ' }}
+                  v-if="card.badge"
+                  class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-slate-600"
+                >
+                  {{ card.badge }}
                 </span>
-              </td>
-              <td class="py-4 px-5 text-sm text-slate-500 font-medium">{{ formatDate(doc.uploadedAt) }}</td>
-              <td class="py-4 px-5 text-sm text-slate-500 font-medium">{{ (doc.fileSizeBytes / 1024 / 1024).toFixed(2) }} MB</td>
-              <td class="py-4 px-5">
-                <div v-if="canManage" class="flex items-center justify-end gap-2">
-                  <button
-                    class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                    <Download class="w-4 h-4" />
-                  </button>
-                  <button
-                    class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-                    <Trash2 class="w-4 h-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-else class="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-        <p class="text-slate-400 font-medium">Chưa có tài liệu đính kèm</p>
-      </div>
-    </div>
+              </div>
+              <div class="text-lg font-black text-slate-900">{{ card.title }}</div>
+              <div class="mt-2 text-sm leading-relaxed text-slate-500">{{ card.subtitle }}</div>
+            </article>
+          </section>
+
+          <section v-else class="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+              <CircleDashed class="h-6 w-6" />
+            </div>
+            <h3 class="mt-4 text-lg font-black text-slate-900">Chưa có dữ liệu</h3>
+            <p class="mt-2 text-sm text-slate-500">Nhóm thông tin này chưa được cập nhật cho nhân sự này.</p>
+          </section>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <style scoped>
 .animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
+  animation: fadeIn 0.45s ease-out forwards;
 }
 
 @keyframes fadeIn {
@@ -519,14 +603,5 @@ const formatDate = (dateStr) => {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 </style>

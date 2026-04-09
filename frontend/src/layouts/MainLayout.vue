@@ -1,33 +1,21 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
+import { useUiStore } from '@/stores/ui'
+import { navigationByRole } from '@/config/navigation'
 import {
-  Banknote,
   Bell,
-  Briefcase,
-  CalendarOff,
   ChevronDown,
   ChevronRight,
-  Clock,
-  FilePenLine,
-  FileSignature,
-  History,
-  KeyRound,
-  LayoutDashboard,
   LogOut,
   Menu,
-  Network,
   Search,
-  Settings,
-  ShieldCheck,
-  UserMinus,
-  UserPlus,
-  Users
 } from 'lucide-vue-next'
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const uiStore = useUiStore()
 
 const isSidebarOpen = ref(localStorage.getItem('isSidebarOpen') !== 'false')
 
@@ -69,9 +57,18 @@ const hideTooltip = () => {
   tooltip.value.show = false
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
   hideTooltip()
-  authStore.logout()
+  const confirmed = await uiStore.confirm({
+    title: 'Xác nhận đăng xuất',
+    message: 'Bạn có chắc muốn đăng xuất khỏi hệ thống không?',
+    confirmLabel: 'Đăng xuất',
+    danger: true,
+  })
+
+  if (!confirmed) return
+
+  await authStore.logout()
   router.push('/login')
 }
 
@@ -96,92 +93,10 @@ const isManager = computed(() => authStore.isManager)
 const isHR = computed(() => authStore.isHR)
 const isAdmin = computed(() => authStore.isAdmin)
 
-const adminMenuGroups = [
-  {
-    label: 'TỔNG HỢP',
-    items: [
-      { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' }
-    ]
-  },
-  {
-    label: 'HỆ THỐNG',
-    items: [
-      { name: 'Tài khoản', icon: KeyRound, path: '/users' },
-      { name: 'Phân quyền', icon: ShieldCheck, path: '/roles' },
-      { name: 'Nhật ký hoạt động', icon: History, path: '/audit-logs' },
-      { name: 'Cài đặt chung', icon: Settings, path: '/settings' },
-    ]
-  },
-]
-
-const hrMenuGroups = [
-  {
-    label: 'TỔNG HỢP',
-    items: [
-      { name: 'Tổng quan', icon: LayoutDashboard, path: '/dashboard' }
-    ]
-  },
-  {
-    label: 'TỔ CHỨC',
-    items: [
-      { name: 'Cơ cấu tổ chức', icon: Network, path: '/org-units' },
-      // { name: 'Chức danh', icon: Briefcase, path: '/job-titles' }, // Add if job titles page exists
-    ]
-  },
-  {
-    label: 'NHÂN SỰ',
-    items: [
-      { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
-      { name: 'Hợp đồng lao động', icon: FileSignature, path: '/contracts' },
-      { name: 'Phê duyệt hồ sơ', icon: FilePenLine, path: '/profile-change-requests' },
-    ]
-  },
-  {
-    label: 'VÒNG ĐỜI NHÂN SỰ',
-    items: [
-      { name: 'Tiếp nhận (Onboarding)', icon: UserPlus, path: '/onboarding' },
-      { name: 'Thôi việc (Offboarding)', icon: UserMinus, path: '/offboarding' },
-    ]
-  },
-  {
-    label: 'CÔNG LƯƠNG',
-    items: [
-      { name: 'Quản lý nghỉ phép', icon: CalendarOff, path: '/leaves' },
-      { name: 'Dữ liệu chấm công', icon: Clock, path: '/attendance' },
-      { name: 'Bảng tính lương', icon: Banknote, path: '/payroll' },
-    ]
-  },
-]
-
-const managerMenuGroups = [
-  {
-    label: 'TỔNG HỢP',
-    items: [
-      { name: 'Dashboard Team', icon: LayoutDashboard, path: '/manager/dashboard' }
-    ]
-  },
-  {
-    label: 'QUẢN LÝ NHÂN SỰ',
-    items: [
-      { name: 'Hồ sơ nhân sự', icon: Users, path: '/employees' },
-      { name: 'Tiếp nhận', icon: UserPlus, path: '/onboarding' },
-      { name: 'Thôi việc', icon: UserMinus, path: '/offboarding' },
-    ]
-  },
-  {
-    label: 'PHÊ DUYỆT',
-    items: [
-      { name: 'Duyệt nghỉ phép', icon: CalendarOff, path: '/manager/leaves' },
-      { name: 'Duyệt chấm công', icon: Clock, path: '/manager/attendance' },
-      { name: 'Bảng lương Team', icon: Banknote, path: '/manager/payroll' },
-    ]
-  },
-]
-
 const menuGroups = computed(() => {
-  if (isAdmin.value) return adminMenuGroups
-  if (isHR.value) return hrMenuGroups
-  if (isManager.value) return managerMenuGroups
+  if (isAdmin.value) return navigationByRole.admin
+  if (isHR.value) return navigationByRole.hr
+  if (isManager.value) return navigationByRole.manager
   return []
 })
 </script>

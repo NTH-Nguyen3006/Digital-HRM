@@ -1,7 +1,7 @@
-import axios from 'axios';
+import axios from 'axios'
 
-const ADMIN_LEAVE_API = '/api/v1/admin/leave';
-const LEAVE_TYPE_API = '/api/v1/admin/leave-types';
+const ADMIN_API = '/api/v1/admin'
+const LEAVE_TYPE_API = `${ADMIN_API}/leave-types`
 
 // ==========================================
 // LEAVE TYPE
@@ -68,9 +68,9 @@ export const deactivateLeaveType = async (leaveTypeId) => {
  * @returns {Promise<Object>}
  */
 export const getLeaveBalances = async (params) => {
-    const response = await axios.get(`${ADMIN_LEAVE_API}/balances`, { params });
-    return response.data;
-};
+    const response = await axios.get(`${ADMIN_API}/leave-balances`, { params })
+    return response.data
+}
 
 /**
  * Lấy chi tiết quỹ phép cá nhân
@@ -78,9 +78,9 @@ export const getLeaveBalances = async (params) => {
  * @returns {Promise<Object>}
  */
 export const getLeaveBalanceDetail = async (leaveBalanceId) => {
-    const response = await axios.get(`${ADMIN_LEAVE_API}/balances/${leaveBalanceId}`);
-    return response.data;
-};
+    const response = await axios.get(`${ADMIN_API}/leave-balances/${leaveBalanceId}`)
+    return response.data
+}
 
 /**
  * Thực hiện cộng/trừ ngày phép thủ công
@@ -88,9 +88,9 @@ export const getLeaveBalanceDetail = async (leaveBalanceId) => {
  * @returns {Promise<Object>}
  */
 export const adjustLeaveBalance = async (payload) => {
-    const response = await axios.patch(`${ADMIN_LEAVE_API}/balances/adjust`, payload);
-    return response.data;
-};
+    const response = await axios.post(`${ADMIN_API}/leave-balances/adjustments`, payload)
+    return response.data
+}
 
 // ==========================================
 // LEAVE REQUEST (HR WORKFLOW)
@@ -102,9 +102,9 @@ export const adjustLeaveBalance = async (payload) => {
  * @returns {Promise<Object>}
  */
 export const getLeaveRequests = async (params) => {
-    const response = await axios.get(`${ADMIN_LEAVE_API}/requests`, { params });
-    return response.data;
-};
+    const response = await axios.get(`${ADMIN_API}/leave-requests`, { params })
+    return response.data
+}
 
 /**
  * Lấy thông tin chi tiết một đơn xin nghỉ phép cụ thể
@@ -112,9 +112,9 @@ export const getLeaveRequests = async (params) => {
  * @returns {Promise<Object>}
  */
 export const getLeaveRequestDetail = async (leaveRequestId) => {
-    const response = await axios.get(`${ADMIN_LEAVE_API}/requests/${leaveRequestId}`);
-    return response.data;
-};
+    const response = await axios.get(`${ADMIN_API}/leave-requests/${leaveRequestId}`)
+    return response.data
+}
 
 /**
  * Quản trị viên Nhân sự thực hiện duyệt chốt đơn phép sau khi Quản lý trực tiếp duyệt
@@ -123,9 +123,9 @@ export const getLeaveRequestDetail = async (leaveRequestId) => {
  * @returns {Promise<Object>}
  */
 export const finalizeLeaveRequest = async (leaveRequestId, payload) => {
-    const response = await axios.patch(`${ADMIN_LEAVE_API}/requests/${leaveRequestId}/finalize`, payload);
-    return response.data;
-};
+    const response = await axios.patch(`${ADMIN_API}/leave-requests/${leaveRequestId}/finalize`, payload)
+    return response.data
+}
 
 /**
  * Chốt kỳ phép (Ví dụ vào dịp cuối năm để tính chuyển ngày phép dư)
@@ -133,9 +133,9 @@ export const finalizeLeaveRequest = async (leaveRequestId, payload) => {
  * @returns {Promise<Object>}
  */
 export const closeLeavePeriod = async (payload) => {
-    const response = await axios.post(`${ADMIN_LEAVE_API}/period-close`, payload);
-    return response.data;
-};
+    const response = await axios.post(`${ADMIN_API}/leave-periods/close`, payload)
+    return response.data
+}
 
 /**
  * Tính toán thanh toán ngày phép dư (quy đổi ra tiền lương)
@@ -143,9 +143,9 @@ export const closeLeavePeriod = async (payload) => {
  * @returns {Promise<Object>}
  */
 export const calculateLeaveSettlement = async (payload) => {
-    const response = await axios.post(`${ADMIN_LEAVE_API}/settlement`, payload);
-    return response.data;
-};
+    const response = await axios.post(`${ADMIN_API}/leave-settlements`, payload)
+    return response.data
+}
 
 /**
  * Export báo cáo danh sách ngày phép
@@ -153,6 +153,6 @@ export const calculateLeaveSettlement = async (payload) => {
  * @returns {Promise<Blob>} Dữ liệu Excel
  */
 export const exportLeaveReports = async (params) => {
-    const response = await axios.get(`${ADMIN_LEAVE_API}/reports/export`, { params, responseType: 'blob' });
-    return response.data;
-};
+    const response = await axios.get(`${ADMIN_API}/leave-reports/export`, { params, responseType: 'blob' })
+    return response.data
+}

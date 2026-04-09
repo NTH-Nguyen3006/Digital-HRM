@@ -318,9 +318,15 @@ public class UserAdminService {
 
     private UserListItemResponse toUserListItemResponse(SecUserAccount user) {
         SecUserRole activeRole = userRoleRepository.findActivePrimaryRole(user.getUserId(), LocalDateTime.now()).orElse(null);
+        String employeeCode = user.getEmployeeId() == null
+                ? null
+                : hrEmployeeRepository.findByEmployeeIdAndDeletedFalse(user.getEmployeeId())
+                        .map(employee -> employee.getEmployeeCode())
+                        .orElse(null);
         return new UserListItemResponse(
                 user.getUserId(),
                 user.getEmployeeId(),
+                employeeCode,
                 user.getUsername(),
                 user.getEmail(),
                 user.getPhoneNumber(),
@@ -334,6 +340,11 @@ public class UserAdminService {
     }
 
     private UserDetailResponse toUserDetailResponse(SecUserAccount user) {
+        String employeeCode = user.getEmployeeId() == null
+                ? null
+                : hrEmployeeRepository.findByEmployeeIdAndDeletedFalse(user.getEmployeeId())
+                        .map(employee -> employee.getEmployeeCode())
+                        .orElse(null);
         List<UserRoleHistoryResponse> roleHistory = userRoleRepository.findAllByUserUserIdOrderByEffectiveFromDesc(user.getUserId())
                 .stream()
                 .map(role -> new UserRoleHistoryResponse(
@@ -350,6 +361,7 @@ public class UserAdminService {
         return new UserDetailResponse(
                 user.getUserId(),
                 user.getEmployeeId(),
+                employeeCode,
                 user.getUsername(),
                 user.getEmail(),
                 user.getPhoneNumber(),

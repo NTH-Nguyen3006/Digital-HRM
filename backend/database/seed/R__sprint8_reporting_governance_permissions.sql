@@ -72,6 +72,7 @@ WHERE NOT EXISTS (
 
         ('MANAGER', 'report.dashboard.team.view'),
 
+        ('ADMIN', 'report.dashboard.headcount.view'),
         ('ADMIN', 'report.audit.export'),
         ('ADMIN', 'report.system_health.view'),
         ('ADMIN', 'report.schedule.manage')
@@ -97,6 +98,7 @@ INNER JOIN role_permission_seed s ON s.role_code = r.role_code AND s.permission_
 
         ('MANAGER', 'report.dashboard.team.view'),
 
+        ('ADMIN', 'report.dashboard.headcount.view'),
         ('ADMIN', 'report.audit.export'),
         ('ADMIN', 'report.system_health.view'),
         ('ADMIN', 'report.schedule.manage')

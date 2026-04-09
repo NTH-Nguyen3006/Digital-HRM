@@ -101,4 +101,31 @@ const router = createRouter({
   }
 })
 
+router.beforeEach((to) => {
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  const roleCode = user?.roleCode?.toUpperCase?.() || ''
+  const isEmployee = roleCode === 'EMPLOYEE' || user?.roles?.includes?.('employee')
+  const isPortalRoute = to.path === '/' || to.path.startsWith('/portal')
+  const isDashboardRoute = to.path.startsWith('/dashboard')
+    || to.path.startsWith('/admin')
+    || to.path.startsWith('/hr')
+    || to.path.startsWith('/manager')
+    || dashboardRoutes.some((route) => route.path === to.path)
+
+  if (to.name === 'login' && isAuthenticated) {
+    return isEmployee ? '/' : '/dashboard'
+  }
+
+  if (isAuthenticated && isEmployee && isDashboardRoute) {
+    return '/'
+  }
+
+  if (isAuthenticated && !isEmployee && isPortalRoute) {
+    return '/dashboard'
+  }
+
+  return true
+})
+
 export default router

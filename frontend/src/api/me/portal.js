@@ -33,6 +33,15 @@ export const getMyLeaves = async (params) => {
 };
 
 /**
+ * Lấy danh sách loại nghỉ đang khả dụng cho portal nhân viên
+ * @returns {Promise<Object>}
+ */
+export const getMyLeaveTypes = async () => {
+    const response = await axios.get(`${PORTAL_API}/leave-types`);
+    return response.data;
+};
+
+/**
  * Submit đơn xin nghỉ phép lên Quản lý
  * @param {Object} payload - Khoảng thời gian muốn xin nghỉ, Lý do...
  * @returns {Promise<Object>}
@@ -214,7 +223,7 @@ export const getMyTasks = async (params) => {
  * @returns {Promise<Object>}
  */
 export const updateTaskStatus = async (taskId, payload) => {
-    const response = await axios.patch(`${PORTAL_API}/tasks/${taskId}/status`, payload);
+    const response = await axios.patch(`${PORTAL_API}/tasks/${taskId}/status`, null, { params: payload });
     return response.data;
 };
 
