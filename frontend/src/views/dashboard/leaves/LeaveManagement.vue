@@ -38,7 +38,7 @@ const stats = computed(() => {
     {
       title: 'Chờ xử lý',
       value: pending,
-      subtitle: 'Đơn phép đang đợi HR chốt',
+      subtitle: 'Đơn phép đang đợi HR duyệt',
       tone: 'amber',
       icon: CalendarDays,
     },
@@ -166,7 +166,7 @@ watch(searchQuery, fetchData)
             :class="activeTab === 'requests' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
             @click="activeTab = 'requests'"
           >
-            Đơn nghỉ cần chốt
+            Đơn nghỉ cần duyệt
           </button>
           <button
             type="button"
@@ -262,7 +262,7 @@ watch(searchQuery, fetchData)
             </BaseButton>
             <BaseButton variant="primary" @click="handleFinalize(item, true)">
               <Check class="mr-2 h-4 w-4" />
-              Chốt duyệt
+              Duyệt đơn
             </BaseButton>
           </div>
         </div>
