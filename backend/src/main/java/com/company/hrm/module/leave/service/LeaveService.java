@@ -530,6 +530,7 @@ public class LeaveService {
         entity.setEmployee(employee);
         entity.setLeaveType(leaveType);
         entity.setLeaveTypeRule(rule);
+        entity.setLeaveYear(startDate.getYear());
         entity.setApprovalRoleCode(rule.getApprovalRoleCode());
         entity.setStartDate(startDate);
         entity.setEndDate(endDate);

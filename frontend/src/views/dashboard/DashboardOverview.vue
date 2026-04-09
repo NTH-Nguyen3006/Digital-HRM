@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import VueApexCharts from 'vue3-apexcharts'
+import { OrgChart as D3OrgChart } from 'd3-org-chart'
 import {
   BarChart3,
   Briefcase,
@@ -13,6 +14,7 @@ import {
   Download,
   FileWarning,
   Loader2,
+  Network,
   PieChart,
   TrendingUp,
   UserMinus,
@@ -26,11 +28,14 @@ import StatCard from '@/components/common/StatCard.vue'
 import { getExpiringContracts } from '@/api/admin/contract.js'
 import { getOrgUnitTree } from '@/api/admin/orgUnit.js'
 import { getHeadcountDashboard } from '@/api/admin/report.js'
-import { unwrapData } from '@/utils/api'
+import { useToast } from '@/composables/useToast'
+import { downloadBlob, unwrapData } from '@/utils/api'
 import { formatNumber } from '@/utils/format'
 
 const loading = ref(true)
+const exportingReport = ref(false)
 const router = useRouter()
+const toast = useToast()
 
 const statsData = ref([
   { title: 'Tổng nhân sự', value: '0', icon: Users, color: 'indigo', trend: 0, visible: true },
@@ -44,10 +49,42 @@ const alerts = ref([
   { title: 'Onboarding chờ xử lý', count: 0, icon: Clock, color: 'text-indigo-500', bg: 'bg-indigo-50', path: '/onboarding' },
 ])
 
+const totalPendingAlerts = computed(() =>
+  alerts.value.reduce((sum, alert) => sum + Number(alert.count || 0), 0),
+)
+
+const alertStatusMeta = computed(() => {
+  if (totalPendingAlerts.value === 0) {
+    return {
+      label: 'Ổn định',
+      note: 'Hiện chưa có tác vụ ưu tiên.',
+      tone: 'bg-emerald-50 text-emerald-700',
+    }
+  }
+
+  if (totalPendingAlerts.value <= 5) {
+    return {
+      label: 'Nhắc nhẹ',
+      note: 'Bạn đang có một vài mục cần xử lý.',
+      tone: 'bg-amber-50 text-amber-700',
+    }
+  }
+
+  return {
+    label: 'Cần chú ý',
+    note: 'Khối lượng tác vụ đang tăng, nên ưu tiên xử lý sớm.',
+    tone: 'bg-rose-50 text-rose-700',
+  }
+})
+
 const headcountBreakdown = ref([])
 const orgUnitCodeLookup = ref({})
+const organizationTree = ref([])
+const orgUnitHeadcountLookup = ref({})
 const selectedHeadcountFilters = ref([])
 const headcountFilterPanelOpen = ref(false)
+const chartContainer = ref(null)
+const chartInstance = ref(null)
 
 const trendSeries = ref([
   { name: 'Nhân viên vào', data: [] },
@@ -182,6 +219,24 @@ const headcountChartMinWidth = computed(() =>
   Math.max(560, filteredHeadcountBreakdown.value.length * 92),
 )
 
+const orgChartNodes = computed(() => [
+  {
+    id: 'company-root',
+    parentId: null,
+    orgUnitId: null,
+    orgUnitCode: 'COMPANY',
+    name: 'Digital HRM',
+    orgUnitType: 'COMPANY',
+    totalEmployeeCount: statsData.value[0]?.value || 0,
+    childCount: Array.isArray(organizationTree.value) ? organizationTree.value.length : 0,
+    managerName: 'Sơ đồ toàn công ty',
+    status: 'ACTIVE',
+  },
+  ...flattenOrgNodes(organizationTree.value),
+])
+
+const hasOrgChartData = computed(() => orgChartNodes.value.length > 1)
+
 const headcountOptions = computed(() => ({
   chart: {
     type: 'bar',
@@ -256,6 +311,33 @@ function flattenOrgTree(nodes = []) {
   return nodes.flatMap((node) => [node, ...flattenOrgTree(node.children || [])])
 }
 
+function countDirectEmployees(node) {
+  return Number(orgUnitHeadcountLookup.value[node?.orgUnitCode] || 0)
+}
+
+function countTotalEmployees(node) {
+  return countDirectEmployees(node) + (node.children || []).reduce((sum, child) => sum + countTotalEmployees(child), 0)
+}
+
+function flattenOrgNodes(nodes = [], parentId = 'company-root') {
+  return nodes.flatMap((node) => {
+    const chartNode = {
+      id: `unit-${node.orgUnitId}`,
+      parentId,
+      orgUnitId: node.orgUnitId,
+      orgUnitCode: node.orgUnitCode,
+      name: node.orgUnitName,
+      orgUnitType: node.orgUnitType,
+      totalEmployeeCount: countTotalEmployees(node),
+      childCount: Array.isArray(node.children) ? node.children.length : 0,
+      managerName: node.managerEmployeeName || 'Chưa gán quản lý',
+      status: node.status,
+    }
+
+    return [chartNode, ...flattenOrgNodes(node.children || [], chartNode.id)]
+  })
+}
+
 function getCurrentMonthMovement(monthlyMovement = []) {
   return monthlyMovement[monthlyMovement.length - 1] || null
 }
@@ -298,6 +380,177 @@ function openHeadcountOrgUnit(item) {
   })
 }
 
+function navigateToOrgUnit(node) {
+  if (!node?.orgUnitId) return
+
+  router.push({
+    path: '/employees',
+    query: {
+      orgUnitId: String(node.orgUnitId),
+      orgUnitName: node.name,
+      orgUnitCode: node.orgUnitCode,
+    },
+  })
+}
+
+function getOrgTypeLabel(type) {
+  const labels = {
+    COMPANY: 'Toàn công ty',
+    DIVISION: 'Khối',
+    DEPARTMENT: 'Phòng ban',
+    TEAM: 'Nhóm',
+    BRANCH: 'Chi nhánh',
+    UNIT: 'Đơn vị',
+  }
+  return labels[type] || type || 'Đơn vị'
+}
+
+function buildOrgNodeMarkup(node) {
+  const isRoot = node.id === 'company-root'
+  const tone = isRoot
+    ? {
+      bg: 'linear-gradient(135deg,#0f172a,#312e81 52%,#4f46e5)',
+      border: 'rgba(99,102,241,0.45)',
+      text: '#ffffff',
+      muted: 'rgba(224,231,255,0.82)',
+      badgeBg: 'rgba(255,255,255,0.14)',
+      badgeColor: '#e0e7ff',
+    }
+    : {
+      bg: 'linear-gradient(180deg,#ffffff,#f8fafc)',
+      border: node.status === 'ACTIVE' ? 'rgba(148,163,184,0.26)' : 'rgba(244,63,94,0.24)',
+      text: '#0f172a',
+      muted: '#64748b',
+      badgeBg: node.status === 'ACTIVE' ? 'rgba(79,70,229,0.08)' : 'rgba(244,63,94,0.08)',
+      badgeColor: node.status === 'ACTIVE' ? '#4338ca' : '#be123c',
+    }
+
+  return `
+    <div class="dashboard-org-chart-card" style="background:${tone.bg};border-color:${tone.border};color:${tone.text};">
+      <div class="dashboard-org-chart-card__eyebrow" style="color:${tone.muted};">${getOrgTypeLabel(node.orgUnitType)}</div>
+      <div class="dashboard-org-chart-card__title">${node.name}</div>
+      <div class="dashboard-org-chart-card__meta" style="color:${tone.muted};">${node.managerName}</div>
+      <div class="dashboard-org-chart-card__stats">
+        <span class="dashboard-org-chart-card__badge" style="background:${tone.badgeBg};color:${tone.badgeColor};">
+          ${formatNumber(node.totalEmployeeCount || 0)} nhân sự
+        </span>
+        <span class="dashboard-org-chart-card__meta" style="color:${tone.muted};">
+          ${node.childCount ? `${node.childCount} đơn vị con` : 'Bấm để mở danh sách'}
+        </span>
+      </div>
+    </div>
+  `
+}
+
+async function renderOrgChart() {
+  if (!chartContainer.value || !hasOrgChartData.value) return
+
+  await nextTick()
+
+  if (!chartInstance.value) {
+    chartInstance.value = new D3OrgChart()
+  }
+
+  chartContainer.value.innerHTML = ''
+
+  const chartNodeLookup = orgChartNodes.value.reduce((lookup, item) => {
+    lookup[item.id] = item
+    return lookup
+  }, {})
+
+  chartInstance.value
+    .container(chartContainer.value)
+    .data(orgChartNodes.value)
+    .nodeWidth(() => 300)
+    .nodeHeight(() => 160)
+    .childrenMargin(() => 56)
+    .siblingsMargin(() => 26)
+    .compact(false)
+    .initialZoom(0.78)
+    .nodeContent((entry) => buildOrgNodeMarkup(entry.data))
+    .onNodeClick((nodeId) => navigateToOrgUnit(chartNodeLookup[nodeId]))
+    .render()
+
+  chartInstance.value.collapseAll()
+  chartInstance.value.setExpanded('company-root', true)
+  chartInstance.value.render()
+}
+
+function escapeCsvCell(value) {
+  const normalized = String(value ?? '')
+  return `"${normalized.replaceAll('"', '""')}"`
+}
+
+function toCsvLine(values = []) {
+  return values.map((value) => escapeCsvCell(value)).join(',')
+}
+
+function buildDashboardCsv() {
+  const lines = []
+  const generatedAt = new Date().toLocaleString('vi-VN')
+
+  lines.push(toCsvLine(['BÁO CÁO DASHBOARD NHÂN SỰ']))
+  lines.push(toCsvLine(['Thời gian xuất', generatedAt]))
+  lines.push('')
+
+  lines.push(toCsvLine(['TỔNG QUAN CHỈ SỐ']))
+  lines.push(toCsvLine(['Chỉ số', 'Giá trị']))
+  statsData.value.forEach((item) => {
+    lines.push(toCsvLine([item.title, Number(item.value || 0)]))
+  })
+  lines.push('')
+
+  lines.push(toCsvLine(['THÔNG BÁO CẦN XỬ LÝ']))
+  lines.push(toCsvLine(['Hạng mục', 'Số lượng']))
+  alerts.value.forEach((item) => {
+    lines.push(toCsvLine([item.title, Number(item.count || 0)]))
+  })
+  lines.push('')
+
+  lines.push(toCsvLine(['HEADCOUNT THEO PHÒNG BAN']))
+  lines.push(toCsvLine(['Phòng ban', 'Mã đơn vị', 'Số nhân sự']))
+  headcountBreakdown.value.forEach((item) => {
+    lines.push(toCsvLine([item.label, item.key, Number(item.value || 0)]))
+  })
+  lines.push('')
+
+  const trendCategories = trendOptions.value?.xaxis?.categories || []
+  const joinerSeries = trendSeries.value?.[0]?.data || []
+  const leaverSeries = trendSeries.value?.[1]?.data || []
+  lines.push(toCsvLine(['BIẾN ĐỘNG NHÂN SỰ THEO THÁNG']))
+  lines.push(toCsvLine(['Kỳ', 'Nhân viên vào', 'Nghỉ việc']))
+  trendCategories.forEach((period, index) => {
+    lines.push(toCsvLine([period, Number(joinerSeries[index] || 0), Number(leaverSeries[index] || 0)]))
+  })
+  lines.push('')
+
+  lines.push(toCsvLine(['CƠ CẤU THEO TRẠNG THÁI LAO ĐỘNG']))
+  lines.push(toCsvLine(['Trạng thái', 'Số lượng']))
+  contractOptions.value.labels.forEach((label, index) => {
+    lines.push(toCsvLine([label, Number(contractSeries.value[index] || 0)]))
+  })
+
+  return `\ufeff${lines.join('\n')}`
+}
+
+async function handleExportDashboardReport() {
+  if (exportingReport.value) return
+
+  exportingReport.value = true
+  try {
+    const csvContent = buildDashboardCsv()
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const fileDate = new Date().toISOString().slice(0, 10)
+    downloadBlob(blob, `dashboard-report-${fileDate}.csv`)
+    toast.success('Đã xuất báo cáo dashboard')
+  } catch (error) {
+    console.error('Dashboard export failed:', error)
+    toast.error('Xuất báo cáo dashboard thất bại')
+  } finally {
+    exportingReport.value = false
+  }
+}
+
 async function fetchDashboard() {
   loading.value = true
   try {
@@ -310,7 +563,8 @@ async function fetchDashboard() {
     const dashboard = unwrapData(hcRes) || {}
     const expiringContracts = unwrapData(expRes) || []
 
-    const orgTree = flattenOrgTree(unwrapData(orgTreeRes) || [])
+    organizationTree.value = unwrapData(orgTreeRes) || []
+    const orgTree = flattenOrgTree(organizationTree.value)
     orgUnitCodeLookup.value = orgTree.reduce((lookup, item) => {
       lookup[item.orgUnitCode] = item.orgUnitId
       return lookup
@@ -330,6 +584,10 @@ async function fetchDashboard() {
       ...item,
       value: Number(item.value || 0),
     }))
+    orgUnitHeadcountLookup.value = headcountBreakdown.value.reduce((lookup, item) => {
+      lookup[item.key] = Number(item.value || 0)
+      return lookup
+    }, {})
 
     trendOptions.value.xaxis.categories = (dashboard.monthlyMovement || []).map((item) => item.periodLabel)
     trendSeries.value[0].data = (dashboard.monthlyMovement || []).map((item) => item.joinerCount || 0)
@@ -361,15 +619,27 @@ async function fetchDashboard() {
     console.error('Failed to load dashboard data:', error)
   } finally {
     loading.value = false
+    renderOrgChart()
   }
 }
 
+watch(orgChartNodes, () => {
+  renderOrgChart()
+})
+
 onMounted(fetchDashboard)
+
+onBeforeUnmount(() => {
+  if (chartContainer.value) {
+    chartContainer.value.innerHTML = ''
+  }
+  chartInstance.value = null
+})
 </script>
 
 <template>
   <div class="relative space-y-10 animate-fade-in">
-    <div v-if="loading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white/45 backdrop-blur-[2px]">
+    <div v-if="loading" class="fixed inset-0 z-100 flex items-center justify-center bg-white/45 backdrop-blur-[2px]">
       <div class="flex flex-col items-center gap-4">
         <Loader2 class="h-12 w-12 animate-spin text-indigo-600" />
         <p class="text-sm font-black uppercase tracking-[0.3em] text-slate-400">Đang tổng hợp dữ liệu...</p>
@@ -387,91 +657,91 @@ onMounted(fetchDashboard)
       </div>
 
       <div class="flex items-center gap-3">
-        <button
+        <button type="button" :disabled="exportingReport"
           class="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-5 py-3 font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50"
-        >
-          <Download class="h-4 w-4" /> Xuất báo cáo
+          :class="exportingReport ? 'cursor-not-allowed opacity-70 hover:bg-white' : ''"
+          @click="handleExportDashboardReport">
+          <Loader2 v-if="exportingReport" class="h-4 w-4 animate-spin" />
+          <Download v-else class="h-4 w-4" />
+          {{ exportingReport ? 'Đang xuất...' : 'Xuất báo cáo' }}
         </button>
       </div>
     </div>
 
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        v-for="stat in statsData"
-        :key="stat.title"
-        :title="stat.title"
-        :value="stat.value"
-        :icon="stat.icon"
-        :color="stat.color"
-        :trend="stat.trend"
-        class="rounded-[32px]! transition-transform duration-300 hover:scale-[1.02]"
-      />
+      <StatCard v-for="stat in statsData" :key="stat.title" :title="stat.title" :value="stat.value" :icon="stat.icon"
+        :color="stat.color" :trend="stat.trend"
+        class="rounded-4xl! transition-transform duration-300 hover:scale-[1.02]" />
     </div>
 
     <div class="grid gap-8 lg:grid-cols-3">
-      <GlassCard class="rounded-[32px] border border-slate-100 bg-white p-8">
-        <div class="mb-8 flex items-center justify-between">
+      <GlassCard class="rounded-4xl border border-slate-100 bg-white p-8">
+        <div class="mb-6 flex items-center justify-between">
           <h3 class="text-xl font-black text-slate-900">Thông báo cần xử lý</h3>
-          <span class="rounded-lg bg-rose-50 px-3 py-1 text-[10px] font-black uppercase text-rose-600">Realtime</span>
+          <span
+            class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Realtime</span>
         </div>
 
-        <div class="space-y-4">
-          <div
-            v-for="alert in alerts"
-            :key="alert.title"
-            class="group flex cursor-pointer items-center justify-between rounded-3xl border border-transparent bg-slate-50/50 p-5 transition-all hover:border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-slate-100/50"
-            role="button"
-            tabindex="0"
-            @click="navigateToAlert(alert.path)"
-            @keydown.enter="navigateToAlert(alert.path)"
-            @keydown.space.prevent="navigateToAlert(alert.path)"
-          >
+        <div class="mb-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-bold leading-tight text-slate-500">Tổng mục cần xử lý</p>
+              <p class="mt-1 text-2xl font-black text-slate-900">{{ formatNumber(totalPendingAlerts) }}</p>
+            </div>
+            <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em]"
+              :class="alertStatusMeta.tone">
+              {{ alertStatusMeta.label }}
+            </span>
+          </div>
+          <p class="mt-2 text-xs font-medium text-slate-500">
+            {{ alertStatusMeta.note }}
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div v-for="alert in alerts" :key="alert.title"
+            class="group flex cursor-pointer items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-lg hover:shadow-slate-100/80"
+            role="button" tabindex="0" @click="navigateToAlert(alert.path)" @keydown.enter="navigateToAlert(alert.path)"
+            @keydown.space.prevent="navigateToAlert(alert.path)">
             <div class="flex items-center gap-4">
-              <div :class="['flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm', alert.bg, alert.color]">
-                <component :is="alert.icon" class="h-6 w-6" />
+              <div :class="['flex h-11 w-11 items-center justify-center rounded-xl shadow-sm', alert.bg, alert.color]">
+                <component :is="alert.icon" class="h-5 w-5" />
               </div>
               <div>
                 <p class="text-sm font-black text-slate-800">{{ alert.title }}</p>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cần ưu tiên</p>
+                <p class="text-[11px] font-semibold text-slate-500">Nhấn để mở danh sách chi tiết</p>
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <span class="text-lg font-black text-slate-900">{{ alert.count }}</span>
+              <span
+                class="inline-flex min-w-8 items-center justify-center rounded-full bg-slate-100 px-2 py-1 text-sm font-black text-slate-700">
+                {{ formatNumber(alert.count) }}
+              </span>
               <ChevronRight class="h-4 w-4 text-slate-300 transition-colors group-hover:text-indigo-600" />
             </div>
           </div>
         </div>
 
-        <div class="relative mt-8 overflow-hidden rounded-[28px] bg-indigo-600 p-6 text-white shadow-xl shadow-indigo-100">
-          <div class="relative z-10">
-            <p class="mb-2 text-[10px] font-black uppercase tracking-widest opacity-60">Lời nhắc hôm nay</p>
-            <p class="text-sm font-bold leading-relaxed">
-              Kiểm tra onboarding chờ xử lý và các hợp đồng sắp hết hạn để xử lý kịp thời.
-            </p>
-          </div>
-          <Calendar class="absolute -bottom-4 -right-4 h-24 w-24 rotate-12 opacity-10" />
-        </div>
       </GlassCard>
 
-      <GlassCard class="rounded-[32px] border border-slate-100 bg-white p-5 sm:p-8 lg:col-span-2">
+      <GlassCard class="rounded-4xl border border-slate-100 bg-white p-5 sm:p-8 lg:col-span-2">
         <div class="mb-6 flex items-center justify-between sm:mb-8">
           <div>
-            <h3 class="text-xl font-black text-slate-900">Cơ cấu nhân sự</h3>
-            <p class="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">Phân bổ theo trạng thái lao động</p>
+            <h3 class="text-xl font-black text-slate-900">Cơ cấu lao động</h3>
+            <p class="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">Phân bổ theo trạng thái lao động
+            </p>
           </div>
           <PieChart class="h-6 w-6 text-slate-200" />
         </div>
 
         <div class="flex flex-col items-center gap-6 md:flex-row md:items-center md:justify-around md:gap-10">
           <div class="w-full max-w-[320px]">
-            <VueApexCharts :key="contractChartKey" type="donut" height="340" :options="contractOptions" :series="contractSeries" />
+            <VueApexCharts :key="contractChartKey" type="donut" height="340" :options="contractOptions"
+              :series="contractSeries" />
           </div>
           <div class="grid w-full grid-cols-2 gap-3 md:w-auto md:gap-4">
-            <div
-              v-for="(label, idx) in contractOptions.labels"
-              :key="label"
-              class="rounded-2xl border border-slate-100/50 bg-slate-50 p-3 sm:p-4"
-            >
+            <div v-for="(label, idx) in contractOptions.labels" :key="label"
+              class="rounded-2xl border border-slate-100/50 bg-slate-50 p-3 sm:p-4">
               <div class="mb-1 flex items-center gap-2">
                 <div class="h-2 w-2 rounded-full" :style="{ backgroundColor: contractOptions.colors[idx] }"></div>
                 <p class="text-[8px] font-black uppercase tracking-tight text-slate-400 sm:text-[9px]">{{ label }}</p>
@@ -483,8 +753,39 @@ onMounted(fetchDashboard)
       </GlassCard>
     </div>
 
+    <GlassCard class="rounded-4xl border border-slate-100 bg-white p-0">
+      <div class="border-b border-slate-200 px-6 py-5 sm:px-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-xl font-black text-slate-900">Sơ đồ trực quan cơ cấu tổ chức</h3>
+            <p class="mt-1 text-sm font-medium text-slate-500">Bấm trực tiếp vào node để mở danh sách nhân sự theo đơn
+              vị.</p>
+          </div>
+          <div
+            class="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-indigo-700">
+            <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+            Live data
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-org-chart-shell">
+        <div v-if="hasOrgChartData" ref="chartContainer" class="min-h-130 min-w-245"></div>
+        <div v-else
+          class="flex min-h-80 flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center">
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+            <Network class="h-6 w-6" />
+          </div>
+          <p class="text-base font-black text-slate-700">Chưa có dữ liệu cơ cấu tổ chức để hiển thị sơ đồ</p>
+          <p class="max-w-xl text-sm font-medium text-slate-500">
+            Hệ thống vẫn đang đồng bộ dữ liệu đơn vị. Khi có dữ liệu, sơ đồ sẽ hiển thị tự động tại đây.
+          </p>
+        </div>
+      </div>
+    </GlassCard>
+
     <div class="grid gap-8 lg:grid-cols-2">
-      <GlassCard class="overflow-hidden rounded-[32px] border border-slate-100 bg-white p-6 sm:p-8">
+      <GlassCard class="overflow-hidden rounded-4xl border border-slate-100 bg-white p-6 sm:p-8">
         <div class="mb-6 flex flex-col gap-4">
           <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div>
@@ -508,75 +809,54 @@ onMounted(fetchDashboard)
 
           <div class="space-y-3">
             <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
+              <button type="button"
                 class="rounded-full px-3 py-2 text-xs font-black uppercase tracking-[0.18em] transition-all"
                 :class="!selectedHeadcountFilters.length ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-800'"
-                @click="resetHeadcountFilter"
-              >
+                @click="resetHeadcountFilter">
                 Tất cả
               </button>
 
-              <button
-                type="button"
+              <button type="button"
                 class="inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] transition-all"
                 :class="headcountFilterPanelOpen || selectedHeadcountFilters.length
                   ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
-                @click="headcountFilterPanelOpen = !headcountFilterPanelOpen"
-              >
+                @click="headcountFilterPanelOpen = !headcountFilterPanelOpen">
                 <span class="truncate">{{ headcountFilterLabel }}</span>
-                <span
-                  v-if="selectedHeadcountFilters.length"
-                  class="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-indigo-700"
-                >
+                <span v-if="selectedHeadcountFilters.length"
+                  class="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-indigo-700">
                   {{ selectedHeadcountFilters.length }}
                 </span>
-                <ChevronDown class="h-3.5 w-3.5 transition-transform" :class="headcountFilterPanelOpen ? 'rotate-180' : ''" />
+                <ChevronDown class="h-3.5 w-3.5 transition-transform"
+                  :class="headcountFilterPanelOpen ? 'rotate-180' : ''" />
               </button>
 
-              <button
-                v-for="item in visibleSelectedHeadcountItems"
-                :key="item.key"
-                type="button"
+              <button v-for="item in visibleSelectedHeadcountItems" :key="item.key" type="button"
                 class="inline-flex max-w-full items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-600 transition-all hover:bg-slate-200"
-                @click="toggleHeadcountFilter(item.key)"
-              >
+                @click="toggleHeadcountFilter(item.key)">
                 <span class="truncate">{{ item.label }} · {{ formatNumber(item.value) }}</span>
                 <X class="h-3.5 w-3.5" />
               </button>
 
-              <span
-                v-if="hiddenSelectedHeadcountCount"
-                class="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500"
-              >
+              <span v-if="hiddenSelectedHeadcountCount"
+                class="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
                 +{{ hiddenSelectedHeadcountCount }}
               </span>
 
-              <button
-                v-if="selectedHeadcountFilters.length"
-                type="button"
-                class="text-xs font-bold text-slate-400 transition hover:text-slate-700"
-                @click="resetHeadcountFilter"
-              >
+              <button v-if="selectedHeadcountFilters.length" type="button"
+                class="text-xs font-bold text-slate-400 transition hover:text-slate-700" @click="resetHeadcountFilter">
                 Xóa chọn
               </button>
             </div>
 
-            <div
-              v-if="headcountFilterPanelOpen"
-              class="grid max-h-60 gap-2 overflow-y-auto rounded-[24px] border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 xl:grid-cols-3"
-            >
-              <button
-                v-for="item in availableHeadcountFilters"
-                :key="item.key"
-                type="button"
+            <div v-if="headcountFilterPanelOpen"
+              class="grid max-h-60 gap-2 overflow-y-auto rounded-[24px] border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 xl:grid-cols-3">
+              <button v-for="item in availableHeadcountFilters" :key="item.key" type="button"
                 class="flex items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] transition-all"
                 :class="isHeadcountFilterActive(item.key)
                   ? 'border-indigo-200 bg-white text-indigo-700 shadow-sm'
                   : 'border-transparent bg-white/70 text-slate-600 hover:border-slate-200'"
-                @click="toggleHeadcountFilter(item.key)"
-              >
+                @click="toggleHeadcountFilter(item.key)">
                 <span class="min-w-0 truncate">{{ item.label }} · {{ formatNumber(item.value) }}</span>
                 <Check v-if="isHeadcountFilterActive(item.key)" class="h-4 w-4 shrink-0" />
               </button>
@@ -587,14 +867,8 @@ onMounted(fetchDashboard)
         <div class="w-full overflow-hidden pb-2">
           <div class="headcount-scroll-area overflow-x-auto overflow-y-hidden">
             <div class="min-w-full" :style="{ minWidth: `${headcountChartMinWidth}px` }">
-              <VueApexCharts
-                :key="headcountChartKey"
-                type="bar"
-                height="340"
-                width="100%"
-                :options="headcountOptions"
-                :series="headcountSeries"
-              />
+              <VueApexCharts :key="headcountChartKey" type="bar" height="340" width="100%" :options="headcountOptions"
+                :series="headcountSeries" />
             </div>
           </div>
         </div>
@@ -604,7 +878,7 @@ onMounted(fetchDashboard)
         </p>
       </GlassCard>
 
-      <GlassCard class="rounded-[32px] border border-slate-100 bg-white p-6 sm:p-8">
+      <GlassCard class="rounded-4xl border border-slate-100 bg-white p-6 sm:p-8">
         <div class="mb-8 flex items-center justify-between">
           <h3 class="flex items-center gap-2 text-xl font-black text-slate-900">
             <TrendingUp class="h-5 w-5 text-emerald-500" /> Biến động nhân sự
@@ -637,5 +911,69 @@ onMounted(fetchDashboard)
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
+}
+
+.dashboard-org-chart-shell {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 34%);
+  border-radius: 0 0 32px 32px;
+}
+
+:deep(.dashboard-org-chart-card) {
+  display: flex;
+  min-height: 146px;
+  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid;
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+:deep(.dashboard-org-chart-card:hover) {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 56px rgba(79, 70, 229, 0.16);
+}
+
+:deep(.dashboard-org-chart-card__eyebrow) {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+:deep(.dashboard-org-chart-card__title) {
+  margin-top: 0.55rem;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+:deep(.dashboard-org-chart-card__meta) {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+:deep(.dashboard-org-chart-card__stats) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+:deep(.dashboard-org-chart-card__badge) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 12px;
+  font-weight: 900;
 }
 </style>

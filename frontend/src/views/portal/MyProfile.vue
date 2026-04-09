@@ -171,12 +171,12 @@ const submitEditor = async () => {
   const payload = activeEditor.value === 'address'
     ? buildPayload(ADDRESS_FIELDS, addressForm, (key) => proData.value?.[key])
     : buildPayload(
-        PERSONAL_FIELDS,
-        personalForm,
-        (key) => (PERSONAL_FIELDS.find((item) => item.key === key)?.source === 'employee'
-          ? empData.value?.[key]
-          : proData.value?.[key])
-      )
+      PERSONAL_FIELDS,
+      personalForm,
+      (key) => (PERSONAL_FIELDS.find((item) => item.key === key)?.source === 'employee'
+        ? empData.value?.[key]
+        : proData.value?.[key])
+    )
 
   if (!Object.keys(payload).length) {
     toast.warning('Bạn chưa thay đổi trường nào để gửi cập nhật')
@@ -322,8 +322,10 @@ const submitEditor = async () => {
                   <h2 class="mt-2 text-xl font-black text-slate-900">Thông tin Cá nhân</h2>
                 </div>
                 <div class="flex items-center gap-3">
-                  <BaseButton variant="ghost" size="sm" @click="router.push('/portal/profile-change')">Lịch sử</BaseButton>
-                  <BaseButton variant="outline" size="sm" :icon="Edit2" @click="openEditor('personal')">Cập nhật</BaseButton>
+                  <BaseButton variant="ghost" size="sm" @click="router.push('/portal/profile-change')">Lịch sử
+                  </BaseButton>
+                  <BaseButton variant="outline" size="sm" :icon="Edit2" @click="openEditor('personal')">Cập nhật
+                  </BaseButton>
                 </div>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
@@ -372,7 +374,8 @@ const submitEditor = async () => {
                   <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Chỗ ở hiện tại</p>
                   <h2 class="mt-2 text-xl font-black text-slate-900">Địa chỉ Liên hệ</h2>
                 </div>
-                <BaseButton variant="outline" size="sm" :icon="Edit2" @click="openEditor('address')">Sửa địa chỉ</BaseButton>
+                <BaseButton variant="outline" size="sm" :icon="Edit2" @click="openEditor('address')">Sửa địa chỉ
+                </BaseButton>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
                 <div class="space-y-1 md:col-span-2 border-b border-slate-100 pb-3">
@@ -594,7 +597,8 @@ const submitEditor = async () => {
 
     <div v-if="isEditorOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" @click="closeEditor" />
-      <div class="relative z-10 w-full max-w-3xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_25px_90px_rgba(15,23,42,0.18)]">
+      <div
+        class="relative z-10 w-full max-w-3xl overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-[0_25px_90px_rgba(15,23,42,0.18)]">
         <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 sm:px-8">
           <div>
             <p class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Profile Update Request</p>
@@ -603,36 +607,27 @@ const submitEditor = async () => {
               Thay đổi sẽ được gửi cho HR duyệt trước khi cập nhật vào hồ sơ chính thức.
             </p>
           </div>
-          <button class="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" @click="closeEditor">
+          <button class="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            @click="closeEditor">
             <X class="h-5 w-5" />
           </button>
         </div>
 
         <div class="max-h-[70vh] overflow-y-auto px-6 py-6 sm:px-8">
           <div class="grid gap-5 md:grid-cols-2">
-            <label
-              v-for="field in editorFields"
-              :key="field.key"
-              class="block"
-              :class="field.key === 'primaryAddress' ? 'md:col-span-2' : ''"
-            >
+            <label v-for="field in editorFields" :key="field.key" class="block"
+              :class="field.key === 'primaryAddress' ? 'md:col-span-2' : ''">
               <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{{ field.label }}</span>
-              <input
-                v-model="activeForm[field.key]"
-                :type="field.type || 'text'"
+              <input v-model="activeForm[field.key]" :type="field.type || 'text'"
                 class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
-                :placeholder="`Nhập ${field.label.toLowerCase()}`"
-              >
+                :placeholder="`Nhập ${field.label.toLowerCase()}`">
             </label>
 
             <label class="block md:col-span-2">
               <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Lý do cập nhật</span>
-              <textarea
-                v-model="activeForm.reason"
-                rows="4"
+              <textarea v-model="activeForm.reason" rows="4"
                 class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
-                placeholder="Ví dụ: cần cập nhật thông tin liên hệ mới để HR đồng bộ hồ sơ"
-              />
+                placeholder="Ví dụ: cần cập nhật thông tin liên hệ mới để HR đồng bộ hồ sơ" />
             </label>
           </div>
         </div>

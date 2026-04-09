@@ -1,6 +1,5 @@
 <script setup>
 import AppHeader from '@/components/partials/AppHeader.vue'
-import AppFooter from '@/components/partials/AppFooter.vue'
 </script>
 
 <template>
@@ -11,7 +10,5 @@ import AppFooter from '@/components/partials/AppFooter.vue'
     <main class="flex-1 pt-20">
       <slot />
     </main>
-
-    <AppFooter variant="portal" />
   </div>
 </template>
