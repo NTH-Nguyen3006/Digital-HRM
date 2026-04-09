@@ -3,7 +3,6 @@ name: Deploy Digital HRM
 on:
   push:
     branches:
-      - main
       - production
   workflow_dispatch:
 

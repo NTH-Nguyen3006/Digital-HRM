@@ -1,3 +1,0 @@
-- `Chạy nháp` chỉ bật khi kỳ lương còn thao tác được, có hộp xác nhận trước khi tính lại bảng lương nháp.
-- `Duyệt kỳ` chỉ bật khi kỳ có dữ liệu và mọi phiếu bắt buộc đã được manager xác nhận.
-- `Phát hành` chỉ bật sau khi kỳ lương đã được duyệt, kèm xác nhận trước khi phát hành cho nhân viên.
