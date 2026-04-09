@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { Calendar, CheckCircle2, Clock3, Download, Search, TriangleAlert, UserX } from 'lucide-vue-next'
+import { Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Search, TriangleAlert, UserX } from 'lucide-vue-next'
 import AvatarBox from '@/components/common/AvatarBox.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -21,6 +21,8 @@ const loading = ref(false)
 const attendanceData = ref([])
 const adjustmentRequests = ref([])
 const overtimeRequests = ref([])
+const attendancePage = ref(0)
+const attendancePageSize = ref(9)
 
 const attendanceCards = computed(() =>
   attendanceData.value.map((item) => ({
@@ -35,6 +37,36 @@ const attendanceCards = computed(() =>
     displayWorked: formatWorkedHours(item.workedMinutes),
   })),
 )
+
+const filteredAttendanceCards = computed(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) return attendanceCards.value
+
+  return attendanceCards.value.filter((item) =>
+    [item.displayName, item.employeeCode, item.orgUnitName]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(keyword)),
+  )
+})
+
+const attendanceTotalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredAttendanceCards.value.length / attendancePageSize.value)),
+)
+
+const paginatedAttendanceCards = computed(() => {
+  const start = attendancePage.value * attendancePageSize.value
+  return filteredAttendanceCards.value.slice(start, start + attendancePageSize.value)
+})
+
+const attendanceVisiblePages = computed(() => {
+  const total = attendanceTotalPages.value
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index)
+
+  const current = attendancePage.value
+  if (current <= 3) return [0, 1, 2, 3, 4, '...', total - 1]
+  if (current >= total - 4) return [0, '...', total - 5, total - 4, total - 3, total - 2, total - 1]
+  return [0, '...', current - 1, current, current + 1, '...', total - 1]
+})
 
 const stats = computed(() => {
   const total = attendanceData.value.length
@@ -143,8 +175,21 @@ async function handleExport() {
   }
 }
 
+function changeAttendancePage(page) {
+  if (page < 0 || page >= attendanceTotalPages.value) return
+  attendancePage.value = page
+}
+
 onMounted(fetchAttendance)
-watch([selectedDate, searchKeyword], fetchAttendance)
+watch(selectedDate, () => {
+  attendancePage.value = 0
+  fetchAttendance()
+})
+
+watch(searchKeyword, () => {
+  attendancePage.value = 0
+  fetchAttendance()
+})
 </script>
 
 <template>
@@ -302,7 +347,7 @@ watch([selectedDate, searchKeyword], fetchAttendance)
           <p class="mt-1 text-sm font-medium text-slate-500">Danh sách dạng card giúp xem nhanh giờ vào, giờ ra và trạng thái hiện diện.</p>
         </div>
         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-          {{ attendanceCards.length }} bản ghi
+          {{ filteredAttendanceCards.length }} bản ghi
         </span>
       </div>
 
@@ -310,9 +355,10 @@ watch([selectedDate, searchKeyword], fetchAttendance)
         <div v-for="item in 6" :key="item" class="h-40 animate-pulse rounded-[28px] bg-slate-100" />
       </div>
 
-      <div v-else-if="attendanceCards.length" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div v-else-if="filteredAttendanceCards.length" class="space-y-6">
+        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <article
-          v-for="item in attendanceCards"
+          v-for="item in paginatedAttendanceCards"
           :key="`${item.employeeId}-${item.attendanceDate}`"
           class="rounded-[28px] border border-slate-200 bg-white p-5 transition-all hover:border-indigo-200 hover:shadow-lg"
         >
@@ -358,6 +404,46 @@ watch([selectedDate, searchKeyword], fetchAttendance)
             </span>
           </div>
         </article>
+        </div>
+
+        <div v-if="attendanceTotalPages > 1" class="flex flex-wrap items-center justify-center gap-3">
+          <BaseButton
+            variant="outline"
+            size="md"
+            :disabled="attendancePage === 0"
+            class="w-12! rounded-2xl! p-0!"
+            @click="changeAttendancePage(attendancePage - 1)"
+          >
+            <ChevronLeft class="h-5 w-5" />
+          </BaseButton>
+
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            <template v-for="page in attendanceVisiblePages" :key="`attendance-page-${page}`">
+              <button
+                v-if="page !== '...'"
+                type="button"
+                class="h-10 w-10 rounded-2xl text-sm font-bold transition-all"
+                :class="attendancePage === page
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                  : 'border border-slate-100 bg-white text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'"
+                @click="changeAttendancePage(page)"
+              >
+                {{ page + 1 }}
+              </button>
+              <span v-else class="px-1 font-bold text-slate-400">...</span>
+            </template>
+          </div>
+
+          <BaseButton
+            variant="outline"
+            size="md"
+            :disabled="attendancePage === attendanceTotalPages - 1"
+            class="w-12! rounded-2xl! p-0!"
+            @click="changeAttendancePage(attendancePage + 1)"
+          >
+            <ChevronRight class="h-5 w-5" />
+          </BaseButton>
+        </div>
       </div>
 
       <EmptyState

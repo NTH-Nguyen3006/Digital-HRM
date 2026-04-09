@@ -6,6 +6,7 @@ let toastIdCounter = 0
 export const useUiStore = defineStore('ui', () => {
   // ─── Toast ───────────────────────────────────────────────────
   const toasts = ref([])
+  const routeLoading = ref(false)
 
   /**
    * @param {{ type: 'success'|'error'|'warning'|'info', message: string, duration?: number }} toast
@@ -55,11 +56,17 @@ export const useUiStore = defineStore('ui', () => {
     confirmDialog.value.visible = false
   }
 
+  function setRouteLoading(value) {
+    routeLoading.value = Boolean(value)
+  }
+
   return {
     // toast
     toasts,
     addToast,
     removeToast,
+    routeLoading,
+    setRouteLoading,
     // confirm
     confirmDialog,
     confirm,

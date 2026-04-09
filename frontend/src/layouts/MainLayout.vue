@@ -166,7 +166,7 @@ const menuGroups = computed(() => {
 
     <main class="flex-1 min-w-0 flex flex-col h-screen">
       <header
-        class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between z-30 sticky top-0 shrink-0">
+        class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 lg:px-8 flex items-center justify-between z-30 sticky top-0 shrink-0">
         <div class="flex items-center space-x-4">
           <button @click="toggleSidebar" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <Menu class="w-6 h-6 text-slate-500" />
@@ -200,7 +200,7 @@ const menuGroups = computed(() => {
         </div>
       </header>
 
-      <div class="flex-1 overflow-y-auto overscroll-contain p-8 bg-slate-50/50">
+      <div class="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 bg-slate-50/50">
         <div class="max-w-7xl mx-auto animate-fade-in">
           <slot />
         </div>

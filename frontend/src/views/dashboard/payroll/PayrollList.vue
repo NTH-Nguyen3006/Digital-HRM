@@ -482,13 +482,13 @@ watch(searchQuery, fetchItems)
         </div>
       </div>
 
-      <div v-if="loading" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_420px]">
+      <div v-if="loading" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,460px)]">
         <div class="h-[480px] animate-pulse rounded-[28px] bg-slate-100" />
         <div class="h-[480px] animate-pulse rounded-[28px] bg-slate-100" />
       </div>
 
-      <div v-else-if="filteredItems.length" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_420px]">
-        <div class="space-y-4">
+      <div v-else-if="filteredItems.length" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,460px)]">
+        <div class="space-y-4 xl:max-h-[calc(100vh-18rem)] xl:overflow-y-auto xl:pr-2">
           <article
             v-for="item in filteredItems"
             :key="item.payrollItemId"
@@ -533,7 +533,7 @@ watch(searchQuery, fetchItems)
           </article>
         </div>
 
-        <SurfacePanel class="h-fit">
+        <SurfacePanel class="h-fit xl:sticky xl:top-24">
           <div v-if="detailLoading" class="h-80 animate-pulse rounded-[28px] bg-slate-100" />
 
           <div v-else-if="selectedItem" class="space-y-5">
@@ -557,17 +557,17 @@ watch(searchQuery, fetchItems)
               </div>
             </div>
 
-            <div class="rounded-[24px] border border-slate-200 p-4">
-              <div class="flex items-center justify-between gap-3">
+            <div class="overflow-hidden rounded-[24px] border border-slate-200">
+              <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4">
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Breakdown thành phần</p>
                 <StatusBadge :status="selectedItem.itemStatus || 'DRAFT'" :label="getItemStatusLabel(selectedItem.itemStatus)" />
               </div>
 
-              <div v-if="selectedItemLines.length" class="mt-4 space-y-3">
+              <div v-if="selectedItemLines.length" class="max-h-[420px] space-y-3 overflow-y-auto bg-slate-50/80 p-4">
                 <div
                   v-for="line in selectedItemLines"
                   :key="line.payrollItemLineId"
-                  class="rounded-2xl bg-slate-50 p-4"
+                  class="rounded-2xl bg-white p-4 shadow-sm"
                 >
                   <div class="flex items-center justify-between gap-3">
                     <div>
@@ -581,7 +581,7 @@ watch(searchQuery, fetchItems)
                   <p v-if="line.lineNote" class="mt-2 text-sm font-medium text-slate-500">{{ line.lineNote }}</p>
                 </div>
               </div>
-              <p v-else class="mt-4 text-sm font-medium text-slate-500">Phiếu lương này chưa có line chi tiết.</p>
+              <p v-else class="p-4 text-sm font-medium text-slate-500">Phiếu lương này chưa có line chi tiết.</p>
             </div>
 
             <div class="rounded-[24px] bg-slate-50 p-4 text-sm font-medium text-slate-600">

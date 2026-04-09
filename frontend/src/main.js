@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router/main'
+import { useUiStore } from '@/stores/ui'
 import './assets/css/main.css'
 import '@/interceptors/axios'
 const app = createApp(App)
@@ -14,6 +15,9 @@ app.config.errorHandler = (err, vm, info) => {
 
 // 3. Router Error Handling (Robust Chunk Failure Recovery)
 router.onError((error, to) => {
+  const uiStore = useUiStore()
+  uiStore.setRouteLoading(false)
+
   const chunkFailedMessage = [
     'failed to fetch dynamically imported module',
     'Importing a module script failed',
@@ -36,4 +40,3 @@ router.onError((error, to) => {
 app.use(createPinia())
 app.use(router)
 app.mount('#app')
-

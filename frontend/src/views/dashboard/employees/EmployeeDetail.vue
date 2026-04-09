@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CircleDashed,
   CreditCard,
+  Download,
   Edit,
   Eye,
   FileText,
@@ -21,20 +22,27 @@ import {
   ScanFace,
   Send,
   ShieldCheck,
+  Upload,
   UserCheck,
   Wallet
 } from 'lucide-vue-next'
 import {
+  createDocument,
   getEmployeeDetail,
   getEmployeeProfile,
   listAddresses,
   listEmergencyContacts,
   listIdentifications,
   listBankAccounts,
-  listDocuments
+  listDocuments,
+  updateDocument
 } from '@/api/admin/employee'
+import { uploadStoredFile } from '@/api/storage'
+import { useToast } from '@/composables/useToast'
+import { unwrapData } from '@/utils/api'
 
 const authStore = useAuthStore()
+const toast = useToast()
 const isAdmin = authStore.isAdmin
 const isHR = authStore.isHR
 const canManage = isHR || isAdmin
@@ -46,6 +54,8 @@ const employeeId = route.params.id
 const loading = ref(true)
 const viewMode = ref('overview')
 const activeTab = ref('profile')
+const cvUploading = ref(false)
+const cvInputRef = ref(null)
 
 const employee = ref({})
 const profile = ref({})
@@ -98,6 +108,16 @@ const fetchAllData = async () => {
 
 onMounted(fetchAllData)
 
+const documentDownloadUrl = (document) => {
+  if (!document?.storagePath) return '#'
+  return `/api/v1/storage/files/${document.storagePath}/download`
+}
+
+const isCvDocument = (document) => {
+  const keyword = `${document?.documentName || ''} ${document?.note || ''}`.toLowerCase()
+  return keyword.includes('cv') || keyword.includes('resume') || document?.documentCategory === 'PROFILE'
+}
+
 const getAvatarInitial = (name) => {
   if (!name) return '?'
   return name.trim().split(' ').filter(Boolean).pop()?.charAt(0)?.toUpperCase() || '?'
@@ -116,6 +136,8 @@ const getGenderLabel = (genderCode) => {
 }
 
 const statusMeta = computed(() => statusMap[employee.value.employmentStatus] || statusMap.ACTIVE)
+const cvDocument = computed(() => documents.value.find((item) => isCvDocument(item)) || null)
+const otherDocuments = computed(() => documents.value.filter((item) => item.employeeDocumentId !== cvDocument.value?.employeeDocumentId))
 
 const overviewStats = computed(() => [
   {
@@ -139,6 +161,23 @@ const overviewStats = computed(() => [
     hint: 'File đang lưu'
   }
 ])
+
+const cvSummary = computed(() => {
+  if (!cvDocument.value) {
+    return {
+      title: 'Chưa có CV bản mềm',
+      subtitle: 'Tải CV để HR và quản lý tra cứu nhanh ngay trong hồ sơ nhân viên.',
+      meta: 'Ưu tiên PDF hoặc DOCX',
+    }
+  }
+
+  const sizeInMb = ((cvDocument.value.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)
+  return {
+    title: cvDocument.value.documentName || 'CV nhân viên',
+    subtitle: cvDocument.value.note || 'CV mềm đang lưu trong hồ sơ nhân viên.',
+    meta: `${cvDocument.value.mimeType || 'Tài liệu'} • ${sizeInMb} MB • ${formatDate(cvDocument.value.uploadedAt)}`,
+  }
+})
 
 const summaryCards = computed(() => [
   {
@@ -262,12 +301,65 @@ const compactPanels = computed(() => ({
     cards: documents.value.map((item) => ({
       title: item.documentName || 'N/A',
       badge: item.status || null,
-      subtitle: `${item.documentCategory || 'N/A'} • ${((item.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)} MB`
+      subtitle: `${item.documentCategory || 'N/A'} • ${((item.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)} MB`,
+      downloadUrl: documentDownloadUrl(item),
+      note: item.note,
     }))
   }
 }))
 
 const activePanel = computed(() => compactPanels.value[activeTab.value] || compactPanels.value.profile)
+
+function triggerCvUpload() {
+  if (!canManage) return
+  cvInputRef.value?.click()
+}
+
+async function handleCvSelected(event) {
+  const [file] = Array.from(event.target.files || [])
+  event.target.value = ''
+
+  if (!file) return
+
+  cvUploading.value = true
+  try {
+    const uploaded = unwrapData(await uploadStoredFile({
+      file,
+      moduleCode: 'EMPLOYEE',
+      businessCategory: 'EMPLOYEE_CV',
+      visibilityScope: 'INTERNAL',
+      note: `CV cho nhân sự ${employee.value.employeeCode || employee.value.fullName || employeeId}`,
+    }))
+
+    const payload = {
+      documentCategory: 'PROFILE',
+      documentName: file.name,
+      storagePath: uploaded.fileKey,
+      mimeType: file.type || uploaded.mimeType || 'application/octet-stream',
+      fileSizeBytes: file.size,
+      status: 'ACTIVE',
+      note: 'CV nhân viên',
+    }
+
+    if (cvDocument.value?.employeeDocumentId) {
+      await updateDocument(employeeId, cvDocument.value.employeeDocumentId, payload)
+      toast.success('Đã cập nhật CV bản mềm')
+    } else {
+      await createDocument(employeeId, payload)
+      toast.success('Đã thêm CV bản mềm')
+    }
+
+    const docRes = await listDocuments(employeeId)
+    documents.value = Array.isArray(docRes?.data) ? docRes.data : []
+    activeTab.value = 'documents'
+    viewMode.value = '360'
+  } catch (error) {
+    console.error('Failed to upload CV:', error)
+    toast.error('Không thể tải lên CV bản mềm')
+  } finally {
+    cvUploading.value = false
+  }
+}
 </script>
 
 <template>
@@ -277,6 +369,14 @@ const activePanel = computed(() => compactPanels.value[activeTab.value] || compa
   </div>
 
   <div v-else class="space-y-6 animate-fade-in">
+    <input
+      ref="cvInputRef"
+      type="file"
+      accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+      class="hidden"
+      @change="handleCvSelected"
+    >
+
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="flex items-center gap-2 text-sm font-medium">
         <button @click="router.push('/employees')" class="text-indigo-600 hover:underline flex items-center gap-1">
@@ -371,6 +471,14 @@ const activePanel = computed(() => compactPanels.value[activeTab.value] || compa
             <button class="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold transition hover:bg-white/15">
               <Send class="h-4 w-4" /> Điều chuyển
             </button>
+            <button
+              class="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold transition hover:bg-white/15"
+              :disabled="cvUploading"
+              @click="triggerCvUpload"
+            >
+              <Upload class="h-4 w-4" />
+              {{ cvDocument ? 'Cập nhật CV' : 'Tải CV' }}
+            </button>
           </div>
         </div>
       </div>
@@ -450,6 +558,38 @@ const activePanel = computed(() => compactPanels.value[activeTab.value] || compa
           </article>
 
           <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-5 rounded-[26px] border border-indigo-100 bg-[linear-gradient(135deg,#eef2ff_0%,#ffffff_65%)] p-5">
+              <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div class="min-w-0">
+                  <p class="text-[11px] font-black uppercase tracking-[0.18em] text-indigo-500">CV bản mềm</p>
+                  <h3 class="mt-2 text-xl font-black text-slate-900">{{ cvSummary.title }}</h3>
+                  <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ cvSummary.subtitle }}</p>
+                  <p class="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{{ cvSummary.meta }}</p>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <a
+                    v-if="cvDocument"
+                    :href="documentDownloadUrl(cvDocument)"
+                    class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                  >
+                    <Download class="h-4 w-4" />
+                    Tải CV
+                  </a>
+                  <button
+                    v-if="canManage"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+                    :disabled="cvUploading"
+                    @click="triggerCvUpload"
+                  >
+                    <Upload class="h-4 w-4" />
+                    {{ cvUploading ? 'Đang tải lên...' : (cvDocument ? 'Thay CV' : 'Thêm CV') }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="mb-4 flex items-center gap-3">
               <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <CheckCircle2 class="h-5 w-5" />
@@ -551,6 +691,90 @@ const activePanel = computed(() => compactPanels.value[activeTab.value] || compa
                 </div>
               </div>
             </article>
+          </section>
+
+          <section v-else-if="activeTab === 'documents'" class="space-y-6">
+            <article class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p class="text-[11px] font-black uppercase tracking-[0.18em] text-indigo-500">CV nhân viên</p>
+                  <h3 class="mt-2 text-2xl font-black text-slate-900">
+                    {{ cvDocument ? cvDocument.documentName : 'Chưa có CV bản mềm' }}
+                  </h3>
+                  <p class="mt-2 text-sm font-medium text-slate-500">
+                    {{ cvDocument ? (cvDocument.note || 'CV mềm đang được lưu trong hồ sơ tài liệu của nhân sự.') : 'Tải CV để hỗ trợ tuyển dụng nội bộ, đánh giá năng lực và tra cứu nhanh.' }}
+                  </p>
+                  <p v-if="cvDocument" class="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                    {{ cvDocument.mimeType || 'Tài liệu' }} • {{ ((cvDocument.fileSizeBytes || 0) / 1024 / 1024).toFixed(2) }} MB • {{ formatDate(cvDocument.uploadedAt) }}
+                  </p>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <a
+                    v-if="cvDocument"
+                    :href="documentDownloadUrl(cvDocument)"
+                    class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                  >
+                    <Download class="h-4 w-4" />
+                    Tải CV
+                  </a>
+                  <button
+                    v-if="canManage"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                    :disabled="cvUploading"
+                    @click="triggerCvUpload"
+                  >
+                    <Upload class="h-4 w-4" />
+                    {{ cvUploading ? 'Đang tải lên...' : (cvDocument ? 'Cập nhật CV' : 'Thêm CV') }}
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <section v-if="otherDocuments.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <article
+                v-for="item in otherDocuments"
+                :key="item.employeeDocumentId"
+                class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div class="mb-4 flex items-start justify-between gap-3">
+                  <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                    <FileText class="h-5 w-5" />
+                  </div>
+                  <span
+                    v-if="item.status"
+                    class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-slate-600"
+                  >
+                    {{ item.status }}
+                  </span>
+                </div>
+                <div class="text-lg font-black text-slate-900">{{ item.documentName }}</div>
+                <div class="mt-2 text-sm leading-relaxed text-slate-500">
+                  {{ item.note || `${item.documentCategory || 'Tài liệu'} • ${((item.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)} MB` }}
+                </div>
+                <div class="mt-4">
+                  <a
+                    :href="documentDownloadUrl(item)"
+                    class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                  >
+                    <Download class="h-4 w-4" />
+                    Tải tài liệu
+                  </a>
+                </div>
+              </article>
+            </section>
+
+            <section
+              v-else-if="!cvDocument"
+              class="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm"
+            >
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                <Files class="h-6 w-6" />
+              </div>
+              <h3 class="mt-4 text-lg font-black text-slate-900">Chưa có tài liệu nào</h3>
+              <p class="mt-2 text-sm text-slate-500">Hiện hồ sơ này chưa có CV hoặc tài liệu bổ sung nào để hiển thị.</p>
+            </section>
           </section>
 
           <section v-else-if="activePanel.cards?.length" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">

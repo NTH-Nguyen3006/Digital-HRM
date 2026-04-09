@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUiStore } from '@/stores/ui'
 import { dashboardRoutes } from './dashboard'
 
 const router = createRouter({
@@ -102,6 +103,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  const uiStore = useUiStore()
+  uiStore.setRouteLoading(true)
+
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
   const user = JSON.parse(localStorage.getItem('user') || 'null')
   const roleCode = user?.roleCode?.toUpperCase?.() || ''
@@ -126,6 +130,13 @@ router.beforeEach((to) => {
   }
 
   return true
+})
+
+router.afterEach(() => {
+  const uiStore = useUiStore()
+  window.requestAnimationFrame(() => {
+    uiStore.setRouteLoading(false)
+  })
 })
 
 export default router
