@@ -17,6 +17,15 @@ const tab = ref('tree')
 const loading = ref(true)
 const searchQuery = ref('')
 const organizationTree = ref([])
+const selectedBranch = ref(null)
+const branches = computed(() => {
+  if (!organizationTree.value.length) return []
+  return organizationTree.value[0].children || []
+})
+const departmentsOfBranch = computed(() => {
+  if (!selectedBranch.value) return []
+  return selectedBranch.value.children || []
+})
 const orgUnitCounts = ref({})
 const chartZoom = ref(1)
 const chartShellRef = ref(null)
@@ -332,6 +341,11 @@ async function fetchOrganization() {
     ])
 
     organizationTree.value = unwrapData(treeResponse) || []
+    if (organizationTree.value.length) {
+      if (organizationTree.value.length) {
+        selectedBranch.value = organizationTree.value[0].children?.[0] || null
+      }
+    }
     const dashboard = unwrapData(dashboardResponse) || {}
     orgUnitCounts.value = (dashboard.orgUnitHeadcountBreakdown || []).reduce((lookup, item) => {
       lookup[item.key] = Number(item.value || 0)
@@ -414,7 +428,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <section class="rounded-4xl border border-slate-200 bg-white shadow-sm">
+    <div class="rounded-4xl border border-slate-200 bg-white shadow-sm">
       <div v-if="loading" class="grid gap-4 p-5 sm:p-6 xl:grid-cols-[minmax(0,1.5fr)_360px]">
         <div class="h-130 animate-pulse rounded-[28px] bg-slate-100" />
         <div class="grid gap-4">
@@ -509,67 +523,124 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div v-else class="overflow-hidden">
-        <div
-          class="hidden border-b border-slate-200 bg-slate-50/90 px-6 py-4 md:grid md:grid-cols-[minmax(0,2fr)_130px_150px_130px_140px] md:gap-4">
-          <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Đơn vị</div>
-          <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Loại</div>
-          <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Quản lý</div>
-          <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Nhân sự</div>
-          <div class="text-right text-xs font-black uppercase tracking-[0.18em] text-slate-400">Thao tác</div>
-        </div>
+      <div v-else class="grid grid-cols-[260px_1fr] gap-6 p-6">
 
-        <div v-if="filteredListItems.length" class="divide-y divide-slate-100">
-          <div v-for="item in filteredListItems" :key="item.id"
-            class="grid gap-4 px-4 py-4 transition-colors hover:bg-slate-50 md:grid-cols-[minmax(0,2fr)_130px_150px_130px_140px] md:px-6">
-            <div class="min-w-0">
-              <div class="flex items-start gap-3">
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                  <Building2 class="h-5 w-5" />
-                </div>
-                <div class="min-w-0">
-                  <p class="truncate text-base font-black text-slate-900">{{ item.name }}</p>
-                  <p class="mt-1 text-sm font-medium text-slate-500">{{ item.orgUnitCode }}</p>
-                </div>
+        <!-- LEFT: BRANCH -->
+        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-y-auto">
+
+          <div class="px-4 py-4 border-b border-slate-200">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Chi nhánh
+            </p>
+          </div>
+
+          <div class="p-2 space-y-1">
+
+            <div
+              v-for="branch in branches"
+              :key="branch.orgUnitId"
+              @click="selectedBranch = branch"
+              class="group flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all"
+              :class="selectedBranch?.orgUnitId === branch.orgUnitId
+                ? 'bg-white shadow-sm border border-slate-200'
+                : 'hover:bg-white'"
+            >
+
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
+                <Building2 class="h-4 w-4 text-indigo-600"/>
               </div>
+
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-slate-800">
+                  {{ branch.orgUnitName }}
+                </p>
+                <p class="text-xs text-slate-400">
+                  {{ branch.orgUnitCode }}
+                </p>
+              </div>
+
             </div>
 
-            <div class="flex items-center text-sm font-bold text-slate-600">
-              {{ getTypeLabel(item.orgUnitType) }}
-            </div>
-
-            <div class="flex items-center text-sm font-medium text-slate-600">
-              {{ item.managerName }}
-            </div>
-
-            <div class="flex items-center">
-              <span class="rounded-full bg-indigo-50 px-3 py-1 text-sm font-black text-indigo-700">
-                {{ formatNumber(item.totalEmployeeCount) }}
-              </span>
-            </div>
-
-            <div class="flex items-center justify-start md:justify-end">
-              <button type="button"
-                class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
-                @click="navigateToEmployees(item)">
-                Xem nhân sự
-              </button>
-            </div>
           </div>
+
         </div>
 
-        <div v-else class="flex min-h-70 flex-col items-center justify-center gap-4 px-6 text-center">
-          <div class="flex h-16 w-16 items-center justify-center rounded-[24px] bg-slate-100 text-slate-400">
-            <Loader2 class="h-7 w-7" />
+        <!-- RIGHT: DEPARTMENTS -->
+        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 overflow-y-auto">
+
+          <div v-if="!selectedBranch" class="text-center text-slate-400 mt-20">
+            Chọn chi nhánh để xem phòng ban
           </div>
-          <div>
-            <h3 class="text-lg font-black text-slate-900">Không tìm thấy đơn vị phù hợp</h3>
-            <p class="mt-2 text-sm font-medium text-slate-500">Thử đổi từ khóa tìm kiếm để xem lại danh mục cơ cấu tổ
-              chức.</p>
+
+          <div v-else>
+
+            <div class="mb-8 flex items-center justify-between">
+
+              <div class="flex items-center gap-4">
+
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50">
+                  <GitBranch class="h-5 w-5 text-indigo-600"/>
+                </div>
+
+                <div>
+                  <h3 class="text-xl font-black text-slate-900">
+                    {{ selectedBranch.orgUnitName }}
+                  </h3>
+
+                  <p class="text-sm text-slate-500">
+                    {{ departmentsOfBranch.length }} phòng ban
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+
+            <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+
+              <div
+                v-for="dept in departmentsOfBranch"
+                :key="dept.orgUnitId"
+                class="group p-6 rounded-2xl border border-slate-200 bg-white
+                hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200
+                transition-all duration-200 cursor-pointer"
+                @click="navigateToEmployees({
+                  orgUnitId: dept.orgUnitId,
+                  name: dept.orgUnitName,
+                  orgUnitCode: dept.orgUnitCode
+                })"
+              >
+
+                <p class="text-lg font-bold text-slate-800">
+                  {{ dept.orgUnitName }}
+                </p>
+
+                <p class="text-sm text-slate-500 mt-1">
+                  {{ dept.orgUnitCode }}
+                </p>
+
+                <div class="mt-4 flex justify-between items-center">
+
+                  <span class="text-xs text-slate-400 uppercase tracking-wider">
+                    Nhân sự
+                  </span>
+
+                  <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold">
+                    {{ formatNumber(countTotalEmployees(dept)) }}
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
           </div>
+
         </div>
+
       </div>
-    </section>
+    </div>
   </div>
 </template>
 
