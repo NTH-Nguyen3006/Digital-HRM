@@ -13,5 +13,7 @@ public interface HrJobTitleRepository extends JpaRepository<HrJobTitle, Long>, J
 
     boolean existsByJobTitleCodeIgnoreCaseAndDeletedFalseAndJobTitleIdNot(String jobTitleCode, Long jobTitleId);
 
+    Optional<HrJobTitle> findByJobTitleNameIgnoreCaseAndDeletedFalse(String jobTitleName);
+
     Optional<HrJobTitle> findByJobTitleCodeIgnoreCaseAndDeletedFalse(String jobTitleCode);
 }
