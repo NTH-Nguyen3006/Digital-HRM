@@ -15,11 +15,27 @@ public final class RequestContextUtils {
             return null;
         }
 
-        String forwardedFor = request.getHeader("X-Forwarded-For");
+        String forwardedFor = getForwardedForRaw();
         if (forwardedFor != null && !forwardedFor.isBlank()) {
             return forwardedFor.split(",")[0].trim();
         }
+
+        String forwarded = request.getHeader("Forwarded");
+        if (forwarded != null && !forwarded.isBlank()) {
+            String[] segments = forwarded.split(";");
+            for (String segment : segments) {
+                String trimmed = segment.trim();
+                if (trimmed.toLowerCase().startsWith("for=")) {
+                    return trimmed.substring(4).replace("\"", "").trim();
+                }
+            }
+        }
         return request.getRemoteAddr();
+    }
+
+    public static String getForwardedForRaw() {
+        HttpServletRequest request = currentRequest();
+        return request == null ? null : request.getHeader("X-Forwarded-For");
     }
 
     public static String getUserAgent() {
