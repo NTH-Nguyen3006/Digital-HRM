@@ -7,7 +7,7 @@ import AppHeader from '@/components/partials/AppHeader.vue'
     class="min-h-screen bg-white flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
     <AppHeader variant="portal" />
 
-    <main class="flex-1 ">
+    <main class="flex-1 pt-16">
       <slot />
     </main>
   </div>
